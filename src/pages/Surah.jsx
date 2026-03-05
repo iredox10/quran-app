@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { useParams, Link } from 'react-router-dom';
 import { useInView } from 'react-intersection-observer';
@@ -187,154 +187,194 @@ export default function Surah() {
                     direction: readingMode ? 'rtl' : 'ltr',
                     lineHeight: readingMode ? 2.5 : 'inherit'
                 }}>
-                    {verses.map((verse) => {
+                    {verses.map((verse, index) => {
                         const isBookmarked = (bookmarks || []).includes(verse.verse_key);
+                        const prevVerse = index > 0 ? verses[index - 1] : null;
+                        const showPageDivider = verse.page_number && (!prevVerse || prevVerse.page_number !== verse.page_number);
+
+                        const pageDivider = showPageDivider ? (
+                            <div
+                                key={`page-${verse.page_number}`}
+                                data-page={verse.page_number}
+                                className="page-divider"
+                                style={{
+                                    display: readingMode ? 'block' : 'flex',
+                                    alignItems: 'center',
+                                    gap: '1rem',
+                                    padding: '1rem 0',
+                                    margin: readingMode ? '1.5rem 0' : '0',
+                                    direction: 'ltr',
+                                    width: '100%'
+                                }}
+                            >
+                                <div style={{ flex: 1, height: '1px', background: 'linear-gradient(to right, transparent, var(--accent-primary), transparent)' }} />
+                                <span style={{
+                                    fontSize: '0.8rem',
+                                    fontWeight: 600,
+                                    color: 'var(--accent-primary)',
+                                    backgroundColor: 'var(--accent-light)',
+                                    padding: '0.25rem 0.75rem',
+                                    borderRadius: '9999px',
+                                    whiteSpace: 'nowrap',
+                                    fontFamily: "'Outfit', sans-serif"
+                                }}>
+                                    Page {verse.page_number} of 604
+                                </span>
+                                <div style={{ flex: 1, height: '1px', background: 'linear-gradient(to right, transparent, var(--accent-primary), transparent)' }} />
+                            </div>
+                        ) : null;
 
                         if (readingMode) {
                             return (
-                                <span key={verse.id} className="quran-text" style={{
-                                    fontSize: `${fontSize * 0.5 + 2}rem`,
-                                    marginRight: '0.5rem',
-                                    display: 'inline',
-                                    fontFamily: arabicFont
-                                }}>
-                                    {verse.text_uthmani}
-                                    <span style={{
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        width: '1.2em',
-                                        height: '1.2em',
-                                        borderRadius: '50%',
-                                        backgroundColor: 'var(--bg-secondary)',
-                                        border: '1px solid var(--border-color)',
-                                        color: 'var(--text-muted)',
-                                        fontSize: '0.4em',
-                                        margin: '0 0.5rem',
-                                        position: 'relative',
-                                        bottom: '0.3em'
+                                <React.Fragment key={verse.id}>
+                                    {pageDivider}
+                                    <span className="quran-text" style={{
+                                        fontSize: `${fontSize * 0.5 + 2}rem`,
+                                        marginRight: '0.5rem',
+                                        display: 'inline',
+                                        fontFamily: arabicFont
                                     }}>
-                                        {verse.verse_key.split(':')[1]}
+                                        {verse.text_uthmani}
+                                        <span style={{
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            width: '1.2em',
+                                            height: '1.2em',
+                                            borderRadius: '50%',
+                                            backgroundColor: 'var(--bg-secondary)',
+                                            border: '1px solid var(--border-color)',
+                                            color: 'var(--text-muted)',
+                                            fontSize: '0.4em',
+                                            margin: '0 0.5rem',
+                                            position: 'relative',
+                                            bottom: '0.3em'
+                                        }}>
+                                            {verse.verse_key.split(':')[1]}
+                                        </span>
                                     </span>
-                                </span>
+                                </React.Fragment>
                             );
                         }
 
                         // Translation Mode
                         return (
-                            <div key={verse.id} style={{
-                                borderBottom: '1px solid var(--border-color)',
-                                padding: '2.5rem 0',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: '1.5rem',
-                            }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center' }}>
-                                        <div style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            width: '40px',
-                                            height: '40px',
-                                            borderRadius: '50%',
-                                            backgroundColor: 'var(--accent-light)',
-                                            color: 'var(--accent-primary)',
-                                            fontWeight: 'bold',
-                                            fontSize: '0.9rem'
-                                        }}>
-                                            {verse.verse_key.split(':')[1]}
+                            <React.Fragment key={verse.id}>
+                                {pageDivider}
+                                <div style={{
+                                    borderBottom: '1px solid var(--border-color)',
+                                    padding: '2.5rem 0',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '1.5rem',
+                                }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center' }}>
+                                            <div style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                width: '40px',
+                                                height: '40px',
+                                                borderRadius: '50%',
+                                                backgroundColor: 'var(--accent-light)',
+                                                color: 'var(--accent-primary)',
+                                                fontWeight: 'bold',
+                                                fontSize: '0.9rem'
+                                            }}>
+                                                {verse.verse_key.split(':')[1]}
+                                            </div>
+                                            <button
+                                                className="btn-icon"
+                                                style={{ color: isBookmarked ? 'var(--accent-primary)' : 'var(--text-muted)' }}
+                                                onClick={() => toggleBookmark(verse.verse_key)}
+                                                title="Bookmark Verse"
+                                            >
+                                                <Bookmark size={20} fill={isBookmarked ? 'currentColor' : 'none'} />
+                                            </button>
+                                            <button
+                                                className="btn-icon"
+                                                style={{ color: activeTafsir?.verse_key === verse.verse_key ? 'var(--accent-primary)' : 'var(--text-muted)' }}
+                                                title="Read Tafsir"
+                                                onClick={() => {
+                                                    if (activeTafsir?.verse_key === verse.verse_key) {
+                                                        setActiveTafsir(null);
+                                                    } else {
+                                                        const tafsirObj = tafsirs?.find((t) => t.verse_key === verse.verse_key);
+                                                        setActiveTafsir({
+                                                            verse_key: verse.verse_key,
+                                                            text: tafsirObj ? tafsirObj.text : 'Tafsir is not available for this individual verse at the moment.'
+                                                        });
+                                                    }
+                                                }}
+                                            >
+                                                <Info size={20} />
+                                            </button>
                                         </div>
-                                        <button
-                                            className="btn-icon"
-                                            style={{ color: isBookmarked ? 'var(--accent-primary)' : 'var(--text-muted)' }}
-                                            onClick={() => toggleBookmark(verse.verse_key)}
-                                            title="Bookmark Verse"
-                                        >
-                                            <Bookmark size={20} fill={isBookmarked ? 'currentColor' : 'none'} />
-                                        </button>
-                                        <button
-                                            className="btn-icon"
-                                            style={{ color: activeTafsir?.verse_key === verse.verse_key ? 'var(--accent-primary)' : 'var(--text-muted)' }}
-                                            title="Read Tafsir"
-                                            onClick={() => {
-                                                if (activeTafsir?.verse_key === verse.verse_key) {
-                                                    setActiveTafsir(null);
-                                                } else {
-                                                    const tafsirObj = tafsirs?.find((t) => t.verse_key === verse.verse_key);
-                                                    setActiveTafsir({
-                                                        verse_key: verse.verse_key,
-                                                        text: tafsirObj ? tafsirObj.text : 'Tafsir is not available for this individual verse at the moment.'
-                                                    });
-                                                }
+
+                                        {/* Arabic Text */}
+                                        <div
+                                            className="quran-text"
+                                            style={{
+                                                flex: 1,
+                                                textAlign: 'right',
+                                                paddingLeft: '2rem',
+                                                fontSize: `${fontSize * 0.5 + 2}rem`,
+                                                lineHeight: 2.2,
+                                                fontFamily: arabicFont
                                             }}
                                         >
-                                            <Info size={20} />
-                                        </button>
+                                            {verse.text_uthmani}
+                                        </div>
                                     </div>
 
-                                    {/* Arabic Text */}
-                                    <div
-                                        className="quran-text"
-                                        style={{
-                                            flex: 1,
-                                            textAlign: 'right',
-                                            paddingLeft: '2rem',
-                                            fontSize: `${fontSize * 0.5 + 2}rem`,
-                                            lineHeight: 2.2,
-                                            fontFamily: arabicFont
-                                        }}
-                                    >
-                                        {verse.text_uthmani}
+                                    {/* Translation */}
+                                    <div className="text-english" style={{
+                                        paddingRight: '60px',
+                                        fontSize: `${fontSize * 0.1 + 1.1}rem`,
+                                        color: 'var(--text-secondary)',
+                                        lineHeight: 1.6
+                                    }}>
+                                        {verse.translations?.[0]?.text?.replace(/<[^>]*>?/gm, '')} {/* Strip basic HTML from translations */}
                                     </div>
-                                </div>
 
-                                {/* Translation */}
-                                <div className="text-english" style={{
-                                    paddingRight: '60px',
-                                    fontSize: `${fontSize * 0.1 + 1.1}rem`,
-                                    color: 'var(--text-secondary)',
-                                    lineHeight: 1.6
-                                }}>
-                                    {verse.translations?.[0]?.text?.replace(/<[^>]*>?/gm, '')} {/* Strip basic HTML from translations */}
+                                    {/* Tafsir Inline Block */}
+                                    <AnimatePresence>
+                                        {activeTafsir?.verse_key === verse.verse_key && (
+                                            <motion.div
+                                                initial={{ opacity: 0, height: 0 }}
+                                                animate={{ opacity: 1, height: 'auto' }}
+                                                exit={{ opacity: 0, height: 0 }}
+                                                style={{ overflow: 'hidden' }}
+                                            >
+                                                <div style={{
+                                                    marginTop: '1.5rem',
+                                                    padding: '1.5rem',
+                                                    backgroundColor: 'var(--bg-secondary)',
+                                                    borderRadius: '12px',
+                                                    borderLeft: '4px solid var(--accent-primary)',
+                                                    position: 'relative'
+                                                }}>
+                                                    <button
+                                                        onClick={() => setActiveTafsir(null)}
+                                                        style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
+                                                    >
+                                                        <X size={18} />
+                                                    </button>
+                                                    <h4 style={{ marginBottom: '1rem', color: 'var(--text-primary)', fontSize: '1.1rem', fontWeight: 600 }}>
+                                                        Tafsir Ibn Kathir (Abridged)
+                                                    </h4>
+                                                    <div
+                                                        className="tafsir-content quran-tafsir-html"
+                                                        style={{ color: 'var(--text-secondary)', fontSize: '1rem', lineHeight: 1.8 }}
+                                                        dangerouslySetInnerHTML={{ __html: activeTafsir.text }}
+                                                    />
+                                                </div>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
                                 </div>
-
-                                {/* Tafsir Inline Block */}
-                                <AnimatePresence>
-                                    {activeTafsir?.verse_key === verse.verse_key && (
-                                        <motion.div
-                                            initial={{ opacity: 0, height: 0 }}
-                                            animate={{ opacity: 1, height: 'auto' }}
-                                            exit={{ opacity: 0, height: 0 }}
-                                            style={{ overflow: 'hidden' }}
-                                        >
-                                            <div style={{
-                                                marginTop: '1.5rem',
-                                                padding: '1.5rem',
-                                                backgroundColor: 'var(--bg-secondary)',
-                                                borderRadius: '12px',
-                                                borderLeft: '4px solid var(--accent-primary)',
-                                                position: 'relative'
-                                            }}>
-                                                <button
-                                                    onClick={() => setActiveTafsir(null)}
-                                                    style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
-                                                >
-                                                    <X size={18} />
-                                                </button>
-                                                <h4 style={{ marginBottom: '1rem', color: 'var(--text-primary)', fontSize: '1.1rem', fontWeight: 600 }}>
-                                                    Tafsir Ibn Kathir (Abridged)
-                                                </h4>
-                                                <div
-                                                    className="tafsir-content quran-tafsir-html"
-                                                    style={{ color: 'var(--text-secondary)', fontSize: '1rem', lineHeight: 1.8 }}
-                                                    dangerouslySetInnerHTML={{ __html: activeTafsir.text }}
-                                                />
-                                            </div>
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
-                            </div>
+                            </React.Fragment>
                         );
                     })}
                 </div>

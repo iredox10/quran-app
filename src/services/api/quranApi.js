@@ -28,7 +28,7 @@ export const getVerses = async (chapterId, translationId = 131, reciterId = 7, p
       words: true,
       translations: translationId,
       audio: reciterId,
-      fields: 'text_uthmani',
+      fields: 'text_uthmani,page_number',
       page: page,
       per_page: 50,
     },
