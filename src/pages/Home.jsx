@@ -8,7 +8,7 @@ import { BookOpen, Search, Bookmark } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
 
 export default function Home() {
-    const { recentlyRead, bookmarks } = useAppStore();
+    const { recentlyRead, bookmark } = useAppStore();
     const [searchQuery, setSearchQuery] = useState('');
     const [isOnline, setIsOnline] = useState(navigator.onLine);
 
@@ -114,7 +114,7 @@ export default function Home() {
                             {recentlyRead.map((item) => (
                                 <Link
                                     key={item.chapterId}
-                                    to={`/surah/${item.chapterId}`}
+                                    to={item.verseKey ? `/surah/${item.chapterId}?verse=${item.verseKey}` : `/surah/${item.chapterId}`}
                                     className="interactive-hover"
                                     style={{
                                         minWidth: '180px',
@@ -131,44 +131,38 @@ export default function Home() {
                                 >
                                     <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Surah {item.chapterId}</span>
                                     <span style={{ fontWeight: 600, color: 'var(--accent-primary)' }}>{item.chapterName}</span>
+                                    {item.verseKey && <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Verse {item.verseKey.split(':')[1]}</span>}
                                 </Link>
                             ))}
                         </div>
                     </section>
                 )}
 
-                {/* Bookmarks */}
-                {bookmarks && bookmarks.length > 0 && (
+                {/* Bookmark (Singular) */}
+                {bookmark && (
                     <section>
                         <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <Bookmark size={20} color="var(--accent-primary)" /> My Bookmarks
+                            <Bookmark size={20} color="var(--accent-primary)" /> My Bookmark
                         </h2>
-                        <div style={{ display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '0.5rem', scrollbarWidth: 'none' }}>
-                            {bookmarks.map((verseKey) => (
-                                <Link
-                                    key={verseKey}
-                                    to={`/surah/${verseKey.split(':')[0]}?verse=${verseKey}`}
-                                    className="interactive-hover"
-                                    style={{
-                                        minWidth: '140px',
-                                        padding: '1rem',
-                                        background: 'var(--bg-secondary)',
-                                        border: '1px solid var(--border-color)',
-                                        borderRadius: '16px',
-                                        textDecoration: 'none',
-                                        color: 'inherit',
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        gap: '0.25rem'
-                                    }}
-                                >
-                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Verse</span>
-                                    <span style={{ fontWeight: 600, color: 'var(--accent-primary)' }}>{verseKey}</span>
-                                </Link>
-                            ))}
-                        </div>
+                        <Link
+                            to={`/surah/${bookmark.verseKey.split(':')[0]}?verse=${bookmark.verseKey}`}
+                            className="interactive-hover"
+                            style={{
+                                display: 'inline-flex',
+                                minWidth: '220px',
+                                padding: '1.25rem',
+                                background: 'var(--accent-light)',
+                                border: '1px solid var(--accent-primary)',
+                                borderRadius: '16px',
+                                textDecoration: 'none',
+                                color: 'inherit',
+                                flexDirection: 'column',
+                                gap: '0.25rem'
+                            }}
+                        >
+                            <span style={{ fontWeight: 600, color: 'var(--accent-primary)', fontSize: '1.1rem' }}>{bookmark.surahName}</span>
+                            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Verse {bookmark.verseKey.split(':')[1]}</span>
+                        </Link>
                     </section>
                 )}
             </div>

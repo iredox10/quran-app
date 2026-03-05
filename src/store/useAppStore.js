@@ -15,8 +15,8 @@ export const useAppStore = create(
             offlineDataStatus: 'idle', // 'idle', 'syncing', 'completed', 'error'
             downloadedSurahs: [], // Array of chapter IDs with offline audio
 
-            bookmarks: [], // Array of verse keys, e.g., ['1:1', '2:255']
-            recentlyRead: [], // Array of { chapterId, chapterName, timestamp }
+            bookmark: null, // { verseKey, surahName }
+            recentlyRead: [], // Array of { chapterId, chapterName, verseKey, timestamp }
 
             toggleTheme: () => set((state) => ({
                 theme: state.theme === 'light' ? 'dark' : 'light'
@@ -34,18 +34,13 @@ export const useAppStore = create(
                 downloadedSurahs: state.downloadedSurahs.includes(id) ? state.downloadedSurahs : [...state.downloadedSurahs, id]
             })),
 
-            toggleBookmark: (verseKey) => set((state) => {
-                const currentBookmarks = state.bookmarks || [];
-                return {
-                    bookmarks: currentBookmarks.includes(verseKey)
-                        ? currentBookmarks.filter(k => k !== verseKey)
-                        : [...currentBookmarks, verseKey]
-                };
-            }),
+            setBookmark: (verseKey, surahName) => set((state) => ({
+                bookmark: state.bookmark?.verseKey === verseKey ? null : { verseKey, surahName }
+            })),
 
-            addRecentlyRead: (chapterId, chapterName) => set((state) => {
+            addRecentlyRead: (chapterId, chapterName, verseKey = null) => set((state) => {
                 const filtered = (state.recentlyRead || []).filter(r => r.chapterId !== chapterId);
-                const newList = [{ chapterId, chapterName, timestamp: Date.now() }, ...filtered].slice(0, 5);
+                const newList = [{ chapterId, chapterName, verseKey, timestamp: Date.now() }, ...filtered].slice(0, 5);
                 return { recentlyRead: newList };
             }),
 
@@ -67,7 +62,7 @@ export const useAppStore = create(
                 arabicFont: state.arabicFont,
                 tajweedEnabled: state.tajweedEnabled,
                 tafsirId: state.tafsirId,
-                bookmarks: state.bookmarks || [],
+                bookmark: state.bookmark,
                 recentlyRead: state.recentlyRead || [],
                 offlineDataStatus: state.offlineDataStatus,
                 downloadedSurahs: state.downloadedSurahs || []
