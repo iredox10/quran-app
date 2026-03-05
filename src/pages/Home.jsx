@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getChapters } from '../services/api/quranApi';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../store/useAppStore';
 import { BookOpen, Search } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
@@ -10,6 +10,20 @@ import { Helmet } from 'react-helmet-async';
 export default function Home() {
     const { lastRead } = useAppStore();
     const [searchQuery, setSearchQuery] = useState('');
+    const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+    useEffect(() => {
+        const handleOnline = () => setIsOnline(true);
+        const handleOffline = () => setIsOnline(false);
+
+        window.addEventListener('online', handleOnline);
+        window.addEventListener('offline', handleOffline);
+
+        return () => {
+            window.removeEventListener('online', handleOnline);
+            window.removeEventListener('offline', handleOffline);
+        };
+    }, []);
 
     const { data: chapters, isLoading, error } = useQuery({
         queryKey: ['chapters'],
@@ -44,6 +58,33 @@ export default function Home() {
                 <title>The Noble Qur'an - Read, Study, Learn</title>
                 <meta name="description" content="A beautiful, fully-featured web application for reading and studying the Noble Qur'an. Featuring dark mode, authentic fonts, audio playback, and multi-language translations." />
             </Helmet>
+
+            <AnimatePresence>
+                {!isOnline && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        style={{
+                            padding: '1rem',
+                            background: 'var(--accent-light)',
+                            border: '1px solid var(--accent-primary)',
+                            borderRadius: '12px',
+                            color: 'var(--accent-primary)',
+                            textAlign: 'center',
+                            marginBottom: '1rem',
+                            fontWeight: 600,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '0.5rem'
+                        }}
+                    >
+                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'currentColor', animation: 'pulse 1.5s infinite' }} />
+                        Offline Mode — Using Cached Data
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             <div style={{
                 padding: '3rem',
