@@ -28,7 +28,8 @@ export default function SettingsDrawer({ isOpen, onClose }) {
         fontSize, setFontSize,
         reciterId, setReciter,
         translationId, setTranslation,
-        arabicFont, setArabicFont
+        arabicFont, setArabicFont,
+        tajweedEnabled, setTajweed
     } = useAppStore();
 
     if (!isOpen) return null;
@@ -117,6 +118,54 @@ export default function SettingsDrawer({ isOpen, onClose }) {
                         </div>
                     </div>
 
+                    {/* Tajweed Rules */}
+                    <div>
+                        <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '1rem', color: 'var(--text-muted)' }}>Tajweed Rules</h3>
+                        <button
+                            onClick={() => setTajweed(!tajweedEnabled)}
+                            style={{
+                                width: '100%',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                padding: '1rem',
+                                borderRadius: '8px',
+                                border: '1px solid var(--border-color)',
+                                backgroundColor: tajweedEnabled ? 'var(--accent-light)' : 'transparent',
+                                color: tajweedEnabled ? 'var(--accent-primary)' : 'var(--text-primary)',
+                                textAlign: 'left'
+                            }}
+                        >
+                            <div>
+                                <span style={{ fontWeight: 500 }}>Color-coded Tajweed</span>
+                                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                                    Highlight letters with tajweed color rules
+                                </p>
+                            </div>
+                            <div style={{
+                                width: '44px',
+                                height: '24px',
+                                borderRadius: '12px',
+                                backgroundColor: tajweedEnabled ? 'var(--accent-primary)' : 'var(--border-color)',
+                                position: 'relative',
+                                transition: 'background-color 0.2s ease',
+                                flexShrink: 0
+                            }}>
+                                <div style={{
+                                    width: '20px',
+                                    height: '20px',
+                                    borderRadius: '50%',
+                                    backgroundColor: '#fff',
+                                    position: 'absolute',
+                                    top: '2px',
+                                    left: tajweedEnabled ? '22px' : '2px',
+                                    transition: 'left 0.2s ease',
+                                    boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+                                }} />
+                            </div>
+                        </button>
+                    </div>
+
                     {/* Arabic Font */}
                     <div>
                         <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '1rem', color: 'var(--text-muted)' }}>Arabic Font</h3>
@@ -135,7 +184,7 @@ export default function SettingsDrawer({ isOpen, onClose }) {
                                         backgroundColor: arabicFont === f.id ? 'var(--accent-light)' : 'transparent',
                                         color: arabicFont === f.id ? 'var(--accent-primary)' : 'var(--text-primary)',
                                         textAlign: 'left',
-                                        fontFamily: f.id // Preview font inline!
+                                        fontFamily: f.id
                                     }}
                                 >
                                     <span style={{ fontFamily: "'Outfit', sans-serif" }}>{f.name}</span>

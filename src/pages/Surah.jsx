@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { useParams, Link } from 'react-router-dom';
 import { useInView } from 'react-intersection-observer';
-import { getChapter, getVerses, getChapterAudio, getChapterTafsirs } from '../services/api/quranApi';
+import { getChapter, getVerses, getChapterAudio, getChapterTafsirs, getTajweedVerses } from '../services/api/quranApi';
 import { useAppStore } from '../store/useAppStore';
 import { ArrowLeft, Play, Pause, BookOpen, Bookmark, Info, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -16,7 +16,7 @@ export default function Surah() {
         bookmarks, toggleBookmark,
         setLastRead,
         setAudio, setIsPlaying, currentAudioUrl, isPlaying,
-        arabicFont
+        arabicFont, tajweedEnabled
     } = useAppStore();
 
     const { data: chapter, isLoading: isChapterLoading } = useQuery({
@@ -52,6 +52,21 @@ export default function Surah() {
     });
 
     const [activeTafsir, setActiveTafsir] = useState(null); // stores { verse_key, text }
+
+    const { data: tajweedData } = useQuery({
+        queryKey: ['tajweed', id],
+        queryFn: () => getTajweedVerses(id),
+        enabled: tajweedEnabled,
+    });
+
+    // Build a lookup map: verse_key -> tajweed HTML
+    const tajweedMap = React.useMemo(() => {
+        if (!tajweedData) return {};
+        return tajweedData.reduce((acc, v) => {
+            acc[v.verse_key] = v.text_uthmani_tajweed;
+            return acc;
+        }, {});
+    }, [tajweedData]);
 
     const { ref: observerRef, inView } = useInView();
 
@@ -218,7 +233,7 @@ export default function Surah() {
                                     whiteSpace: 'nowrap',
                                     fontFamily: "'Outfit', sans-serif"
                                 }}>
-                                    Page {verse.page_number} of 604
+                                    Page {verse.page_number}
                                 </span>
                                 <div style={{ flex: 1, height: '1px', background: 'linear-gradient(to right, transparent, var(--accent-primary), transparent)' }} />
                             </div>
@@ -228,13 +243,16 @@ export default function Surah() {
                             return (
                                 <React.Fragment key={verse.id}>
                                     {pageDivider}
-                                    <span className="quran-text" style={{
+                                    <span className="quran-text tajweed-text" style={{
                                         fontSize: `${fontSize * 0.5 + 2}rem`,
                                         marginRight: '0.5rem',
                                         display: 'inline',
                                         fontFamily: arabicFont
                                     }}>
-                                        {verse.text_uthmani}
+                                        {tajweedEnabled && tajweedMap[verse.verse_key]
+                                            ? <span dangerouslySetInnerHTML={{ __html: tajweedMap[verse.verse_key] }} />
+                                            : verse.text_uthmani
+                                        }
                                         <span style={{
                                             display: 'inline-flex',
                                             alignItems: 'center',
@@ -314,7 +332,7 @@ export default function Surah() {
 
                                         {/* Arabic Text */}
                                         <div
-                                            className="quran-text"
+                                            className="quran-text tajweed-text"
                                             style={{
                                                 flex: 1,
                                                 textAlign: 'right',
@@ -324,7 +342,10 @@ export default function Surah() {
                                                 fontFamily: arabicFont
                                             }}
                                         >
-                                            {verse.text_uthmani}
+                                            {tajweedEnabled && tajweedMap[verse.verse_key]
+                                                ? <span dangerouslySetInnerHTML={{ __html: tajweedMap[verse.verse_key] }} />
+                                                : verse.text_uthmani
+                                            }
                                         </div>
                                     </div>
 

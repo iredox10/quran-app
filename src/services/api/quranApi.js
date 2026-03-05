@@ -45,3 +45,10 @@ export const getChapterTafsirs = async (chapterId, tafsirId = 169) => {
   const { data } = await api.get(`/tafsirs/${tafsirId}/by_chapter/${chapterId}`);
   return data.tafsirs;
 };
+
+export const getTajweedVerses = async (chapterId) => {
+  const { data } = await api.get(`/quran/verses/uthmani_tajweed`, {
+    params: { chapter_number: chapterId }
+  });
+  return data.verses; // Array of { id, verse_key, text_uthmani_tajweed }
+};

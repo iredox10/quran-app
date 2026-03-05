@@ -159,3 +159,89 @@ button {
 .quran-tafsir-html p:last-child {
   margin-bottom: 0;
 }
+
+/* Tajweed Color Rules */
+tajweed {
+  font-style: inherit;
+}
+
+/* Ghunnah (Nasal sound) - Blue */
+.tajweed-text tajweed.ham_wasl {
+  color: #AAAAAA;
+}
+
+/* Laam Shamsiyyah - Transparent / muted */
+.tajweed-text tajweed.laam_shamsiyah {
+  color: #AAAAAA;
+}
+
+/* Madda Normal (Regular elongation) */
+.tajweed-text tajweed.madda_normal {
+  color: #537FFF;
+}
+
+/* Madda Permissible */
+.tajweed-text tajweed.madda_permissible {
+  color: #4050FF;
+}
+
+/* Madda Obligatory (Must elongation) */
+.tajweed-text tajweed.madda_obligatory {
+  color: #000FB5;
+}
+
+/* Qalqalah (Echoing sound) */
+.tajweed-text tajweed.qalpiala {
+  color: #DD0008;
+}
+
+/* Ikhfa (Hidden Noon) - Orange/amber */
+.tajweed-text tajweed.ikhfa_shafawi {
+  color: #D500B7;
+}
+
+.tajweed-text tajweed.ikhfa {
+  color: #26BFFD;
+}
+
+/* Idghaam (Merging) */
+.tajweed-text tajweed.idghaam_shafawi {
+  color: #169777;
+}
+
+.tajweed-text tajweed.idghaam_ghunnah {
+  color: #169200;
+}
+
+.tajweed-text tajweed.idghaam_no_ghunnah {
+  color: #169200;
+}
+
+.tajweed-text tajweed.idghaam_mutajanisayn {
+  color: #A1A1A1;
+}
+
+.tajweed-text tajweed.idghaam_mutaqaribayn {
+  color: #A1A1A1;
+}
+
+/* Iqlab (Conversion) */
+.tajweed-text tajweed.iqlab {
+  color: #26BFFD;
+}
+
+/* Ghunnah */
+.tajweed-text tajweed.ghunnah {
+  color: #FF7E1E;
+}
+
+/* Silent letter */
+.tajweed-text tajweed.silent {
+  color: #AAAAAA;
+}
+
+/* End of verse marker */
+.tajweed-text span.end {
+  color: var(--accent-primary);
+  font-size: 0.7em;
+}
