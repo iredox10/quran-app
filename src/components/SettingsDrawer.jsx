@@ -22,6 +22,16 @@ const FONTS = [
     { id: "'Scheherazade New', serif", name: 'Scheherazade New' }
 ];
 
+const TAFSIRS = [
+    { id: 169, name: 'Ibn Kathir (Abridged)', lang: 'English' },
+    { id: 168, name: "Ma'arif al-Qur'an", lang: 'English' },
+    { id: 817, name: 'Tazkirul Quran', lang: 'English' },
+    { id: 16, name: 'Tafsir al-Muyassar', lang: 'Arabic' },
+    { id: 14, name: 'Tafsir Ibn Kathir', lang: 'Arabic' },
+    { id: 15, name: 'Tafsir al-Tabari', lang: 'Arabic' },
+    { id: 93, name: 'Al-Tafsir al-Wasit', lang: 'Arabic' }
+];
+
 export default function SettingsDrawer({ isOpen, onClose }) {
     const {
         theme, toggleTheme,
@@ -29,7 +39,8 @@ export default function SettingsDrawer({ isOpen, onClose }) {
         reciterId, setReciter,
         translationId, setTranslation,
         arabicFont, setArabicFont,
-        tajweedEnabled, setTajweed
+        tajweedEnabled, setTajweed,
+        tafsirId, setTafsirId
     } = useAppStore();
 
     if (!isOpen) return null;
@@ -243,6 +254,36 @@ export default function SettingsDrawer({ isOpen, onClose }) {
                                 >
                                     <span>{t.name}</span>
                                     {translationId === t.id && <Check size={18} />}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Tafsir Source */}
+                    <div>
+                        <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '1rem', color: 'var(--text-muted)' }}>Tafsir Source</h3>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                            {TAFSIRS.map((t) => (
+                                <button
+                                    key={t.id}
+                                    onClick={() => setTafsirId(t.id)}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        padding: '1rem',
+                                        borderRadius: '8px',
+                                        border: '1px solid var(--border-color)',
+                                        backgroundColor: tafsirId === t.id ? 'var(--accent-light)' : 'transparent',
+                                        color: tafsirId === t.id ? 'var(--accent-primary)' : 'var(--text-primary)',
+                                        textAlign: 'left'
+                                    }}
+                                >
+                                    <div>
+                                        <span style={{ fontWeight: 500 }}>{t.name}</span>
+                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>({t.lang})</span>
+                                    </div>
+                                    {tafsirId === t.id && <Check size={18} />}
                                 </button>
                             ))}
                         </div>

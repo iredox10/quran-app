@@ -11,6 +11,7 @@ export const useAppStore = create(
             readingMode: false, // false = translation, true = arabic only
             arabicFont: "'KFGQPC Uthman Taha Naskh', 'Amiri Quran', serif", // Default font
             tajweedEnabled: false, // Show tajweed color rules
+            tafsirId: 169, // Default: Ibn Kathir (Abridged) English
 
             bookmarks: [], // Array of verse keys, e.g., ['1:1', '2:255']
             lastRead: null, // { chapterId: 1, verseKey: '1:1', chapterName: 'Al-Fatiha' }
@@ -25,6 +26,7 @@ export const useAppStore = create(
             setReadingMode: (mode) => set({ readingMode: mode }),
             setArabicFont: (font) => set({ arabicFont: font }),
             setTajweed: (enabled) => set({ tajweedEnabled: enabled }),
+            setTafsirId: (id) => set({ tafsirId: id }),
 
             toggleBookmark: (verseKey) => set((state) => {
                 const currentBookmarks = state.bookmarks || [];
@@ -56,6 +58,7 @@ export const useAppStore = create(
                 readingMode: state.readingMode,
                 arabicFont: state.arabicFont,
                 tajweedEnabled: state.tajweedEnabled,
+                tafsirId: state.tafsirId,
                 bookmarks: state.bookmarks || [],
                 lastRead: state.lastRead
             }), // Persist settings and user data

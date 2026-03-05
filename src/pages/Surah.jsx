@@ -8,6 +8,15 @@ import { ArrowLeft, Play, Pause, BookOpen, Bookmark, Info, X } from 'lucide-reac
 import { motion, AnimatePresence } from 'framer-motion';
 import { Helmet } from 'react-helmet-async';
 
+const TAFSIR_NAMES = {
+    169: 'Ibn Kathir (Abridged)',
+    168: "Ma'arif al-Qur'an",
+    817: 'Tazkirul Quran',
+    16: 'Tafsir al-Muyassar',
+    14: 'Tafsir Ibn Kathir',
+    15: 'Tafsir al-Tabari',
+    93: 'Al-Tafsir al-Wasit'
+};
 export default function Surah() {
     const { id } = useParams();
     const {
@@ -16,7 +25,8 @@ export default function Surah() {
         bookmarks, toggleBookmark,
         setLastRead,
         setAudio, setIsPlaying, currentAudioUrl, isPlaying,
-        arabicFont, tajweedEnabled
+        arabicFont, tajweedEnabled,
+        tafsirId
     } = useAppStore();
 
     const { data: chapter, isLoading: isChapterLoading } = useQuery({
@@ -46,9 +56,9 @@ export default function Surah() {
         queryFn: () => getChapterAudio(id, reciterId),
     });
 
-    const { data: tafsirs } = useQuery({
-        queryKey: ['tafsirs', id],
-        queryFn: () => getChapterTafsirs(id),
+    const { data: tafsirs, isFetching: isTafsirFetching } = useQuery({
+        queryKey: ['tafsirs', id, tafsirId],
+        queryFn: () => getChapterTafsirs(id, tafsirId),
     });
 
     const [activeTafsir, setActiveTafsir] = useState(null); // stores { verse_key, text }
@@ -69,6 +79,11 @@ export default function Surah() {
     }, [tajweedData]);
 
     const { ref: observerRef, inView } = useInView();
+
+    // Reset active tafsir when tafsir source changes
+    useEffect(() => {
+        setActiveTafsir(null);
+    }, [tafsirId]);
 
     useEffect(() => {
         if (inView && hasNextPage && !isFetchingNextPage) {
@@ -317,11 +332,16 @@ export default function Surah() {
                                                 onClick={() => {
                                                     if (activeTafsir?.verse_key === verse.verse_key) {
                                                         setActiveTafsir(null);
+                                                    } else if (isTafsirFetching) {
+                                                        setActiveTafsir({
+                                                            verse_key: verse.verse_key,
+                                                            text: '<p>Loading tafsir...</p>'
+                                                        });
                                                     } else {
                                                         const tafsirObj = tafsirs?.find((t) => t.verse_key === verse.verse_key);
                                                         setActiveTafsir({
                                                             verse_key: verse.verse_key,
-                                                            text: tafsirObj ? tafsirObj.text : 'Tafsir is not available for this individual verse at the moment.'
+                                                            text: tafsirObj ? tafsirObj.text : '<p>Tafsir is not available for this verse in the selected source.</p>'
                                                         });
                                                     }
                                                 }}
@@ -383,7 +403,7 @@ export default function Surah() {
                                                         <X size={18} />
                                                     </button>
                                                     <h4 style={{ marginBottom: '1rem', color: 'var(--text-primary)', fontSize: '1.1rem', fontWeight: 600 }}>
-                                                        Tafsir Ibn Kathir (Abridged)
+                                                        📖 {TAFSIR_NAMES[tafsirId] || 'Tafsir'}
                                                     </h4>
                                                     <div
                                                         className="tafsir-content quran-tafsir-html"
