@@ -160,17 +160,20 @@ export default function Surah() {
                 <ArrowLeft size={18} /> Back to Surahs
             </Link>
 
-            <div style={{
-                padding: '3rem',
-                background: 'linear-gradient(135deg, var(--bg-secondary), var(--bg-surface))',
-                borderRadius: '24px',
-                border: '1px solid var(--border-color)',
-                textAlign: 'center',
-                marginBottom: '3rem',
-                boxShadow: 'var(--shadow-md)',
-                position: 'relative',
-                overflow: 'hidden'
-            }}>
+            <div
+                className="surah-header"
+                style={{
+                    padding: '3rem',
+                    background: 'linear-gradient(135deg, var(--bg-secondary), var(--bg-surface))',
+                    borderRadius: '24px',
+                    textAlign: 'center',
+                    marginBottom: '3rem',
+                    position: 'relative',
+                    overflow: 'hidden',
+                    border: '1px solid var(--border-color)',
+                    boxShadow: 'var(--shadow-lg)'
+                }}
+            >
                 {/* Subtle decorative background Arabic text */}
                 <div style={{
                     fontFamily: "'Amiri Quran', serif",
@@ -186,7 +189,10 @@ export default function Surah() {
                     {chapter?.name_arabic}
                 </div>
 
-                <h1 style={{ fontSize: '3rem', fontWeight: 800, marginBottom: '0.5rem', color: 'var(--text-primary)' }}>
+                <h1
+                    className="surah-title"
+                    style={{ fontSize: '3rem', fontWeight: 800, marginBottom: '0.5rem', color: 'var(--text-primary)' }}
+                >
                     {chapter?.name_simple}
                 </h1>
                 <p style={{ fontSize: '1.25rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
@@ -246,7 +252,7 @@ export default function Surah() {
                     <div className="quran-text" style={{
                         textAlign: 'center',
                         marginBottom: '3rem',
-                        fontSize: `${fontSize * 0.5 + 2}rem`,
+                        fontSize: `${fontSize * 0.4 + 1.5}rem`,
                         color: 'var(--accent-primary)',
                         fontFamily: arabicFont
                     }}>
@@ -302,8 +308,8 @@ export default function Surah() {
                                 <React.Fragment key={verse.id}>
                                     {pageDivider}
                                     <span className="quran-text tajweed-text" style={{
-                                        fontSize: `${fontSize * 0.5 + 2}rem`,
-                                        marginRight: '0.5rem',
+                                        fontSize: `${fontSize * 0.4 + 1.5}rem`,
+                                        marginRight: '0.4rem',
                                         display: 'inline',
                                         fontFamily: arabicFont
                                     }}>
@@ -337,13 +343,16 @@ export default function Surah() {
                         return (
                             <React.Fragment key={verse.id}>
                                 {pageDivider}
-                                <div style={{
-                                    borderBottom: '1px solid var(--border-color)',
-                                    padding: '2.5rem 0',
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    gap: '1.5rem',
-                                }}>
+                                <div
+                                    className="verse-container"
+                                    style={{
+                                        borderBottom: '1px solid var(--border-color)',
+                                        padding: '2.5rem 0',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: '1.5rem',
+                                    }}
+                                >
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center' }}>
                                             <div style={{
@@ -399,9 +408,9 @@ export default function Surah() {
                                             style={{
                                                 flex: 1,
                                                 textAlign: 'right',
-                                                paddingLeft: '2rem',
-                                                fontSize: `${fontSize * 0.5 + 2}rem`,
-                                                lineHeight: 2.2,
+                                                paddingLeft: '1rem',
+                                                fontSize: `${fontSize * 0.4 + 1.5}rem`,
+                                                lineHeight: 2.0,
                                                 fontFamily: arabicFont
                                             }}
                                         >
@@ -414,8 +423,8 @@ export default function Surah() {
 
                                     {/* Translation */}
                                     <div className="text-english" style={{
-                                        paddingRight: '60px',
-                                        fontSize: `${fontSize * 0.1 + 1.1}rem`,
+                                        paddingRight: '40px',
+                                        fontSize: `${fontSize * 0.1 + 0.9}rem`,
                                         color: 'var(--text-secondary)',
                                         lineHeight: 1.6
                                     }}>
