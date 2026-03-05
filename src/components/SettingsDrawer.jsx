@@ -1,5 +1,7 @@
 import { useAppStore } from '../store/useAppStore';
-import { X, Check } from 'lucide-react';
+import { X, Check, DownloadCloud, CheckCircle, RefreshCw, AlertCircle } from 'lucide-react';
+import { getChapters, getVerses, getTajweedVerses } from '../services/api/quranApi';
+import { useState } from 'react';
 
 const RECITERS = [
     { id: 7, name: 'Mishary Rashid Alafasy' },
@@ -40,8 +42,49 @@ export default function SettingsDrawer({ isOpen, onClose }) {
         translationId, setTranslation,
         arabicFont, setArabicFont,
         tajweedEnabled, setTajweed,
-        tafsirId, setTafsirId
+        tafsirId, setTafsirId,
+        offlineDataStatus, setOfflineStatus
     } = useAppStore();
+
+    const [syncProgress, setSyncProgress] = useState(0);
+
+    const handleSyncQuran = async () => {
+        try {
+            setOfflineStatus('syncing');
+            setSyncProgress(0);
+
+            // 1. Chapters
+            const chapters = await getChapters();
+            setSyncProgress(5);
+
+            // 2. Loop through all 114 chapters
+            // We do this surah by surah with a tiny break to avoid flooding
+            for (let i = 0; i < chapters.length; i++) {
+                const chapterId = chapters[i].id;
+
+                // Fetch basic verses (Arabic + current Translation)
+                await getVerses(chapterId, translationId, reciterId);
+
+                // Fetch tajweed verses
+                if (tajweedEnabled) {
+                    await getTajweedVerses(chapterId);
+                }
+
+                setSyncProgress(5 + Math.floor((i / chapters.length) * 95));
+
+                // Tiny break every 5 chapters to keep UI thread happy
+                if (i % 5 === 0) {
+                    await new Promise(r => setTimeout(r, 50));
+                }
+            }
+
+            setOfflineStatus('completed');
+            setSyncProgress(100);
+        } catch (error) {
+            console.error("Sync failed", error);
+            setOfflineStatus('error');
+        }
+    };
 
     if (!isOpen) return null;
 
@@ -289,6 +332,86 @@ export default function SettingsDrawer({ isOpen, onClose }) {
                         </div>
                     </div>
 
+                </div>
+
+                {/* Offline Support */}
+                <div style={{ padding: '0 1.5rem 1.5rem 1.5rem', flexShrink: 0, borderTop: '1px solid var(--border-color)', paddingTop: '1.5rem', backgroundColor: 'var(--bg-primary)' }}>
+                    <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '1rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <DownloadCloud size={18} /> Offline Support
+                    </h3>
+                    <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
+                        Make all 114 Surahs available for reading without an internet connection.
+                    </p>
+
+                    {offlineDataStatus === 'completed' ? (
+                        <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.75rem',
+                            padding: '0.75rem',
+                            backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                            borderRadius: '8px',
+                            color: '#22c55e',
+                            fontWeight: 600,
+                            fontSize: '0.9rem'
+                        }}>
+                            <CheckCircle size={20} /> Quran Text is Offline
+                            <button
+                                onClick={() => setOfflineStatus('idle')}
+                                style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '0.7rem', cursor: 'pointer', textDecoration: 'underline' }}
+                            >
+                                Re-sync
+                            </button>
+                        </div>
+                    ) : (
+                        <button
+                            onClick={handleSyncQuran}
+                            disabled={offlineDataStatus === 'syncing'}
+                            style={{
+                                width: '100%',
+                                padding: '1rem',
+                                borderRadius: '12px',
+                                background: offlineDataStatus === 'syncing' ? 'var(--bg-secondary)' : 'var(--accent-primary)',
+                                color: offlineDataStatus === 'syncing' ? 'var(--text-muted)' : 'white',
+                                border: 'none',
+                                fontWeight: 600,
+                                cursor: offlineDataStatus === 'syncing' ? 'default' : 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '0.75rem',
+                                position: 'relative',
+                                overflow: 'hidden'
+                            }}
+                        >
+                            {offlineDataStatus === 'syncing' ? (
+                                <>
+                                    <RefreshCw size={18} className="spin" />
+                                    Downloading ({syncProgress}%)
+                                    <div style={{
+                                        position: 'absolute',
+                                        bottom: 0,
+                                        left: 0,
+                                        height: '4px',
+                                        width: `${syncProgress}%`,
+                                        backgroundColor: 'var(--accent-primary)',
+                                        transition: 'width 0.3s ease'
+                                    }} />
+                                </>
+                            ) : (
+                                <>
+                                    <DownloadCloud size={18} />
+                                    Download Quran Text
+                                </>
+                            )}
+                        </button>
+                    )}
+
+                    {offlineDataStatus === 'error' && (
+                        <p style={{ color: '#ef4444', fontSize: '0.8rem', marginTop: '0.5rem', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                            <AlertCircle size={14} /> Something went wrong. Try again.
+                        </p>
+                    )}
                 </div>
             </div>
         </>

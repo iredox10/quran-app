@@ -40,15 +40,16 @@ export default defineConfig({
         ]
       },
       workbox: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
         runtimeCaching: [
           {
             urlPattern: ({ url }) => url.origin === 'https://api.quran.com',
-            handler: 'StaleWhileRevalidate',
+            handler: 'CacheFirst', // Use CacheFirst to be strictly offline-ready
             options: {
               cacheName: 'quran-api-cache',
               expiration: {
-                maxEntries: 200,
-                maxAgeSeconds: 60 * 60 * 24 * 30, // 30 Days
+                maxEntries: 500, // Increase for more chapters
+                maxAgeSeconds: 60 * 60 * 24 * 60, // 60 Days
               },
               cacheableResponse: {
                 statuses: [0, 200],
@@ -61,12 +62,27 @@ export default defineConfig({
             options: {
               cacheName: 'google-fonts-cache',
               expiration: {
-                maxEntries: 10,
+                maxEntries: 20,
                 maxAgeSeconds: 60 * 60 * 24 * 365, // 1 Year
               },
               cacheableResponse: {
                 statuses: [0, 200],
               },
+            },
+          },
+          {
+            urlPattern: ({ url }) => url.hostname === 'download.quranicaudio.com',
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'quran-audio-cache',
+              expiration: {
+                maxEntries: 114, // Roughly one Quran recitation
+                maxAgeSeconds: 60 * 60 * 24 * 90, // 90 Days
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+              rangeRequests: true, // Crucial for audio/video playback
             },
           }
         ]

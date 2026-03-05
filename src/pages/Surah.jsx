@@ -4,7 +4,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useInView } from 'react-intersection-observer';
 import { getChapter, getVerses, getChapterAudio, getChapterTafsirs, getTajweedVerses } from '../services/api/quranApi';
 import { useAppStore } from '../store/useAppStore';
-import { ArrowLeft, Play, Pause, BookOpen, Bookmark, Info, X } from 'lucide-react';
+import { ArrowLeft, Play, Pause, BookOpen, Bookmark, Info, X, Download, CloudCheck, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Helmet } from 'react-helmet-async';
 
@@ -26,7 +26,8 @@ export default function Surah() {
         setLastRead,
         setAudio, setIsPlaying, currentAudioUrl, isPlaying,
         arabicFont, tajweedEnabled,
-        tafsirId
+        tafsirId,
+        downloadedSurahs, addDownloadedSurah
     } = useAppStore();
 
     const { data: chapter, isLoading: isChapterLoading } = useQuery({
@@ -99,6 +100,25 @@ export default function Surah() {
         } else {
             setAudio(audioData.audio_url);
             setIsPlaying(true);
+        }
+    };
+
+    const isDownloaded = (downloadedSurahs || []).includes(id);
+    const [isDownloading, setIsDownloading] = useState(false);
+
+    const handleDownloadSurah = async () => {
+        if (!audioData?.audio_url || isDownloading) return;
+
+        try {
+            setIsDownloading(true);
+            const response = await fetch(audioData.audio_url);
+            if (response.ok) {
+                addDownloadedSurah(id);
+            }
+        } catch (error) {
+            console.error("Audio download failed", error);
+        } finally {
+            setIsDownloading(false);
         }
     };
 
@@ -185,6 +205,29 @@ export default function Surah() {
                     >
                         {isCurrentAudio && isPlaying ? <Pause size={18} /> : <Play size={18} />}
                         {isCurrentAudio && isPlaying ? 'Pause Audio' : 'Play Audio'}
+                    </button>
+                    <button
+                        className="btn-primary"
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            backgroundColor: isDownloaded ? 'var(--accent-light)' : 'var(--bg-primary)',
+                            color: isDownloaded ? 'var(--accent-primary)' : 'var(--text-primary)',
+                            border: '1px solid var(--border-color)',
+                            opacity: isDownloading ? 0.7 : 1
+                        }}
+                        onClick={handleDownloadSurah}
+                        disabled={isDownloading || isDownloaded}
+                    >
+                        {isDownloading ? (
+                            <RefreshCw size={18} className="spin" />
+                        ) : isDownloaded ? (
+                            <CloudCheck size={18} />
+                        ) : (
+                            <Download size={18} />
+                        )}
+                        {isDownloading ? 'Downloading...' : isDownloaded ? 'Offline Ready' : 'Download for Offline'}
                     </button>
                     <button
                         className="btn-primary"

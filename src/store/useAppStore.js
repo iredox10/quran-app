@@ -12,6 +12,8 @@ export const useAppStore = create(
             arabicFont: "'KFGQPC Uthman Taha Naskh', 'Amiri Quran', serif", // Default font
             tajweedEnabled: false, // Show tajweed color rules
             tafsirId: 169, // Default: Ibn Kathir (Abridged) English
+            offlineDataStatus: 'idle', // 'idle', 'syncing', 'completed', 'error'
+            downloadedSurahs: [], // Array of chapter IDs with offline audio
 
             bookmarks: [], // Array of verse keys, e.g., ['1:1', '2:255']
             lastRead: null, // { chapterId: 1, verseKey: '1:1', chapterName: 'Al-Fatiha' }
@@ -27,6 +29,10 @@ export const useAppStore = create(
             setArabicFont: (font) => set({ arabicFont: font }),
             setTajweed: (enabled) => set({ tajweedEnabled: enabled }),
             setTafsirId: (id) => set({ tafsirId: id }),
+            setOfflineStatus: (status) => set({ offlineDataStatus: status }),
+            addDownloadedSurah: (id) => set((state) => ({
+                downloadedSurahs: state.downloadedSurahs.includes(id) ? state.downloadedSurahs : [...state.downloadedSurahs, id]
+            })),
 
             toggleBookmark: (verseKey) => set((state) => {
                 const currentBookmarks = state.bookmarks || [];
@@ -60,7 +66,9 @@ export const useAppStore = create(
                 tajweedEnabled: state.tajweedEnabled,
                 tafsirId: state.tafsirId,
                 bookmarks: state.bookmarks || [],
-                lastRead: state.lastRead
+                lastRead: state.lastRead,
+                offlineDataStatus: state.offlineDataStatus,
+                downloadedSurahs: state.downloadedSurahs || []
             }), // Persist settings and user data
         }
     )
