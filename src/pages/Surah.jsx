@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useLocation } from 'react-router-dom';
 import { useInView } from 'react-intersection-observer';
 import { getChapter, getVerses, getChapterAudio, getChapterTafsirs, getTajweedVerses } from '../services/api/quranApi';
 import { useAppStore } from '../store/useAppStore';
@@ -19,11 +19,12 @@ const TAFSIR_NAMES = {
 };
 export default function Surah() {
     const { id } = useParams();
+    const location = useLocation();
     const {
         translationId, reciterId, fontSize,
         readingMode, setReadingMode,
         bookmarks, toggleBookmark,
-        setLastRead,
+        addRecentlyRead,
         setAudio, setIsPlaying, currentAudioUrl, isPlaying,
         arabicFont, tajweedEnabled,
         tafsirId,
@@ -34,6 +35,12 @@ export default function Surah() {
         queryKey: ['chapter', id],
         queryFn: () => getChapter(id),
     });
+
+    useEffect(() => {
+        if (chapter) {
+            addRecentlyRead(chapter.id, chapter.name_simple);
+        }
+    }, [chapter, addRecentlyRead]);
 
     const {
         data: versesResponse,
@@ -124,6 +131,25 @@ export default function Surah() {
 
     const isCurrentAudio = currentAudioUrl === audioData?.audio_url;
 
+    const verses = versesResponse?.pages.flatMap(page => page.verses) || [];
+
+    useEffect(() => {
+        const queryParams = new URLSearchParams(location.search);
+        const verseKey = queryParams.get('verse');
+        if (verseKey && verses.length > 0) {
+            // Find the verse in currently loaded pages
+            const element = document.getElementById(`verse-${verseKey}`);
+            if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                // Briefly highlight it
+                element.style.backgroundColor = 'var(--accent-light)';
+                setTimeout(() => {
+                    element.style.backgroundColor = 'transparent';
+                }, 2000);
+            }
+        }
+    }, [location.search, verses, isVersesLoading]);
+
     if (isChapterLoading || isVersesLoading) return (
         <div className="container" style={{ textAlign: 'center', padding: '10vh 0', color: 'var(--text-muted)' }}>
             <motion.div
@@ -134,8 +160,6 @@ export default function Surah() {
             <h2>Loading Ayahs...</h2>
         </div>
     );
-
-    const verses = versesResponse?.pages.flatMap(page => page.verses) || [];
 
     return (
         <div className="container">
@@ -307,11 +331,14 @@ export default function Surah() {
                             return (
                                 <React.Fragment key={verse.id}>
                                     {pageDivider}
-                                    <span className="quran-text tajweed-text" style={{
+                                    <span id={`verse-${verse.verse_key}`} className="quran-text tajweed-text" style={{
                                         fontSize: `${fontSize * 0.4 + 1.5}rem`,
                                         marginRight: '0.4rem',
                                         display: 'inline',
-                                        fontFamily: arabicFont
+                                        fontFamily: arabicFont,
+                                        transition: 'background-color 0.5s ease',
+                                        borderRadius: '8px',
+                                        padding: '0 0.25rem'
                                     }}>
                                         {tajweedEnabled && tajweedMap[verse.verse_key]
                                             ? <span dangerouslySetInnerHTML={{ __html: tajweedMap[verse.verse_key] }} />
@@ -344,6 +371,7 @@ export default function Surah() {
                             <React.Fragment key={verse.id}>
                                 {pageDivider}
                                 <div
+                                    id={`verse-${verse.verse_key}`}
                                     className="verse-container"
                                     style={{
                                         borderBottom: '1px solid var(--border-color)',
@@ -351,6 +379,8 @@ export default function Surah() {
                                         display: 'flex',
                                         flexDirection: 'column',
                                         gap: '1.5rem',
+                                        transition: 'background-color 0.5s ease',
+                                        borderRadius: '12px'
                                     }}
                                 >
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>

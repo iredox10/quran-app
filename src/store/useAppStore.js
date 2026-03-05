@@ -16,7 +16,7 @@ export const useAppStore = create(
             downloadedSurahs: [], // Array of chapter IDs with offline audio
 
             bookmarks: [], // Array of verse keys, e.g., ['1:1', '2:255']
-            lastRead: null, // { chapterId: 1, verseKey: '1:1', chapterName: 'Al-Fatiha' }
+            recentlyRead: [], // Array of { chapterId, chapterName, timestamp }
 
             toggleTheme: () => set((state) => ({
                 theme: state.theme === 'light' ? 'dark' : 'light'
@@ -43,8 +43,10 @@ export const useAppStore = create(
                 };
             }),
 
-            setLastRead: (chapterId, verseKey, chapterName) => set({
-                lastRead: { chapterId, verseKey, chapterName }
+            addRecentlyRead: (chapterId, chapterName) => set((state) => {
+                const filtered = (state.recentlyRead || []).filter(r => r.chapterId !== chapterId);
+                const newList = [{ chapterId, chapterName, timestamp: Date.now() }, ...filtered].slice(0, 5);
+                return { recentlyRead: newList };
             }),
 
             // Audio State (transient)
@@ -66,7 +68,7 @@ export const useAppStore = create(
                 tajweedEnabled: state.tajweedEnabled,
                 tafsirId: state.tafsirId,
                 bookmarks: state.bookmarks || [],
-                lastRead: state.lastRead,
+                recentlyRead: state.recentlyRead || [],
                 offlineDataStatus: state.offlineDataStatus,
                 downloadedSurahs: state.downloadedSurahs || []
             }), // Persist settings and user data

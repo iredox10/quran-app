@@ -4,11 +4,11 @@ import { getChapters } from '../services/api/quranApi';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../store/useAppStore';
-import { BookOpen, Search } from 'lucide-react';
+import { BookOpen, Search, Bookmark } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
 
 export default function Home() {
-    const { lastRead } = useAppStore();
+    const { recentlyRead, bookmarks } = useAppStore();
     const [searchQuery, setSearchQuery] = useState('');
     const [isOnline, setIsOnline] = useState(navigator.onLine);
 
@@ -103,36 +103,75 @@ export default function Home() {
                 </p>
             </div>
 
-            {lastRead && (
-                <div style={{ marginBottom: '3rem' }}>
-                    <h2 style={{ fontSize: '1.5rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '1rem' }}>
-                        Continue Reading
-                    </h2>
-                    <Link
-                        to={`/surah/${lastRead.chapterId}`}
-                        className="glass-panel interactive-hover"
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            padding: '1.5rem',
-                            textDecoration: 'none',
-                            color: 'inherit',
-                            backgroundColor: 'var(--accent-light)',
-                            border: '1px solid var(--accent-primary)',
-                        }}
-                    >
-                        <BookOpen size={32} color="var(--accent-primary)" style={{ marginRight: '1rem' }} />
-                        <div style={{ flex: 1 }}>
-                            <h3 style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--accent-primary)' }}>
-                                {lastRead.chapterName}
-                            </h3>
-                            <p style={{ color: 'var(--text-secondary)' }}>
-                                Pick up where you left off
-                            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '2rem', marginBottom: '3rem' }}>
+                {/* Recently Read */}
+                {recentlyRead && recentlyRead.length > 0 && (
+                    <section>
+                        <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <BookOpen size={20} color="var(--accent-primary)" /> Recently Read
+                        </h2>
+                        <div style={{ display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '0.5rem', scrollbarWidth: 'none' }}>
+                            {recentlyRead.map((item) => (
+                                <Link
+                                    key={item.chapterId}
+                                    to={`/surah/${item.chapterId}`}
+                                    className="interactive-hover"
+                                    style={{
+                                        minWidth: '180px',
+                                        padding: '1rem',
+                                        background: 'var(--bg-secondary)',
+                                        border: '1px solid var(--border-color)',
+                                        borderRadius: '16px',
+                                        textDecoration: 'none',
+                                        color: 'inherit',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: '0.25rem'
+                                    }}
+                                >
+                                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Surah {item.chapterId}</span>
+                                    <span style={{ fontWeight: 600, color: 'var(--accent-primary)' }}>{item.chapterName}</span>
+                                </Link>
+                            ))}
                         </div>
-                    </Link>
-                </div>
-            )}
+                    </section>
+                )}
+
+                {/* Bookmarks */}
+                {bookmarks && bookmarks.length > 0 && (
+                    <section>
+                        <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <Bookmark size={20} color="var(--accent-primary)" /> My Bookmarks
+                        </h2>
+                        <div style={{ display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '0.5rem', scrollbarWidth: 'none' }}>
+                            {bookmarks.map((verseKey) => (
+                                <Link
+                                    key={verseKey}
+                                    to={`/surah/${verseKey.split(':')[0]}?verse=${verseKey}`}
+                                    className="interactive-hover"
+                                    style={{
+                                        minWidth: '140px',
+                                        padding: '1rem',
+                                        background: 'var(--bg-secondary)',
+                                        border: '1px solid var(--border-color)',
+                                        borderRadius: '16px',
+                                        textDecoration: 'none',
+                                        color: 'inherit',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '0.25rem'
+                                    }}
+                                >
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Verse</span>
+                                    <span style={{ fontWeight: 600, color: 'var(--accent-primary)' }}>{verseKey}</span>
+                                </Link>
+                            ))}
+                        </div>
+                    </section>
+                )}
+            </div>
 
             <h2 style={{ fontSize: '1.5rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '1rem' }}>
                 Surahs (Chapters)
