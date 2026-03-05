@@ -36,6 +36,21 @@ export const getVerses = async (chapterId, translationId = 131, reciterId = 7, p
   return data;
 };
 
+export const getVersesByPage = async (pageNumber, translationId = 131, reciterId = 7) => {
+  const { data } = await api.get(`/verses/by_page/${pageNumber}`, {
+    params: {
+      language: 'en',
+      words: true,
+      translations: translationId,
+      audio: reciterId,
+      fields: 'text_uthmani,page_number',
+      per_page: 50,
+    },
+  });
+  return data;
+};
+
+
 export const getChapterAudio = async (chapterId, reciterId = 7) => {
   const { data } = await api.get(`/chapter_recitations/${reciterId}/${chapterId}`);
   return data.audio_file;
@@ -51,4 +66,11 @@ export const getTajweedVerses = async (chapterId) => {
     params: { chapter_number: chapterId }
   });
   return data.verses; // Array of { id, verse_key, text_uthmani_tajweed }
+};
+
+export const getTajweedVersesByPage = async (pageNumber) => {
+  const { data } = await api.get(`/quran/verses/uthmani_tajweed`, {
+    params: { page_number: pageNumber }
+  });
+  return data.verses;
 };

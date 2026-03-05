@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
 import Home from './pages/Home';
 import Surah from './pages/Surah';
+import Page from './pages/Page';
 import TajweedTooltip from './components/TajweedTooltip';
 
 function App() {
@@ -11,6 +12,7 @@ function App() {
         <Route path="/" element={<Layout />}>
           <Route index element={<Home />} />
           <Route path="surah/:id" element={<Surah />} />
+          <Route path="page/:id" element={<Page />} />
         </Route>
       </Routes>
       <TajweedTooltip />

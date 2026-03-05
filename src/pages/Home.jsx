@@ -98,9 +98,29 @@ export default function Home() {
                 <h1 style={{ fontSize: '3rem', fontWeight: 800, marginBottom: '1rem', letterSpacing: '-1px' }}>
                     The Noble Qur'an
                 </h1>
-                <p style={{ fontSize: '1.25rem', opacity: 0.9 }}>
+                <p style={{ fontSize: '1.25rem', opacity: 0.9, marginBottom: '2rem' }}>
                     Read, study, and learn the word of Allah.
                 </p>
+
+                <Link
+                    to="/page/1"
+                    className="btn-primary"
+                    style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        backgroundColor: 'white',
+                        color: 'var(--accent-primary)',
+                        padding: '1rem 2rem',
+                        borderRadius: '99px',
+                        fontWeight: 600,
+                        textDecoration: 'none',
+                        boxShadow: 'var(--shadow-md)'
+                    }}
+                >
+                    <BookOpen size={20} />
+                    Read by Page
+                </Link>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '2rem', marginBottom: '3rem' }}>
