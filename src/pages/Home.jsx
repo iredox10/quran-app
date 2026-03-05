@@ -1,9 +1,16 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getChapters } from '../services/api/quranApi';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { useAppStore } from '../store/useAppStore';
+import { BookOpen, Search } from 'lucide-react';
+import { Helmet } from 'react-helmet-async';
 
 export default function Home() {
+    const { lastRead } = useAppStore();
+    const [searchQuery, setSearchQuery] = useState('');
+
     const { data: chapters, isLoading, error } = useQuery({
         queryKey: ['chapters'],
         queryFn: getChapters,
@@ -26,8 +33,18 @@ export default function Home() {
         </div>
     );
 
+    const filteredChapters = chapters?.filter(c =>
+        c.name_simple.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        c.translated_name.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
     return (
         <div className="container">
+            <Helmet>
+                <title>The Noble Qur'an - Read, Study, Learn</title>
+                <meta name="description" content="A beautiful, fully-featured web application for reading and studying the Noble Qur'an. Featuring dark mode, authentic fonts, audio playback, and multi-language translations." />
+            </Helmet>
+
             <div style={{
                 padding: '3rem',
                 background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-hover))',
@@ -35,7 +52,7 @@ export default function Home() {
                 color: 'white',
                 textAlign: 'center',
                 marginBottom: '3rem',
-                boxShadow: '0 20px 40px -10px var(--accent-light)'
+                boxShadow: 'var(--shadow-lg)'
             }}>
                 <h1 style={{ fontSize: '3rem', fontWeight: 800, marginBottom: '1rem', letterSpacing: '-1px' }}>
                     The Noble Qur'an
@@ -45,20 +62,71 @@ export default function Home() {
                 </p>
             </div>
 
-            <h2 style={{ fontSize: '1.5rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
+            {lastRead && (
+                <div style={{ marginBottom: '3rem' }}>
+                    <h2 style={{ fontSize: '1.5rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+                        Continue Reading
+                    </h2>
+                    <Link
+                        to={`/surah/${lastRead.chapterId}`}
+                        className="glass-panel interactive-hover"
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            padding: '1.5rem',
+                            textDecoration: 'none',
+                            color: 'inherit',
+                            backgroundColor: 'var(--accent-light)',
+                            border: '1px solid var(--accent-primary)',
+                        }}
+                    >
+                        <BookOpen size={32} color="var(--accent-primary)" style={{ marginRight: '1rem' }} />
+                        <div style={{ flex: 1 }}>
+                            <h3 style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--accent-primary)' }}>
+                                {lastRead.chapterName}
+                            </h3>
+                            <p style={{ color: 'var(--text-secondary)' }}>
+                                Pick up where you left off
+                            </p>
+                        </div>
+                    </Link>
+                </div>
+            )}
+
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '1rem' }}>
                 Surahs (Chapters)
             </h2>
+
+            <div style={{
+                marginBottom: '2rem',
+                display: 'flex',
+                alignItems: 'center',
+                background: 'var(--bg-secondary)',
+                borderRadius: '12px',
+                border: '1px solid var(--border-color)',
+                padding: '0.75rem 1.5rem',
+                boxShadow: 'var(--shadow-sm)'
+            }}>
+                <Search size={20} color="var(--text-muted)" style={{ marginRight: '1rem' }} />
+                <input
+                    type="text"
+                    placeholder="Search Surahs..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    style={{ border: 'none', background: 'transparent', outline: 'none', color: 'var(--text-primary)', width: '100%', fontSize: '1.1rem', fontFamily: 'inherit' }}
+                />
+            </div>
 
             <div style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
                 gap: '1.5rem'
             }}>
-                {chapters?.map((chapter, index) => (
+                {filteredChapters?.map((chapter, index) => (
                     <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.02, duration: 0.3 }}
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.2 }}
                         key={chapter.id}
                     >
                         <Link

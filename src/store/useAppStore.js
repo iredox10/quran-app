@@ -8,6 +8,10 @@ export const useAppStore = create(
             translationId: 131, // Default: Clear Quran
             reciterId: 7, // Default: Mishary
             fontSize: 2, // 1, 2, 3, 4
+            readingMode: false, // false = translation, true = arabic only
+
+            bookmarks: [], // Array of verse keys, e.g., ['1:1', '2:255']
+            lastRead: null, // { chapterId: 1, verseKey: '1:1', chapterName: 'Al-Fatiha' }
 
             toggleTheme: () => set((state) => ({
                 theme: state.theme === 'light' ? 'dark' : 'light'
@@ -16,8 +20,22 @@ export const useAppStore = create(
             setTranslation: (id) => set({ translationId: id }),
             setReciter: (id) => set({ reciterId: id }),
             setFontSize: (size) => set({ fontSize: size }),
+            setReadingMode: (mode) => set({ readingMode: mode }),
 
-            // Audio State (transient, shouldn't really be persisted for long-term if we only want settings, but for now we put it here or separate store)
+            toggleBookmark: (verseKey) => set((state) => {
+                const currentBookmarks = state.bookmarks || [];
+                return {
+                    bookmarks: currentBookmarks.includes(verseKey)
+                        ? currentBookmarks.filter(k => k !== verseKey)
+                        : [...currentBookmarks, verseKey]
+                };
+            }),
+
+            setLastRead: (chapterId, verseKey, chapterName) => set({
+                lastRead: { chapterId, verseKey, chapterName }
+            }),
+
+            // Audio State (transient)
             currentAudioUrl: null,
             isPlaying: false,
 
@@ -30,8 +48,11 @@ export const useAppStore = create(
                 theme: state.theme,
                 translationId: state.translationId,
                 reciterId: state.reciterId,
-                fontSize: state.fontSize
-            }), // Persist only settings
+                fontSize: state.fontSize,
+                readingMode: state.readingMode,
+                bookmarks: state.bookmarks || [],
+                lastRead: state.lastRead
+            }), // Persist settings and user data
         }
     )
 );

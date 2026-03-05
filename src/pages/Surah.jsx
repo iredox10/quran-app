@@ -2,12 +2,19 @@ import { useQuery } from '@tanstack/react-query';
 import { useParams, Link } from 'react-router-dom';
 import { getChapter, getVerses, getChapterAudio } from '../services/api/quranApi';
 import { useAppStore } from '../store/useAppStore';
-import { ArrowLeft, Play, Pause, BookOpen } from 'lucide-react';
+import { ArrowLeft, Play, Pause, BookOpen, Bookmark } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { Helmet } from 'react-helmet-async';
 
 export default function Surah() {
     const { id } = useParams();
-    const { translationId, reciterId, fontSize, setAudio, setIsPlaying, currentAudioUrl, isPlaying } = useAppStore();
+    const {
+        translationId, reciterId, fontSize,
+        readingMode, setReadingMode,
+        bookmarks, toggleBookmark,
+        setLastRead,
+        setAudio, setIsPlaying, currentAudioUrl, isPlaying
+    } = useAppStore();
 
     const { data: chapter, isLoading: isChapterLoading } = useQuery({
         queryKey: ['chapter', id],
@@ -52,6 +59,11 @@ export default function Surah() {
 
     return (
         <div className="container">
+            <Helmet>
+                <title>{chapter ? `${chapter.name_simple} - The Noble Qur'an` : "Surah - The Noble Qur'an"}</title>
+                <meta name="description" content={`Read and listen to ${chapter?.name_simple} (${chapter?.translated_name.name}) online with translations and Tafsir.`} />
+            </Helmet>
+
             <Link
                 to="/"
                 className="interactive-hover"
@@ -114,13 +126,18 @@ export default function Surah() {
                         {isCurrentAudio && isPlaying ? <Pause size={18} /> : <Play size={18} />}
                         {isCurrentAudio && isPlaying ? 'Pause Audio' : 'Play Audio'}
                     </button>
-                    <button className="btn-primary" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }}>
-                        <BookOpen size={18} style={{ marginRight: '8px' }} /> Reading Mode
+                    <button
+                        className="btn-primary"
+                        style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }}
+                        onClick={() => setReadingMode(!readingMode)}
+                    >
+                        <BookOpen size={18} style={{ marginRight: '8px' }} />
+                        {readingMode ? 'Translation Mode' : 'Reading Mode'}
                     </button>
                 </div>
             </div>
 
-            <div style={{ padding: '0 1rem' }}>
+            <div style={{ padding: '0 1rem', display: readingMode ? 'block' : 'flex', flexDirection: 'column' }}>
                 {/* Bismillah before Surah text (except Fatiha and Tawbah) */}
                 {chapter?.id !== 1 && chapter?.id !== 9 && (
                     <div className="quran-text" style={{
@@ -133,56 +150,107 @@ export default function Surah() {
                     </div>
                 )}
 
-                {verses.map((verse) => (
-                    <div key={verse.id} style={{
-                        borderBottom: '1px solid var(--border-color)',
-                        padding: '2.5rem 0',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '1.5rem',
-                    }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                            <div style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                width: '40px',
-                                height: '40px',
-                                borderRadius: '50%',
-                                backgroundColor: 'var(--accent-light)',
-                                color: 'var(--accent-primary)',
-                                fontWeight: 'bold',
-                                fontSize: '0.9rem'
-                            }}>
-                                {verse.verse_key.split(':')[1]}
-                            </div>
+                <div style={{
+                    display: readingMode ? 'inline-block' : 'block',
+                    textAlign: readingMode ? 'justify' : 'left',
+                    direction: readingMode ? 'rtl' : 'ltr',
+                    lineHeight: readingMode ? 2.5 : 'inherit'
+                }}>
+                    {verses.map((verse) => {
+                        const isBookmarked = (bookmarks || []).includes(verse.verse_key);
 
-                            {/* Arabic Text rendered using Uthman Taha */}
-                            <div
-                                className="quran-text"
-                                style={{
-                                    flex: 1,
-                                    textAlign: 'right',
-                                    paddingLeft: '2rem',
+                        if (readingMode) {
+                            return (
+                                <span key={verse.id} className="quran-text" style={{
                                     fontSize: `${fontSize * 0.5 + 2}rem`,
-                                    lineHeight: 2.2
-                                }}
-                            >
-                                {verse.text_uthmani}
-                            </div>
-                        </div>
+                                    marginRight: '0.5rem',
+                                    display: 'inline'
+                                }}>
+                                    {verse.text_uthmani}
+                                    <span style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        width: '1.2em',
+                                        height: '1.2em',
+                                        borderRadius: '50%',
+                                        backgroundColor: 'var(--bg-secondary)',
+                                        border: '1px solid var(--border-color)',
+                                        color: 'var(--text-muted)',
+                                        fontSize: '0.4em',
+                                        margin: '0 0.5rem',
+                                        position: 'relative',
+                                        bottom: '0.3em'
+                                    }}>
+                                        {verse.verse_key.split(':')[1]}
+                                    </span>
+                                </span>
+                            );
+                        }
 
-                        {/* Translation */}
-                        <div className="text-english" style={{
-                            paddingRight: '60px',
-                            fontSize: `${fontSize * 0.1 + 1.1}rem`,
-                            color: 'var(--text-secondary)',
-                            lineHeight: 1.6
-                        }}>
-                            {verse.translations?.[0]?.text?.replace(/<[^>]*>?/gm, '')} {/* Strip basic HTML from translations */}
-                        </div>
-                    </div>
-                ))}
+                        // Translation Mode
+                        return (
+                            <div key={verse.id} style={{
+                                borderBottom: '1px solid var(--border-color)',
+                                padding: '2.5rem 0',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '1.5rem',
+                            }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center' }}>
+                                        <div style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            width: '40px',
+                                            height: '40px',
+                                            borderRadius: '50%',
+                                            backgroundColor: 'var(--accent-light)',
+                                            color: 'var(--accent-primary)',
+                                            fontWeight: 'bold',
+                                            fontSize: '0.9rem'
+                                        }}>
+                                            {verse.verse_key.split(':')[1]}
+                                        </div>
+                                        <button
+                                            className="btn-icon"
+                                            style={{ color: isBookmarked ? 'var(--accent-primary)' : 'var(--text-muted)' }}
+                                            onClick={() => toggleBookmark(verse.verse_key)}
+                                            title="Bookmark Verse"
+                                        >
+                                            <Bookmark size={20} fill={isBookmarked ? 'currentColor' : 'none'} />
+                                        </button>
+                                    </div>
+
+                                    {/* Arabic Text rendered using Uthman Taha */}
+                                    <div
+                                        className="quran-text"
+                                        style={{
+                                            flex: 1,
+                                            textAlign: 'right',
+                                            paddingLeft: '2rem',
+                                            fontSize: `${fontSize * 0.5 + 2}rem`,
+                                            lineHeight: 2.2
+                                        }}
+                                    >
+                                        {verse.text_uthmani}
+                                    </div>
+                                </div>
+
+                                {/* Translation */}
+                                <div className="text-english" style={{
+                                    paddingRight: '60px',
+                                    fontSize: `${fontSize * 0.1 + 1.1}rem`,
+                                    color: 'var(--text-secondary)',
+                                    lineHeight: 1.6
+                                }}>
+                                    {verse.translations?.[0]?.text?.replace(/<[^>]*>?/gm, '')} {/* Strip basic HTML from translations */}
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
             </div>
         </div>
     );
