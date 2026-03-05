@@ -1,13 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { useParams, Link } from 'react-router-dom';
-import { getChapter, getVerses } from '../services/api/quranApi';
+import { getChapter, getVerses, getChapterAudio } from '../services/api/quranApi';
 import { useAppStore } from '../store/useAppStore';
 import { ArrowLeft, Play, Pause, BookOpen } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export default function Surah() {
     const { id } = useParams();
-    const { translationId, reciterId, fontSize } = useAppStore();
+    const { translationId, reciterId, fontSize, setAudio, setIsPlaying, currentAudioUrl, isPlaying } = useAppStore();
 
     const { data: chapter, isLoading: isChapterLoading } = useQuery({
         queryKey: ['chapter', id],
@@ -18,6 +18,24 @@ export default function Surah() {
         queryKey: ['verses', id, translationId, reciterId],
         queryFn: () => getVerses(id, translationId, reciterId),
     });
+
+    const { data: audioData } = useQuery({
+        queryKey: ['chapterAudio', id, reciterId],
+        queryFn: () => getChapterAudio(id, reciterId),
+    });
+
+    const handlePlayClick = () => {
+        if (!audioData) return;
+
+        if (currentAudioUrl === audioData.audio_url) {
+            setIsPlaying(!isPlaying);
+        } else {
+            setAudio(audioData.audio_url);
+            setIsPlaying(true);
+        }
+    };
+
+    const isCurrentAudio = currentAudioUrl === audioData?.audio_url;
 
     if (isChapterLoading || isVersesLoading) return (
         <div className="container" style={{ textAlign: 'center', padding: '10vh 0', color: 'var(--text-muted)' }}>
@@ -88,8 +106,13 @@ export default function Surah() {
                     justifyContent: 'center',
                     gap: '1rem'
                 }}>
-                    <button className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <Play size={18} /> Play Audio
+                    <button
+                        className="btn-primary"
+                        style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                        onClick={handlePlayClick}
+                    >
+                        {isCurrentAudio && isPlaying ? <Pause size={18} /> : <Play size={18} />}
+                        {isCurrentAudio && isPlaying ? 'Pause Audio' : 'Play Audio'}
                     </button>
                     <button className="btn-primary" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }}>
                         <BookOpen size={18} style={{ marginRight: '8px' }} /> Reading Mode

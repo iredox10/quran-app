@@ -1,11 +1,14 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
 import { Moon, Sun, Settings } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import GlobalAudioPlayer from './GlobalAudioPlayer';
+import SettingsDrawer from './SettingsDrawer';
 
 export default function Layout() {
     const { theme, toggleTheme } = useAppStore();
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
     useEffect(() => {
         // Apply theme to document element for global CSS variables
@@ -51,20 +54,21 @@ export default function Layout() {
                                 </motion.div>
                             </AnimatePresence>
                         </button>
-                        <button className="btn-icon">
+                        <button className="btn-icon" onClick={() => setIsSettingsOpen(true)}>
                             <Settings size={20} />
                         </button>
                     </div>
                 </div>
             </header>
 
-            <main style={{ flex: 1, padding: '2rem 0' }}>
+            <main style={{ flex: 1, padding: '2rem 0', paddingBottom: '90px' }}>
                 <Outlet />
             </main>
 
             <footer style={{
                 borderTop: '1px solid var(--border-color)',
                 padding: '2rem 0',
+                paddingBottom: '100px',
                 textAlign: 'center',
                 color: 'var(--text-muted)',
                 fontSize: '0.875rem'
@@ -73,6 +77,9 @@ export default function Layout() {
                     <p>Read, Study, and Learn The Noble Quran.</p>
                 </div>
             </footer>
+
+            <GlobalAudioPlayer />
+            <SettingsDrawer isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
         </div>
     );
 }

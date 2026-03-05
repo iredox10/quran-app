@@ -35,3 +35,8 @@ export const getVerses = async (chapterId, translationId = 131, reciterId = 7, p
   });
   return data;
 };
+
+export const getChapterAudio = async (chapterId, reciterId = 7) => {
+  const { data } = await api.get(`/chapter_recitations/${reciterId}/${chapterId}`);
+  return data.audio_file;
+};
