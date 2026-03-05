@@ -9,6 +9,7 @@ export const useAppStore = create(
             reciterId: 7, // Default: Mishary
             fontSize: 2, // 1, 2, 3, 4
             readingMode: false, // false = translation, true = arabic only
+            arabicFont: "'KFGQPC Uthman Taha Naskh', 'Amiri Quran', serif", // Default font
 
             bookmarks: [], // Array of verse keys, e.g., ['1:1', '2:255']
             lastRead: null, // { chapterId: 1, verseKey: '1:1', chapterName: 'Al-Fatiha' }
@@ -21,6 +22,7 @@ export const useAppStore = create(
             setReciter: (id) => set({ reciterId: id }),
             setFontSize: (size) => set({ fontSize: size }),
             setReadingMode: (mode) => set({ readingMode: mode }),
+            setArabicFont: (font) => set({ arabicFont: font }),
 
             toggleBookmark: (verseKey) => set((state) => {
                 const currentBookmarks = state.bookmarks || [];
@@ -50,6 +52,7 @@ export const useAppStore = create(
                 reciterId: state.reciterId,
                 fontSize: state.fontSize,
                 readingMode: state.readingMode,
+                arabicFont: state.arabicFont,
                 bookmarks: state.bookmarks || [],
                 lastRead: state.lastRead
             }), // Persist settings and user data

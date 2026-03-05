@@ -40,3 +40,8 @@ export const getChapterAudio = async (chapterId, reciterId = 7) => {
   const { data } = await api.get(`/chapter_recitations/${reciterId}/${chapterId}`);
   return data.audio_file;
 };
+
+export const getChapterTafsirs = async (chapterId, tafsirId = 169) => {
+  const { data } = await api.get(`/tafsirs/${tafsirId}/by_chapter/${chapterId}`);
+  return data.tafsirs;
+};

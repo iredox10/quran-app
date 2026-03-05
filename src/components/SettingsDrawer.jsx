@@ -15,8 +15,21 @@ const TRANSLATIONS = [
     { id: 234, name: 'Urdu (Abul A\'ala Maududi)' }
 ];
 
+const FONTS = [
+    { id: "'KFGQPC Uthman Taha Naskh', 'Amiri Quran', serif", name: 'Uthman Taha Naskh' },
+    { id: "'Amiri Quran', serif", name: 'Amiri Quran' },
+    { id: "'Noto Naskh Arabic', serif", name: 'Noto Naskh Arabic' },
+    { id: "'Scheherazade New', serif", name: 'Scheherazade New' }
+];
+
 export default function SettingsDrawer({ isOpen, onClose }) {
-    const { theme, toggleTheme, fontSize, setFontSize, reciterId, setReciter, translationId, setTranslation } = useAppStore();
+    const {
+        theme, toggleTheme,
+        fontSize, setFontSize,
+        reciterId, setReciter,
+        translationId, setTranslation,
+        arabicFont, setArabicFont
+    } = useAppStore();
 
     if (!isOpen) return null;
 
@@ -101,6 +114,34 @@ export default function SettingsDrawer({ isOpen, onClose }) {
                                 style={{ border: '1px solid var(--border-color)' }}
                                 onClick={() => setFontSize(Math.min(4, fontSize + 1))}
                             >A+</button>
+                        </div>
+                    </div>
+
+                    {/* Arabic Font */}
+                    <div>
+                        <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '1rem', color: 'var(--text-muted)' }}>Arabic Font</h3>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                            {FONTS.map((f) => (
+                                <button
+                                    key={f.id}
+                                    onClick={() => setArabicFont(f.id)}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        padding: '1rem',
+                                        borderRadius: '8px',
+                                        border: '1px solid var(--border-color)',
+                                        backgroundColor: arabicFont === f.id ? 'var(--accent-light)' : 'transparent',
+                                        color: arabicFont === f.id ? 'var(--accent-primary)' : 'var(--text-primary)',
+                                        textAlign: 'left',
+                                        fontFamily: f.id // Preview font inline!
+                                    }}
+                                >
+                                    <span style={{ fontFamily: "'Outfit', sans-serif" }}>{f.name}</span>
+                                    {arabicFont === f.id && <Check size={18} />}
+                                </button>
+                            ))}
                         </div>
                     </div>
 

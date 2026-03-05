@@ -1,9 +1,11 @@
-import { useQuery } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
+import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { useParams, Link } from 'react-router-dom';
-import { getChapter, getVerses, getChapterAudio } from '../services/api/quranApi';
+import { useInView } from 'react-intersection-observer';
+import { getChapter, getVerses, getChapterAudio, getChapterTafsirs } from '../services/api/quranApi';
 import { useAppStore } from '../store/useAppStore';
-import { ArrowLeft, Play, Pause, BookOpen, Bookmark } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { ArrowLeft, Play, Pause, BookOpen, Bookmark, Info, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Helmet } from 'react-helmet-async';
 
 export default function Surah() {
@@ -13,7 +15,8 @@ export default function Surah() {
         readingMode, setReadingMode,
         bookmarks, toggleBookmark,
         setLastRead,
-        setAudio, setIsPlaying, currentAudioUrl, isPlaying
+        setAudio, setIsPlaying, currentAudioUrl, isPlaying,
+        arabicFont
     } = useAppStore();
 
     const { data: chapter, isLoading: isChapterLoading } = useQuery({
@@ -21,15 +24,42 @@ export default function Surah() {
         queryFn: () => getChapter(id),
     });
 
-    const { data: versesResponse, isLoading: isVersesLoading } = useQuery({
+    const {
+        data: versesResponse,
+        isLoading: isVersesLoading,
+        fetchNextPage,
+        hasNextPage,
+        isFetchingNextPage
+    } = useInfiniteQuery({
         queryKey: ['verses', id, translationId, reciterId],
-        queryFn: () => getVerses(id, translationId, reciterId),
+        queryFn: ({ pageParam = 1 }) => getVerses(id, translationId, reciterId, pageParam),
+        getNextPageParam: (lastPage) => {
+            if (lastPage.pagination.current_page < lastPage.pagination.total_pages) {
+                return lastPage.pagination.current_page + 1;
+            }
+            return undefined;
+        },
     });
 
     const { data: audioData } = useQuery({
         queryKey: ['chapterAudio', id, reciterId],
         queryFn: () => getChapterAudio(id, reciterId),
     });
+
+    const { data: tafsirs } = useQuery({
+        queryKey: ['tafsirs', id],
+        queryFn: () => getChapterTafsirs(id),
+    });
+
+    const [activeTafsir, setActiveTafsir] = useState(null); // stores { verse_key, text }
+
+    const { ref: observerRef, inView } = useInView();
+
+    useEffect(() => {
+        if (inView && hasNextPage && !isFetchingNextPage) {
+            fetchNextPage();
+        }
+    }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
     const handlePlayClick = () => {
         if (!audioData) return;
@@ -55,7 +85,7 @@ export default function Surah() {
         </div>
     );
 
-    const verses = versesResponse?.verses || [];
+    const verses = versesResponse?.pages.flatMap(page => page.verses) || [];
 
     return (
         <div className="container">
@@ -144,7 +174,8 @@ export default function Surah() {
                         textAlign: 'center',
                         marginBottom: '3rem',
                         fontSize: `${fontSize * 0.5 + 2}rem`,
-                        color: 'var(--accent-primary)'
+                        color: 'var(--accent-primary)',
+                        fontFamily: arabicFont
                     }}>
                         بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ
                     </div>
@@ -164,7 +195,8 @@ export default function Surah() {
                                 <span key={verse.id} className="quran-text" style={{
                                     fontSize: `${fontSize * 0.5 + 2}rem`,
                                     marginRight: '0.5rem',
-                                    display: 'inline'
+                                    display: 'inline',
+                                    fontFamily: arabicFont
                                 }}>
                                     {verse.text_uthmani}
                                     <span style={{
@@ -221,9 +253,27 @@ export default function Surah() {
                                         >
                                             <Bookmark size={20} fill={isBookmarked ? 'currentColor' : 'none'} />
                                         </button>
+                                        <button
+                                            className="btn-icon"
+                                            style={{ color: activeTafsir?.verse_key === verse.verse_key ? 'var(--accent-primary)' : 'var(--text-muted)' }}
+                                            title="Read Tafsir"
+                                            onClick={() => {
+                                                if (activeTafsir?.verse_key === verse.verse_key) {
+                                                    setActiveTafsir(null);
+                                                } else {
+                                                    const tafsirObj = tafsirs?.find((t) => t.verse_key === verse.verse_key);
+                                                    setActiveTafsir({
+                                                        verse_key: verse.verse_key,
+                                                        text: tafsirObj ? tafsirObj.text : 'Tafsir is not available for this individual verse at the moment.'
+                                                    });
+                                                }
+                                            }}
+                                        >
+                                            <Info size={20} />
+                                        </button>
                                     </div>
 
-                                    {/* Arabic Text rendered using Uthman Taha */}
+                                    {/* Arabic Text */}
                                     <div
                                         className="quran-text"
                                         style={{
@@ -231,7 +281,8 @@ export default function Surah() {
                                             textAlign: 'right',
                                             paddingLeft: '2rem',
                                             fontSize: `${fontSize * 0.5 + 2}rem`,
-                                            lineHeight: 2.2
+                                            lineHeight: 2.2,
+                                            fontFamily: arabicFont
                                         }}
                                     >
                                         {verse.text_uthmani}
@@ -247,9 +298,52 @@ export default function Surah() {
                                 }}>
                                     {verse.translations?.[0]?.text?.replace(/<[^>]*>?/gm, '')} {/* Strip basic HTML from translations */}
                                 </div>
+
+                                {/* Tafsir Inline Block */}
+                                <AnimatePresence>
+                                    {activeTafsir?.verse_key === verse.verse_key && (
+                                        <motion.div
+                                            initial={{ opacity: 0, height: 0 }}
+                                            animate={{ opacity: 1, height: 'auto' }}
+                                            exit={{ opacity: 0, height: 0 }}
+                                            style={{ overflow: 'hidden' }}
+                                        >
+                                            <div style={{
+                                                marginTop: '1.5rem',
+                                                padding: '1.5rem',
+                                                backgroundColor: 'var(--bg-secondary)',
+                                                borderRadius: '12px',
+                                                borderLeft: '4px solid var(--accent-primary)',
+                                                position: 'relative'
+                                            }}>
+                                                <button
+                                                    onClick={() => setActiveTafsir(null)}
+                                                    style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
+                                                >
+                                                    <X size={18} />
+                                                </button>
+                                                <h4 style={{ marginBottom: '1rem', color: 'var(--text-primary)', fontSize: '1.1rem', fontWeight: 600 }}>
+                                                    Tafsir Ibn Kathir (Abridged)
+                                                </h4>
+                                                <div
+                                                    className="tafsir-content quran-tafsir-html"
+                                                    style={{ color: 'var(--text-secondary)', fontSize: '1rem', lineHeight: 1.8 }}
+                                                    dangerouslySetInnerHTML={{ __html: activeTafsir.text }}
+                                                />
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
                             </div>
                         );
                     })}
+                </div>
+
+                {/* Infinite Scroll trigger area */}
+                <div ref={observerRef} style={{ padding: '2rem 0', textAlign: 'center' }}>
+                    {isFetchingNextPage && (
+                        <div style={{ color: 'var(--text-muted)' }}>Loading more Ayahs...</div>
+                    )}
                 </div>
             </div>
         </div>
