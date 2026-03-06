@@ -4,12 +4,14 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getVerses, getChapter } from '../services/api/quranApi';
 import { useAppStore } from '../store/useAppStore';
-import { Mic, EyeOff, Eye, Repeat, ArrowLeft, ArrowRight, X, Play, Pause, ShieldAlert, Award, Languages, Layers } from 'lucide-react';
+import { Mic, EyeOff, Eye, Repeat, ArrowLeft, ArrowRight, X, Play, Pause, ShieldAlert, Award, Languages, Layers, RefreshCw, Clock } from 'lucide-react';
 
 const toArabicNumerals = (num) => {
     const arabicNumbers = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
     return String(num).split('').map(char => arabicNumbers[parseInt(char)]).join('');
 };
+
+const DELAY_OPTIONS = [0, 1, 2, 3, 5, 10];
 
 export default function Memorization() {
     const { id } = useParams(); // Surah ID
@@ -27,6 +29,10 @@ export default function Memorization() {
     const [audioVerseIndex, setAudioVerseIndex] = useState(0); // 0 to ayahsPerSwipe - 1
     const [loopMode, setLoopMode] = useState(0); // 0 = No loop, 1 = Loop 3x, 2 = Infinite Loop
     const [loopCount, setLoopCount] = useState(0);
+    const [ayahRepeatMode, setAyahRepeatMode] = useState(0); // 0 = 1x, 1 = 3x, 2 = 5x, 3 = Infinite
+    const [currentAyahPlayCount, setCurrentAyahPlayCount] = useState(0);
+    const [ayahDelay, setAyahDelay] = useState(0); // Uses DELAY_OPTIONS values in seconds
+    const delayTimeoutRef = React.useRef(null);
     const audioRef = React.useRef(null);
 
     // Stop audio when user flips pages manually
@@ -34,6 +40,8 @@ export default function Memorization() {
         setIsPlayingAudio(false);
         setAudioVerseIndex(0);
         setLoopCount(0);
+        setCurrentAyahPlayCount(0);
+        if (delayTimeoutRef.current) clearTimeout(delayTimeoutRef.current);
         if (audioRef.current) {
             audioRef.current.pause();
         }
@@ -49,32 +57,60 @@ export default function Memorization() {
     }, [isPlayingAudio, audioVerseIndex, currentVerseIndex]); // Depend on currentVerseIndex to ensure changes propagate
 
     const handleAudioEnded = () => {
-        if (audioVerseIndex < currentVerses.length - 1) {
-            setAudioVerseIndex(prev => prev + 1);
-        } else {
-            // Reached end of selection mode
-            if (loopMode === 1) { // 3x Loop
-                if (loopCount < 2) {
-                    setLoopCount(prev => prev + 1);
+        const nextAction = () => {
+            let targetRepeat = 1;
+            if (ayahRepeatMode === 1) targetRepeat = 3;
+            else if (ayahRepeatMode === 2) targetRepeat = 5;
+            else if (ayahRepeatMode === 3) targetRepeat = Infinity;
+
+            // Repeat current ayah if target not reached
+            if (currentAyahPlayCount + 1 < targetRepeat) {
+                setCurrentAyahPlayCount(prev => prev + 1);
+                if (audioRef.current) {
+                    audioRef.current.currentTime = 0;
+                    audioRef.current.play().catch(e => console.error(e));
+                }
+                return;
+            }
+
+            // Move to next ayah, reset local play count
+            setCurrentAyahPlayCount(0);
+
+            if (audioVerseIndex < currentVerses.length - 1) {
+                setAudioVerseIndex(prev => prev + 1);
+            } else {
+                // Reached end of selection mode range
+                if (loopMode === 1) { // 3x Loop Range
+                    if (loopCount < 2) {
+                        setLoopCount(prev => prev + 1);
+                        setAudioVerseIndex(0);
+                    } else {
+                        setIsPlayingAudio(false);
+                        setLoopCount(0);
+                        setAudioVerseIndex(0);
+                    }
+                } else if (loopMode === 2) { // Infinite Loop Range
                     setAudioVerseIndex(0);
                 } else {
+                    // No loop
                     setIsPlayingAudio(false);
-                    setLoopCount(0);
                     setAudioVerseIndex(0);
                 }
-            } else if (loopMode === 2) { // Infinite Loop
-                setAudioVerseIndex(0);
-            } else {
-                // No loop
-                setIsPlayingAudio(false);
-                setAudioVerseIndex(0);
             }
+        };
+
+        if (ayahDelay > 0) {
+            if (delayTimeoutRef.current) clearTimeout(delayTimeoutRef.current);
+            delayTimeoutRef.current = setTimeout(nextAction, ayahDelay * 1000);
+        } else {
+            nextAction();
         }
     };
 
     const toggleAudio = () => {
         if (isPlayingAudio) {
             setIsPlayingAudio(false);
+            if (delayTimeoutRef.current) clearTimeout(delayTimeoutRef.current);
             if (audioRef.current) audioRef.current.pause();
         } else {
             setIsPlayingAudio(true);
@@ -88,9 +124,21 @@ export default function Memorization() {
     };
 
     const getLoopLabel = () => {
-        if (loopMode === 0) return "No Loop";
-        if (loopMode === 1) return `Loop 3x (${loopCount + 1}/3)`;
-        return "Loop ∞";
+        if (loopMode === 0) return "No Range Loop";
+        if (loopMode === 1) return `Range 3x (${loopCount + 1}/3)`;
+        return "Range ∞";
+    };
+
+    const cycleAyahRepeatMode = () => {
+        setAyahRepeatMode(prev => (prev + 1) % 4);
+        setCurrentAyahPlayCount(0);
+    };
+
+    const getAyahRepeatLabel = () => {
+        if (ayahRepeatMode === 0) return "Ayah 1x";
+        if (ayahRepeatMode === 1) return `Ayah 3x (${currentAyahPlayCount + 1}/3)`;
+        if (ayahRepeatMode === 2) return `Ayah 5x (${currentAyahPlayCount + 1}/5)`;
+        return "Ayah ∞";
     };
 
     const { data: chapter, isLoading: isChapterLoading } = useQuery({
@@ -171,6 +219,33 @@ export default function Memorization() {
                 >
                     {isPlayingAudio ? <Pause size={20} /> : <Play size={20} />}
                 </button>
+                <div
+                    onClick={cycleAyahRepeatMode}
+                    style={{ display: 'flex', alignItems: 'center', gap: '8px', background: ayahRepeatMode > 0 ? 'var(--accent-light)' : 'var(--bg-surface)', padding: '0.5rem 1rem', borderRadius: '24px', border: '1px solid var(--border-color)', color: ayahRepeatMode > 0 ? 'var(--accent-primary)' : 'var(--text-muted)', cursor: 'pointer', transition: 'all 0.3s' }}>
+                    <RefreshCw size={16} /> <span style={{ fontSize: '0.875rem' }}>{getAyahRepeatLabel()}</span>
+                </div>
+                <div
+                    style={{ display: 'flex', alignItems: 'center', gap: '8px', background: ayahDelay > 0 ? 'var(--accent-light)' : 'var(--bg-surface)', padding: '0.5rem 1rem', borderRadius: '24px', border: '1px solid var(--border-color)', color: ayahDelay > 0 ? 'var(--accent-primary)' : 'var(--text-muted)' }}>
+                    <Clock size={16} />
+                    <select
+                        value={ayahDelay}
+                        onChange={(e) => setAyahDelay(Number(e.target.value))}
+                        style={{
+                            background: 'transparent',
+                            border: 'none',
+                            color: 'inherit',
+                            outline: 'none',
+                            fontSize: '0.875rem',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        {DELAY_OPTIONS.map(delay => (
+                            <option key={delay} value={delay} style={{ color: 'black' }}>
+                                {delay === 0 ? "No Delay" : `Delay ${delay}s`}
+                            </option>
+                        ))}
+                    </select>
+                </div>
                 <div
                     onClick={cycleLoopMode}
                     style={{ display: 'flex', alignItems: 'center', gap: '8px', background: loopMode > 0 ? 'var(--accent-light)' : 'var(--bg-surface)', padding: '0.5rem 1rem', borderRadius: '24px', border: '1px solid var(--border-color)', color: loopMode > 0 ? 'var(--accent-primary)' : 'var(--text-muted)', cursor: 'pointer', transition: 'all 0.3s' }}>
