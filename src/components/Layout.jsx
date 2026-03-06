@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, Link } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
 import { Moon, Sun, Settings } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -7,7 +7,7 @@ import GlobalAudioPlayer from './GlobalAudioPlayer';
 import SettingsDrawer from './SettingsDrawer';
 
 export default function Layout() {
-    const { theme, toggleTheme } = useAppStore();
+    const { theme, toggleTheme, navHeaderTitle } = useAppStore();
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
     useEffect(() => {
@@ -30,14 +30,22 @@ export default function Layout() {
                 <div className="container" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '70px' }}>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <span style={{
-                            fontWeight: 700,
-                            fontSize: '1.5rem',
-                            color: 'var(--accent-primary)',
-                            letterSpacing: '-0.5px'
-                        }}>
-                            Qur'an
-                        </span>
+                        <Link to="/" style={{ textDecoration: 'none' }}>
+                            <span style={{
+                                fontWeight: 700,
+                                fontSize: '1.5rem',
+                                color: 'var(--accent-primary)',
+                                letterSpacing: '-0.5px'
+                            }}>
+                                Qur'an
+                            </span>
+                        </Link>
+                        {navHeaderTitle && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ color: 'var(--text-muted)' }}>/</span>
+                                <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{navHeaderTitle}</span>
+                            </div>
+                        )}
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

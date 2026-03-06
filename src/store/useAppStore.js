@@ -48,6 +48,9 @@ export const useAppStore = create(
             currentAudioUrl: null,
             isPlaying: false,
 
+            navHeaderTitle: null,
+            setNavHeaderTitle: (title) => set({ navHeaderTitle: title }),
+
             setAudio: (url) => set({ currentAudioUrl: url }),
             setIsPlaying: (playing) => set({ isPlaying: playing }),
         }),

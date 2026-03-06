@@ -4,7 +4,7 @@ import { useParams, Link, useLocation } from 'react-router-dom';
 import { useInView } from 'react-intersection-observer';
 import { getChapter, getVerses, getChapterAudio, getChapterTafsirs, getTajweedVerses } from '../services/api/quranApi';
 import { useAppStore } from '../store/useAppStore';
-import { ArrowLeft, Play, Pause, BookOpen, Bookmark, Info, X, Download, CloudCheck, RefreshCw } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Play, Pause, BookOpen, Bookmark, Info, X, Download, CloudCheck, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Helmet } from 'react-helmet-async';
 import VerseRow from '../components/VerseRow';
@@ -21,7 +21,8 @@ export default function Surah() {
         setAudio, setIsPlaying, currentAudioUrl, isPlaying,
         arabicFont, tajweedEnabled,
         tafsirId,
-        downloadedSurahs, addDownloadedSurah
+        downloadedSurahs, addDownloadedSurah,
+        setNavHeaderTitle
     } = useAppStore();
 
     const { data: chapter, isLoading: isChapterLoading } = useQuery({
@@ -34,8 +35,14 @@ export default function Surah() {
             const queryParams = new URLSearchParams(location.search);
             const initialVerse = queryParams.get('verse');
             addRecentlyRead(chapter.id, chapter.name_simple, initialVerse);
+            setNavHeaderTitle(chapter.name_simple);
         }
-    }, [chapter, addRecentlyRead]);
+    }, [chapter, addRecentlyRead, location.search, setNavHeaderTitle]);
+
+    // Cleanup header on unmount
+    useEffect(() => {
+        return () => setNavHeaderTitle(null);
+    }, [setNavHeaderTitle]);
 
     const {
         data: versesResponse,
@@ -320,6 +327,49 @@ export default function Surah() {
                         <div style={{ color: 'var(--text-muted)' }}>Loading more Ayahs...</div>
                     )}
                 </div>
+
+                {/* Footer Navigation */}
+                {!hasNextPage && !isVersesLoading && (
+                    <div style={{
+                        marginTop: '3rem',
+                        paddingTop: '2rem',
+                        borderTop: '1px solid var(--border-color)',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        gap: '1rem',
+                        paddingBottom: '2rem'
+                    }}>
+                        {parseInt(id) > 1 ? (
+                            <Link
+                                to={`/surah/${parseInt(id) - 1}`}
+                                className="interactive-hover"
+                                style={{
+                                    display: 'flex', alignItems: 'center', gap: '8px',
+                                    padding: '1rem', background: 'var(--bg-secondary)', borderRadius: '12px',
+                                    textDecoration: 'none', color: 'var(--text-primary)', fontWeight: 600,
+                                    border: '1px solid var(--border-color)', flex: 1, justifyContent: 'center'
+                                }}
+                            >
+                                <ArrowLeft size={18} /> Previous Surah
+                            </Link>
+                        ) : <div style={{ flex: 1 }} />}
+
+                        {parseInt(id) < 114 ? (
+                            <Link
+                                to={`/surah/${parseInt(id) + 1}`}
+                                className="interactive-hover"
+                                style={{
+                                    display: 'flex', alignItems: 'center', gap: '8px',
+                                    padding: '1rem', background: 'var(--bg-secondary)', borderRadius: '12px',
+                                    textDecoration: 'none', color: 'var(--text-primary)', fontWeight: 600,
+                                    border: '1px solid var(--border-color)', flex: 1, justifyContent: 'center'
+                                }}
+                            >
+                                Next Surah <ArrowRight size={18} />
+                            </Link>
+                        ) : <div style={{ flex: 1 }} />}
+                    </div>
+                )}
             </div>
         </div>
     );
