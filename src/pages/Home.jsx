@@ -8,7 +8,7 @@ import { BookOpen, Search, Bookmark, Mic, LayoutDashboard, TrendingUp } from 'lu
 import { Helmet } from 'react-helmet-async';
 
 export default function Home() {
-    const { recentlyRead } = useAppStore();
+    const { recentlyRead, bookmark } = useAppStore();
     const [searchQuery, setSearchQuery] = useState('');
     const [isOnline, setIsOnline] = useState(navigator.onLine);
 
@@ -200,6 +200,34 @@ export default function Home() {
                                 </Link>
                             ))}
                         </div>
+                    </section>
+                )}
+
+                {/* Bookmark (Single reading position) */}
+                {bookmark && (
+                    <section>
+                        <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <Bookmark size={20} color="var(--accent-primary)" /> My Bookmark
+                        </h2>
+                        <Link
+                            to={`/surah/${bookmark.chapterId || bookmark.verseKey.split(':')[0]}?verse=${bookmark.verseKey}`}
+                            className="interactive-hover"
+                            style={{
+                                display: 'inline-flex',
+                                minWidth: '220px',
+                                padding: '1.25rem',
+                                background: 'var(--accent-light)',
+                                border: '1px solid var(--accent-primary)',
+                                borderRadius: '16px',
+                                textDecoration: 'none',
+                                color: 'inherit',
+                                flexDirection: 'column',
+                                gap: '0.25rem'
+                            }}
+                        >
+                            <span style={{ fontWeight: 600, color: 'var(--accent-primary)', fontSize: '1.1rem' }}>{bookmark.surahName}</span>
+                            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Verse {bookmark.verseKey.split(':')[1]}</span>
+                        </Link>
                     </section>
                 )}
             </div>

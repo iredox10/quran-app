@@ -14,9 +14,9 @@ export default function Surah() {
     const { id } = useParams();
     const location = useLocation();
     const {
-        translationId, reciterId, fontSize,
+        translationId, reciterId, fontSize, translationFontSize,
         readingMode, setReadingMode,
-        bookmarks, toggleBookmark,
+        bookmark, setBookmark,
         addRecentlyRead,
         setAudio, setIsPlaying, currentAudioUrl, isPlaying,
         arabicFont, tajweedEnabled,
@@ -306,10 +306,11 @@ export default function Surah() {
                                 verse={verse}
                                 readingMode={readingMode}
                                 chapter={chapter}
-                                bookmarks={bookmarks}
-                                toggleBookmark={toggleBookmark}
+                                bookmark={bookmark}
+                                setBookmark={setBookmark}
                                 addRecentlyRead={addRecentlyRead}
                                 fontSize={fontSize}
+                                translationFontSize={translationFontSize}
                                 arabicFont={arabicFont}
                                 tajweedEnabled={tajweedEnabled}
                                 tajweedMap={tajweedMap}

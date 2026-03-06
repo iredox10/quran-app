@@ -1,11 +1,12 @@
 import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../store/useAppStore';
-import { Folder, Trash2, ArrowRight, Bookmark, BookOpen, X, Library as LibraryIcon } from 'lucide-react';
+import { Folder, Trash2, ArrowRight, Bookmark, BookOpen, X, Library as LibraryIcon, FolderPlus, Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function Library() {
-    const { collections, bookmarks, deleteCollection, removeFromCollection, setNavHeaderTitle, toggleBookmark } = useAppStore();
+    const { collections, bookmarks, deleteCollection, removeFromCollection, setNavHeaderTitle, toggleBookmark, addCollection } = useAppStore();
+    const [newCollectionName, setNewCollectionName] = React.useState('');
 
     useEffect(() => {
         setNavHeaderTitle('My Library');
@@ -65,9 +66,41 @@ export default function Library() {
 
                 {/* Collections Section */}
                 <section>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '1.5rem' }}>
-                        <Folder size={24} color="var(--accent-primary)" />
-                        <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)' }}>Collections</h2>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <Folder size={24} color="var(--accent-primary)" />
+                            <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)' }}>Collections</h2>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '8px', background: 'var(--bg-surface)', padding: '0.5rem', borderRadius: '12px', border: '1px solid var(--border-color)', minWidth: '280px' }}>
+                            <input
+                                type="text"
+                                placeholder="New Collection Name..."
+                                value={newCollectionName}
+                                onChange={(e) => setNewCollectionName(e.target.value)}
+                                style={{
+                                    flex: 1,
+                                    padding: '0.4rem 0.8rem',
+                                    borderRadius: '8px',
+                                    border: 'none',
+                                    fontSize: '0.9rem',
+                                    background: 'transparent',
+                                    color: 'var(--text-primary)',
+                                    outline: 'none'
+                                }}
+                            />
+                            <button
+                                onClick={() => {
+                                    if (newCollectionName.trim()) {
+                                        addCollection(newCollectionName.trim());
+                                        setNewCollectionName('');
+                                    }
+                                }}
+                                style={{ background: 'var(--accent-primary)', color: 'white', border: 'none', borderRadius: '8px', padding: '0.4rem 1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600, fontSize: '0.9rem' }}
+                            >
+                                <Plus size={16} /> Create
+                            </button>
+                        </div>
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '1.5rem' }}>

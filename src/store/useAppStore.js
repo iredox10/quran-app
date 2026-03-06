@@ -8,6 +8,7 @@ export const useAppStore = create(
             translationId: 85, // Default: M.A.S. Abdel Haleem (131 was removed from API)
             reciterId: 7, // Default: Mishary
             fontSize: 2, // 1, 2, 3, 4
+            translationFontSize: 2, // 1, 2, 3, 4
             readingMode: false, // false = translation, true = arabic only
             arabicFont: "'Scheherazade New', serif", // Default font
             tajweedEnabled: false, // Show tajweed color rules
@@ -27,6 +28,7 @@ export const useAppStore = create(
             setTranslation: (id) => set({ translationId: id }),
             setReciter: (id) => set({ reciterId: id }),
             setFontSize: (size) => set({ fontSize: size }),
+            setTranslationFontSize: (size) => set({ translationFontSize: size }),
             setReadingMode: (mode) => set({ readingMode: mode }),
             setArabicFont: (font) => set({ arabicFont: font }),
             setTajweed: (enabled) => set({ tajweedEnabled: enabled }),
@@ -49,8 +51,8 @@ export const useAppStore = create(
                 }
             }),
 
-            addCollection: (name) => set((state) => ({
-                collections: [...(state.collections || []), { id: Date.now(), name, items: [] }]
+            addCollection: (name, id = null) => set((state) => ({
+                collections: [...(state.collections || []), { id: id || Date.now(), name, items: [] }]
             })),
 
             deleteCollection: (id) => set((state) => ({
@@ -101,6 +103,7 @@ export const useAppStore = create(
                 translationId: state.translationId,
                 reciterId: state.reciterId,
                 fontSize: state.fontSize,
+                translationFontSize: state.translationFontSize || 2,
                 readingMode: state.readingMode,
                 arabicFont: state.arabicFont,
                 tajweedEnabled: state.tajweedEnabled,

@@ -38,6 +38,7 @@ export default function SettingsDrawer({ isOpen, onClose }) {
     const {
         theme, toggleTheme,
         fontSize, setFontSize,
+        translationFontSize, setTranslationFontSize,
         reciterId, setReciter,
         translationId, setTranslation,
         arabicFont, setArabicFont,
@@ -154,9 +155,9 @@ export default function SettingsDrawer({ isOpen, onClose }) {
                         </div>
                     </div>
 
-                    {/* Font Size */}
+                    {/* Font Size (Arabic) */}
                     <div>
-                        <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '1rem', color: 'var(--text-muted)' }}>Font Size</h3>
+                        <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '1rem', color: 'var(--text-muted)' }}>Arabic Font Size</h3>
                         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                             <button
                                 className="btn-icon"
@@ -168,6 +169,24 @@ export default function SettingsDrawer({ isOpen, onClose }) {
                                 className="btn-icon"
                                 style={{ border: '1px solid var(--border-color)' }}
                                 onClick={() => setFontSize(Math.min(4, fontSize + 1))}
+                            >A+</button>
+                        </div>
+                    </div>
+
+                    {/* Font Size (Translation) */}
+                    <div>
+                        <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '1rem', color: 'var(--text-muted)' }}>Translation Font Size</h3>
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                            <button
+                                className="btn-icon"
+                                style={{ border: '1px solid var(--border-color)' }}
+                                onClick={() => setTranslationFontSize(Math.max(1, (translationFontSize || 2) - 1))}
+                            >A-</button>
+                            <div style={{ flex: 1, textAlign: 'center', fontSize: '1.1rem', fontWeight: 600 }}>{translationFontSize || 2}</div>
+                            <button
+                                className="btn-icon"
+                                style={{ border: '1px solid var(--border-color)' }}
+                                onClick={() => setTranslationFontSize(Math.min(4, (translationFontSize || 2) + 1))}
                             >A+</button>
                         </div>
                     </div>

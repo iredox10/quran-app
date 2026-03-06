@@ -339,7 +339,40 @@ html[data-theme='dark'] tajweed:hover {
     gap: 1rem !important;
   }
 
+  .verse-container>div:first-child {
+    gap: 0.5rem !important;
+  }
+
+  .verse-container>div:first-child>div:first-child {
+    width: 32px !important;
+    height: 32px !important;
+    font-size: 0.9rem !important;
+  }
+
   .text-english {
     padding-right: 0 !important;
+  }
+
+  .quran-text {
+    line-height: 1.9;
+  }
+
+  .btn-icon {
+    width: 34px;
+    height: 34px;
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding: 0 0.75rem;
+  }
+
+  .verse-container {
+    padding: 1rem 0 !important;
+  }
+
+  .quran-text {
+    line-height: 1.8;
   }
 }

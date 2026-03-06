@@ -398,11 +398,16 @@ export default function Memorization() {
                                     <button
                                         onClick={() => {
                                             if (newCollectionName.trim()) {
-                                                addCollection(newCollectionName.trim());
+                                                const newId = Date.now();
+                                                addCollection(newCollectionName.trim(), newId);
+                                                currentVerses.forEach(v => {
+                                                    addToCollection(newId, v.verse_key, chapter?.name_simple, chapter?.id);
+                                                });
                                                 setNewCollectionName('');
+                                                setIsCollectionsOpen(false);
                                             }
                                         }}
-                                        style={{ background: 'var(--accent-primary)', color: 'white', border: 'none', borderRadius: '8px', padding: '0.4rem' }}
+                                        style={{ background: 'var(--accent-primary)', color: 'white', border: 'none', borderRadius: '8px', padding: '0.4rem', cursor: 'pointer' }}
                                     >
                                         <Plus size={16} />
                                     </button>

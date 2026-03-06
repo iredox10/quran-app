@@ -19,11 +19,10 @@ const TAFSIR_NAMES = {
 };
 
 const VerseRow = ({
-    verse, readingMode, chapter, bookmarks, toggleBookmark, addRecentlyRead,
-    fontSize, arabicFont, tajweedEnabled, tajweedMap, activeTafsir,
+    verse, readingMode, chapter, bookmark, setBookmark, addRecentlyRead,
+    fontSize, translationFontSize, arabicFont, tajweedEnabled, tajweedMap, activeTafsir,
     setActiveTafsir, isTafsirFetching, tafsirId, showPageDivider, tafsirs
 }) => {
-    const isBookmarked = bookmarks?.find(b => b.verseKey === verse.verse_key);
     const { ref, inView } = useInView({
         threshold: 0.5,
         triggerOnce: false,
@@ -76,13 +75,14 @@ const VerseRow = ({
                     id={`verse-${verse.verse_key}`}
                     className="quran-text tajweed-text"
                     style={{
-                        fontSize: `${fontSize * 0.4 + 1.5}rem`,
+                        fontSize: `clamp(${0.9 + fontSize * 0.15}rem, ${fontSize * 1.2}vw, ${fontSize * 0.4 + 1.5}rem)`,
                         marginRight: '0.4rem',
                         display: 'inline',
                         fontFamily: arabicFont,
                         transition: 'background-color 0.5s ease',
                         borderRadius: '8px',
-                        padding: '0 0.25rem'
+                        padding: '0 0.25rem',
+                        wordBreak: 'break-word'
                     }}
                 >
                     {tajweedEnabled && tajweedMap?.[verse.verse_key]
@@ -128,76 +128,83 @@ const VerseRow = ({
                     borderRadius: '12px'
                 }}
             >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center' }}>
-                        <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            width: '40px',
-                            height: '40px',
-                            borderRadius: '50%',
-                            border: '1.5px solid var(--accent-primary)',
-                            color: 'var(--accent-primary)',
-                            fontSize: '1.2rem',
-                            fontFamily: "'Amiri Quran', serif"
-                        }}>
-                            {toArabicNumerals(verse.verse_key.split(':')[1])}
-                        </div>
-                        <button
-                            className="btn-icon"
-                            style={{ color: isBookmarked ? 'var(--accent-primary)' : 'var(--text-muted)' }}
-                            onClick={() => toggleBookmark(verse.verse_key, chapter ? chapter.name_simple : `Surah ${verse.verse_key.split(':')[0]}`, chapter?.id)}
-                            title="Bookmark Verse"
-                        >
-                            <Bookmark size={20} fill={isBookmarked ? 'currentColor' : 'none'} />
-                        </button>
-                        <button
-                            className="btn-icon"
-                            style={{ color: activeTafsir?.verse_key === verse.verse_key ? 'var(--accent-primary)' : 'var(--text-muted)' }}
-                            title="Read Tafsir"
-                            onClick={() => {
-                                if (activeTafsir?.verse_key === verse.verse_key) {
-                                    setActiveTafsir(null);
-                                } else if (isTafsirFetching) {
-                                    setActiveTafsir({
-                                        verse_key: verse.verse_key,
-                                        text: '<p>Loading tafsir...</p>'
-                                    });
-                                } else {
-                                    const tafsirObj = tafsirs?.find((t) => t.verse_key === verse.verse_key);
-                                    setActiveTafsir({
-                                        verse_key: verse.verse_key,
-                                        text: tafsirObj ? tafsirObj.text : '<p>Tafsir is not available for this verse in the selected source.</p>'
-                                    });
-                                }
-                            }}
-                        >
-                            <Info size={20} />
-                        </button>
-                    </div>
+                {/* Arabic Text */}
+                <div
+                    className="quran-text tajweed-text"
+                    style={{
+                        textAlign: 'right',
+                        fontSize: `clamp(${0.9 + fontSize * 0.15}rem, ${fontSize * 1.2}vw, ${fontSize * 0.4 + 1.5}rem)`,
+                        lineHeight: 2.0,
+                        fontFamily: arabicFont,
+                        wordBreak: 'break-word',
+                        overflowWrap: 'anywhere'
+                    }}
+                >
+                    {tajweedEnabled && tajweedMap?.[verse.verse_key]
+                        ? <span dangerouslySetInnerHTML={{ __html: tajweedMap[verse.verse_key] }} />
+                        : verse.text_uthmani
+                    }
+                </div>
 
-                    <div
-                        className="quran-text tajweed-text"
-                        style={{
-                            flex: 1,
-                            textAlign: 'right',
-                            paddingLeft: '1rem',
-                            fontSize: `${fontSize * 0.4 + 1.5}rem`,
-                            lineHeight: 2.0,
-                            fontFamily: arabicFont
+                {/* Verse Actions Row */}
+                <div className="verse-actions-row" style={{
+                    display: 'flex',
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    flexWrap: 'wrap'
+                }}>
+                    <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: `clamp(28px, ${fontSize * 0.3 + 1.2}rem, ${fontSize * 0.35 + 1.4}rem)`,
+                        height: `clamp(28px, ${fontSize * 0.3 + 1.2}rem, ${fontSize * 0.35 + 1.4}rem)`,
+                        borderRadius: '50%',
+                        border: '1.5px solid var(--accent-primary)',
+                        color: 'var(--accent-primary)',
+                        fontSize: `clamp(0.7rem, ${fontSize * 0.2 + 0.5}rem, ${fontSize * 0.25 + 0.7}rem)`,
+                        fontFamily: "'Amiri Quran', serif",
+                        flexShrink: 0
+                    }}>
+                        {toArabicNumerals(verse.verse_key.split(':')[1])}
+                    </div>
+                    <button
+                        className="btn-icon"
+                        style={{ color: bookmark?.verseKey === verse.verse_key ? 'var(--accent-primary)' : 'var(--text-muted)', width: '32px', height: '32px' }}
+                        onClick={() => setBookmark(verse.verse_key, chapter ? chapter.name_simple : `Surah ${verse.verse_key.split(':')[0]}`, chapter?.id)}
+                        title="Bookmark Verse"
+                    >
+                        <Bookmark size={18} fill={bookmark?.verseKey === verse.verse_key ? 'currentColor' : 'none'} />
+                    </button>
+                    <button
+                        className="btn-icon"
+                        style={{ color: activeTafsir?.verse_key === verse.verse_key ? 'var(--accent-primary)' : 'var(--text-muted)', width: '32px', height: '32px' }}
+                        title="Read Tafsir"
+                        onClick={() => {
+                            if (activeTafsir?.verse_key === verse.verse_key) {
+                                setActiveTafsir(null);
+                            } else if (isTafsirFetching) {
+                                setActiveTafsir({
+                                    verse_key: verse.verse_key,
+                                    text: '<p>Loading tafsir...</p>'
+                                });
+                            } else {
+                                const tafsirObj = tafsirs?.find((t) => t.verse_key === verse.verse_key);
+                                setActiveTafsir({
+                                    verse_key: verse.verse_key,
+                                    text: tafsirObj ? tafsirObj.text : '<p>Tafsir is not available for this verse in the selected source.</p>'
+                                });
+                            }
                         }}
                     >
-                        {tajweedEnabled && tajweedMap?.[verse.verse_key]
-                            ? <span dangerouslySetInnerHTML={{ __html: tajweedMap[verse.verse_key] }} />
-                            : verse.text_uthmani
-                        }
-                    </div>
+                        <Info size={18} />
+                    </button>
                 </div>
 
                 <div className="text-english" style={{
                     paddingRight: '40px',
-                    fontSize: `${fontSize * 0.1 + 0.9}rem`,
+                    fontSize: `${(translationFontSize || 2) * 0.15 + 0.75}rem`,
                     color: 'var(--text-secondary)',
                     lineHeight: 1.6
                 }}>
