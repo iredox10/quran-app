@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { getVerses } from '../services/api/quranApi';
+import { getVerses, getChapter } from '../services/api/quranApi';
 import { useAppStore } from '../store/useAppStore';
 import { Mic, EyeOff, Eye, Repeat, ArrowLeft, ArrowRight, X, Play, ShieldAlert, Award, Languages } from 'lucide-react';
 
@@ -17,15 +17,24 @@ export default function Memorization() {
     const [showAnalysis, setShowAnalysis] = useState(false);
     const [showTranslation, setShowTranslation] = useState(false);
 
-    useEffect(() => {
-        setNavHeaderTitle(`Hifdh Mode: Surah ${id}`);
-        return () => setNavHeaderTitle(null);
-    }, [id, setNavHeaderTitle]);
+    const { data: chapter, isLoading: isChapterLoading } = useQuery({
+        queryKey: ['memorizeChapter', id],
+        queryFn: () => getChapter(id),
+    });
 
-    const { data: versesResponse, isLoading } = useQuery({
+    const { data: versesResponse, isLoading: isVersesLoading } = useQuery({
         queryKey: ['memorizeVerses', id, translationId],
         queryFn: () => getVerses(id, translationId, 7, 1),
     });
+
+    useEffect(() => {
+        if (chapter) {
+            setNavHeaderTitle(`Hifdh Mode: ${chapter.name_simple}`);
+        } else {
+            setNavHeaderTitle(`Hifdh Mode: Surah ${id}`);
+        }
+        return () => setNavHeaderTitle(null);
+    }, [id, chapter, setNavHeaderTitle]);
 
     const verses = versesResponse?.verses || [];
     const currentVerse = verses[currentVerseIndex];
@@ -52,7 +61,7 @@ export default function Memorization() {
         }
     };
 
-    if (isLoading) {
+    if (isVersesLoading || isChapterLoading) {
         return <div className="container" style={{ textAlign: 'center', paddingTop: '10vh' }}>Loading Hifdh Mode...</div>;
     }
 
@@ -103,8 +112,22 @@ export default function Memorization() {
                     <div className="quran-text" style={{ fontSize: `${(fontSize * 0.4) + 2.5}rem`, fontFamily: arabicFont, lineHeight: 2.2, color: 'var(--text-primary)' }}>
                         {currentVerse.text_uthmani}
                     </div>
-                    <div style={{ marginTop: '2rem', color: 'var(--accent-primary)', fontFamily: 'var(--font-mono)', fontSize: '1rem' }}>
-                        Verse {currentVerse.verse_key.split(':')[1]}
+                    <div style={{
+                        marginTop: '2rem',
+                        display: 'flex',
+                        gap: '0.75rem',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        color: 'var(--text-muted)',
+                        fontFamily: 'var(--font-mono)',
+                        fontSize: '0.9rem',
+                        flexWrap: 'wrap'
+                    }}>
+                        <span style={{ color: 'var(--accent-primary)', fontWeight: 600 }}>Surah {chapter?.name_simple}</span>
+                        <span>•</span>
+                        <span>Page {currentVerse.page_number}</span>
+                        <span>•</span>
+                        <span>Verse {currentVerse.verse_key.split(':')[1]}</span>
                     </div>
 
                     <AnimatePresence>
