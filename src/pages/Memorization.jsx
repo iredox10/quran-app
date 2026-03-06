@@ -12,6 +12,7 @@ const toArabicNumerals = (num) => {
 };
 
 const DELAY_OPTIONS = [0, 1, 2, 3, 5, 10];
+const RANGE_LOOP_OPTIONS = [1, 2, 3, 5, 10, -1];
 
 export default function Memorization() {
     const { id } = useParams(); // Surah ID
@@ -27,8 +28,8 @@ export default function Memorization() {
 
     const [isPlayingAudio, setIsPlayingAudio] = useState(false);
     const [audioVerseIndex, setAudioVerseIndex] = useState(0); // 0 to ayahsPerSwipe - 1
-    const [loopMode, setLoopMode] = useState(0); // 0 = No loop, 1 = Loop 3x, 2 = Infinite Loop
-    const [loopCount, setLoopCount] = useState(0);
+    const [rangeLoopTarget, setRangeLoopTarget] = useState(1); // 1 = play once, -1 = Infinite
+    const [rangeLoopCurrent, setRangeLoopCurrent] = useState(0);
     const [ayahRepeatMode, setAyahRepeatMode] = useState(0); // 0 = 1x, 1 = 3x, 2 = 5x, 3 = Infinite
     const [currentAyahPlayCount, setCurrentAyahPlayCount] = useState(0);
     const [ayahDelay, setAyahDelay] = useState(0); // Uses DELAY_OPTIONS values in seconds
@@ -39,7 +40,7 @@ export default function Memorization() {
     useEffect(() => {
         setIsPlayingAudio(false);
         setAudioVerseIndex(0);
-        setLoopCount(0);
+        setRangeLoopCurrent(0);
         setCurrentAyahPlayCount(0);
         if (delayTimeoutRef.current) clearTimeout(delayTimeoutRef.current);
         if (audioRef.current) {
@@ -80,20 +81,15 @@ export default function Memorization() {
                 setAudioVerseIndex(prev => prev + 1);
             } else {
                 // Reached end of selection mode range
-                if (loopMode === 1) { // 3x Loop Range
-                    if (loopCount < 2) {
-                        setLoopCount(prev => prev + 1);
-                        setAudioVerseIndex(0);
-                    } else {
-                        setIsPlayingAudio(false);
-                        setLoopCount(0);
-                        setAudioVerseIndex(0);
-                    }
-                } else if (loopMode === 2) { // Infinite Loop Range
+                if (rangeLoopTarget === -1) { // Infinite Loop Range
+                    setAudioVerseIndex(0);
+                } else if (rangeLoopCurrent + 1 < rangeLoopTarget) { // Loop Range
+                    setRangeLoopCurrent(prev => prev + 1);
                     setAudioVerseIndex(0);
                 } else {
-                    // No loop
+                    // Finished loops
                     setIsPlayingAudio(false);
+                    setRangeLoopCurrent(0);
                     setAudioVerseIndex(0);
                 }
             }
@@ -116,17 +112,6 @@ export default function Memorization() {
             setIsPlayingAudio(true);
             if (audioVerseIndex >= currentVerses.length) setAudioVerseIndex(0);
         }
-    };
-
-    const cycleLoopMode = () => {
-        setLoopMode(prev => (prev + 1) % 3);
-        setLoopCount(0); // Reset count on mode switch
-    };
-
-    const getLoopLabel = () => {
-        if (loopMode === 0) return "No Range Loop";
-        if (loopMode === 1) return `Range 3x (${loopCount + 1}/3)`;
-        return "Range ∞";
     };
 
     const cycleAyahRepeatMode = () => {
@@ -277,9 +262,29 @@ export default function Memorization() {
                     </select>
                 </div>
                 <div
-                    onClick={cycleLoopMode}
-                    style={{ display: 'flex', alignItems: 'center', gap: '8px', background: loopMode > 0 ? 'var(--accent-light)' : 'var(--bg-surface)', padding: '0.5rem 1rem', borderRadius: '24px', border: '1px solid var(--border-color)', color: loopMode > 0 ? 'var(--accent-primary)' : 'var(--text-muted)', cursor: 'pointer', transition: 'all 0.3s' }}>
-                    <Repeat size={16} /> <span style={{ fontSize: '0.875rem' }}>{getLoopLabel()}</span>
+                    style={{ display: 'flex', alignItems: 'center', gap: '8px', background: rangeLoopTarget !== 1 ? 'var(--accent-light)' : 'var(--bg-surface)', padding: '0.5rem 1rem', borderRadius: '24px', border: '1px solid var(--border-color)', color: rangeLoopTarget !== 1 ? 'var(--accent-primary)' : 'var(--text-muted)' }}>
+                    <Repeat size={16} />
+                    <select
+                        value={rangeLoopTarget}
+                        onChange={(e) => {
+                            setRangeLoopTarget(Number(e.target.value));
+                            setRangeLoopCurrent(0);
+                        }}
+                        style={{
+                            background: 'transparent',
+                            border: 'none',
+                            color: 'inherit',
+                            outline: 'none',
+                            fontSize: '0.875rem',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        {RANGE_LOOP_OPTIONS.map(opt => (
+                            <option key={opt} value={opt} style={{ color: 'black' }}>
+                                {opt === 1 ? "Range 1x" : opt === -1 ? "Range ∞" : `Range ${opt}x`}
+                            </option>
+                        ))}
+                    </select>
                 </div>
                 <button
                     className="btn-icon"
