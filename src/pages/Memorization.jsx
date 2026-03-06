@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getVerses, getChapter } from '../services/api/quranApi';
 import { useAppStore } from '../store/useAppStore';
-import { Mic, EyeOff, Eye, Repeat, ArrowLeft, ArrowRight, X, Play, Pause, ShieldAlert, Award, Languages, Layers, RefreshCw, Clock } from 'lucide-react';
+import { Mic, EyeOff, Eye, Repeat, ArrowLeft, ArrowRight, X, Play, Pause, ShieldAlert, Award, Languages, Layers, RefreshCw, Clock, Bookmark, FolderPlus, Plus, Folder } from 'lucide-react';
 
 const toArabicNumerals = (num) => {
     const arabicNumbers = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
@@ -13,11 +13,15 @@ const toArabicNumerals = (num) => {
 
 const DELAY_OPTIONS = [0, 1, 2, 3, 5, 10];
 const RANGE_LOOP_OPTIONS = [1, 2, 3, 5, 10, -1];
+const AYAH_REPEAT_OPTIONS = [1, 2, 3, 5, 10, -1];
 
 export default function Memorization() {
     const { id } = useParams(); // Surah ID
     const navigate = useNavigate();
-    const { setNavHeaderTitle, arabicFont, fontSize, translationId } = useAppStore();
+    const {
+        setNavHeaderTitle, arabicFont, fontSize, translationId,
+        bookmarks, toggleBookmark, collections, addCollection, addToCollection
+    } = useAppStore();
 
     const [currentVerseIndex, setCurrentVerseIndex] = useState(0);
     const [isBlurred, setIsBlurred] = useState(false);
@@ -25,12 +29,14 @@ export default function Memorization() {
     const [showAnalysis, setShowAnalysis] = useState(false);
     const [showTranslation, setShowTranslation] = useState(false);
     const [ayahsPerSwipe, setAyahsPerSwipe] = useState(1);
+    const [isCollectionsOpen, setIsCollectionsOpen] = useState(false);
+    const [newCollectionName, setNewCollectionName] = useState('');
 
     const [isPlayingAudio, setIsPlayingAudio] = useState(false);
     const [audioVerseIndex, setAudioVerseIndex] = useState(0); // 0 to ayahsPerSwipe - 1
     const [rangeLoopTarget, setRangeLoopTarget] = useState(1); // 1 = play once, -1 = Infinite
     const [rangeLoopCurrent, setRangeLoopCurrent] = useState(0);
-    const [ayahRepeatMode, setAyahRepeatMode] = useState(0); // 0 = 1x, 1 = 3x, 2 = 5x, 3 = Infinite
+    const [ayahRepeatTarget, setAyahRepeatTarget] = useState(1); // 1 = play once, -1 = Infinite
     const [currentAyahPlayCount, setCurrentAyahPlayCount] = useState(0);
     const [ayahDelay, setAyahDelay] = useState(0); // Uses DELAY_OPTIONS values in seconds
     const delayTimeoutRef = React.useRef(null);
@@ -59,14 +65,9 @@ export default function Memorization() {
 
     const handleAudioEnded = () => {
         const nextAction = () => {
-            let targetRepeat = 1;
-            if (ayahRepeatMode === 1) targetRepeat = 3;
-            else if (ayahRepeatMode === 2) targetRepeat = 5;
-            else if (ayahRepeatMode === 3) targetRepeat = Infinity;
-
             // Repeat current ayah if target not reached
-            if (currentAyahPlayCount + 1 < targetRepeat) {
-                setCurrentAyahPlayCount(prev => prev + 1);
+            if (ayahRepeatTarget === -1 || currentAyahPlayCount + 1 < ayahRepeatTarget) {
+                if (ayahRepeatTarget !== -1) setCurrentAyahPlayCount(prev => prev + 1);
                 if (audioRef.current) {
                     audioRef.current.currentTime = 0;
                     audioRef.current.play().catch(e => console.error(e));
@@ -114,18 +115,6 @@ export default function Memorization() {
         }
     };
 
-    const cycleAyahRepeatMode = () => {
-        setAyahRepeatMode(prev => (prev + 1) % 4);
-        setCurrentAyahPlayCount(0);
-    };
-
-    const getAyahRepeatLabel = () => {
-        if (ayahRepeatMode === 0) return "Ayah 1x";
-        if (ayahRepeatMode === 1) return `Ayah 3x (${currentAyahPlayCount + 1}/3)`;
-        if (ayahRepeatMode === 2) return `Ayah 5x (${currentAyahPlayCount + 1}/5)`;
-        return "Ayah ∞";
-    };
-
     const { data: chapter, isLoading: isChapterLoading } = useQuery({
         queryKey: ['memorizeChapter', id],
         queryFn: () => getChapter(id),
@@ -146,6 +135,17 @@ export default function Memorization() {
     }, [id, chapter, setNavHeaderTitle]);
 
     const verses = versesResponse?.verses || [];
+
+    useEffect(() => {
+        const queryParams = new URLSearchParams(window.location.search);
+        const verseKey = queryParams.get('verse');
+        if (verseKey && verses.length > 0) {
+            const index = verses.findIndex(v => v.verse_key === verseKey);
+            if (index !== -1) {
+                setCurrentVerseIndex(index);
+            }
+        }
+    }, [verses]);
 
     let currentVerses = [];
     if (verses.length > 0) {
@@ -235,9 +235,29 @@ export default function Memorization() {
                     {isPlayingAudio ? <Pause size={20} /> : <Play size={20} />}
                 </button>
                 <div
-                    onClick={cycleAyahRepeatMode}
-                    style={{ display: 'flex', alignItems: 'center', gap: '8px', background: ayahRepeatMode > 0 ? 'var(--accent-light)' : 'var(--bg-surface)', padding: '0.5rem 1rem', borderRadius: '24px', border: '1px solid var(--border-color)', color: ayahRepeatMode > 0 ? 'var(--accent-primary)' : 'var(--text-muted)', cursor: 'pointer', transition: 'all 0.3s' }}>
-                    <RefreshCw size={16} /> <span style={{ fontSize: '0.875rem' }}>{getAyahRepeatLabel()}</span>
+                    style={{ display: 'flex', alignItems: 'center', gap: '8px', background: ayahRepeatTarget !== 1 ? 'var(--accent-light)' : 'var(--bg-surface)', padding: '0.5rem 1rem', borderRadius: '24px', border: '1px solid var(--border-color)', color: ayahRepeatTarget !== 1 ? 'var(--accent-primary)' : 'var(--text-muted)' }}>
+                    <RefreshCw size={16} />
+                    <select
+                        value={ayahRepeatTarget}
+                        onChange={(e) => {
+                            setAyahRepeatTarget(Number(e.target.value));
+                            setCurrentAyahPlayCount(0);
+                        }}
+                        style={{
+                            background: 'transparent',
+                            border: 'none',
+                            color: 'inherit',
+                            outline: 'none',
+                            fontSize: '0.875rem',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        {AYAH_REPEAT_OPTIONS.map(opt => (
+                            <option key={opt} value={opt} style={{ color: 'black' }}>
+                                {opt === 1 ? "Ayah 1x" : opt === -1 ? "Ayah ∞" : `Ayah ${opt}x`}
+                            </option>
+                        ))}
+                    </select>
                 </div>
                 <div
                     style={{ display: 'flex', alignItems: 'center', gap: '8px', background: ayahDelay > 0 ? 'var(--accent-light)' : 'var(--bg-surface)', padding: '0.5rem 1rem', borderRadius: '24px', border: '1px solid var(--border-color)', color: ayahDelay > 0 ? 'var(--accent-primary)' : 'var(--text-muted)' }}>
@@ -302,6 +322,95 @@ export default function Memorization() {
                 >
                     <Languages size={20} />
                 </button>
+                <div
+                    onClick={() => setIsCollectionsOpen(!isCollectionsOpen)}
+                    style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--bg-surface)', padding: '0.5rem 1rem', borderRadius: '24px', border: '1px solid var(--border-color)', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                    <FolderPlus size={16} /> <span style={{ fontSize: '0.875rem' }}>Collections</span>
+
+                    <AnimatePresence>
+                        {isCollectionsOpen && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: 10 }}
+                                onClick={(e) => e.stopPropagation()}
+                                style={{
+                                    position: 'absolute',
+                                    top: '120%',
+                                    left: 0,
+                                    width: '240px',
+                                    background: 'var(--bg-surface)',
+                                    borderRadius: '16px',
+                                    border: '1px solid var(--border-color)',
+                                    boxShadow: 'var(--shadow-lg)',
+                                    padding: '1rem',
+                                    zIndex: 100,
+                                    textAlign: 'left'
+                                }}
+                            >
+                                <h4 style={{ fontSize: '0.9rem', marginBottom: '1rem', color: 'var(--text-primary)' }}>Add to Collection</h4>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '200px', overflowY: 'auto', marginBottom: '1rem' }}>
+                                    {(collections || []).map(c => (
+                                        <button
+                                            key={c.id}
+                                            onClick={() => {
+                                                currentVerses.forEach(v => {
+                                                    addToCollection(c.id, v.verse_key, chapter?.name_simple, chapter?.id);
+                                                });
+                                                setIsCollectionsOpen(false);
+                                            }}
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '8px',
+                                                padding: '0.5rem',
+                                                background: 'none',
+                                                border: 'none',
+                                                borderRadius: '8px',
+                                                color: 'var(--text-secondary)',
+                                                cursor: 'pointer',
+                                                transition: 'background 0.2s',
+                                                width: '100%'
+                                            }}
+                                            onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-secondary)'}
+                                            onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+                                        >
+                                            <Folder size={14} /> {c.name}
+                                        </button>
+                                    ))}
+                                </div>
+                                <div style={{ display: 'flex', gap: '8px' }}>
+                                    <input
+                                        type="text"
+                                        placeholder="New collection..."
+                                        value={newCollectionName}
+                                        onChange={(e) => setNewCollectionName(e.target.value)}
+                                        style={{
+                                            flex: 1,
+                                            padding: '0.4rem 0.8rem',
+                                            borderRadius: '8px',
+                                            border: '1px solid var(--border-color)',
+                                            fontSize: '0.8rem',
+                                            background: 'var(--bg-secondary)',
+                                            color: 'var(--text-primary)'
+                                        }}
+                                    />
+                                    <button
+                                        onClick={() => {
+                                            if (newCollectionName.trim()) {
+                                                addCollection(newCollectionName.trim());
+                                                setNewCollectionName('');
+                                            }
+                                        }}
+                                        style={{ background: 'var(--accent-primary)', color: 'white', border: 'none', borderRadius: '8px', padding: '0.4rem' }}
+                                    >
+                                        <Plus size={16} />
+                                    </button>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--bg-surface)', padding: '0.5rem 1rem', borderRadius: '24px', border: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
                     <Layers size={16} />
                     <select
@@ -360,14 +469,35 @@ export default function Memorization() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
                         {currentVerses.map((verse, idx) => (
                             <div key={verse.id}>
-                                <div className="quran-text" style={{
-                                    fontSize: `${(fontSize * 0.4) + 2.5}rem`,
-                                    fontFamily: arabicFont,
-                                    lineHeight: 2.2,
-                                    color: (isPlayingAudio && audioVerseIndex === idx) ? 'var(--accent-primary)' : 'var(--text-primary)',
-                                    transition: 'color 0.3s ease'
-                                }}>
-                                    {verse.text_uthmani} <span style={{ fontSize: '0.5em', color: 'var(--accent-primary)', padding: '0 8px', verticalAlign: 'middle' }}>{toArabicNumerals(verse.verse_key.split(':')[1])}</span>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', position: 'relative' }}>
+                                    <div className="quran-text" style={{
+                                        fontSize: `${(fontSize * 0.4) + 2.5}rem`,
+                                        fontFamily: arabicFont,
+                                        lineHeight: 2.2,
+                                        color: (isPlayingAudio && audioVerseIndex === idx) ? 'var(--accent-primary)' : 'var(--text-primary)',
+                                        transition: 'color 0.3s ease',
+                                        flex: 1
+                                    }}>
+                                        {verse.text_uthmani} <span style={{ fontSize: '0.5em', color: 'var(--accent-primary)', padding: '0 8px', verticalAlign: 'middle' }}>{toArabicNumerals(verse.verse_key.split(':')[1])}</span>
+                                    </div>
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            toggleBookmark(verse.verse_key, chapter?.name_simple, chapter?.id);
+                                        }}
+                                        style={{
+                                            background: 'none',
+                                            border: 'none',
+                                            color: bookmarks?.find(b => b.verseKey === verse.verse_key) ? 'var(--accent-primary)' : 'var(--text-muted)',
+                                            cursor: 'pointer',
+                                            padding: '0.5rem',
+                                            opacity: isBlurred ? 0 : 1,
+                                            transition: 'all 0.3s'
+                                        }}
+                                        title="Bookmark Ayah"
+                                    >
+                                        <Bookmark size={24} fill={bookmarks?.find(b => b.verseKey === verse.verse_key) ? 'currentColor' : 'none'} />
+                                    </button>
                                 </div>
 
                                 <AnimatePresence>

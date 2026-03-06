@@ -19,10 +19,11 @@ const TAFSIR_NAMES = {
 };
 
 const VerseRow = ({
-    verse, readingMode, chapter, bookmark, setBookmark, addRecentlyRead,
+    verse, readingMode, chapter, bookmarks, toggleBookmark, addRecentlyRead,
     fontSize, arabicFont, tajweedEnabled, tajweedMap, activeTafsir,
     setActiveTafsir, isTafsirFetching, tafsirId, showPageDivider, tafsirs
 }) => {
+    const isBookmarked = bookmarks?.find(b => b.verseKey === verse.verse_key);
     const { ref, inView } = useInView({
         threshold: 0.5,
         triggerOnce: false,
@@ -145,11 +146,11 @@ const VerseRow = ({
                         </div>
                         <button
                             className="btn-icon"
-                            style={{ color: bookmark?.verseKey === verse.verse_key ? 'var(--accent-primary)' : 'var(--text-muted)' }}
-                            onClick={() => setBookmark(verse.verse_key, chapter ? chapter.name_simple : `Surah ${verse.verse_key.split(':')[0]}`)}
+                            style={{ color: isBookmarked ? 'var(--accent-primary)' : 'var(--text-muted)' }}
+                            onClick={() => toggleBookmark(verse.verse_key, chapter ? chapter.name_simple : `Surah ${verse.verse_key.split(':')[0]}`, chapter?.id)}
                             title="Bookmark Verse"
                         >
-                            <Bookmark size={20} fill={bookmark?.verseKey === verse.verse_key ? 'currentColor' : 'none'} />
+                            <Bookmark size={20} fill={isBookmarked ? 'currentColor' : 'none'} />
                         </button>
                         <button
                             className="btn-icon"

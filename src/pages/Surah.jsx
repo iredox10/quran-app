@@ -16,7 +16,7 @@ export default function Surah() {
     const {
         translationId, reciterId, fontSize,
         readingMode, setReadingMode,
-        bookmark, setBookmark,
+        bookmarks, toggleBookmark,
         addRecentlyRead,
         setAudio, setIsPlaying, currentAudioUrl, isPlaying,
         arabicFont, tajweedEnabled,
@@ -306,8 +306,8 @@ export default function Surah() {
                                 verse={verse}
                                 readingMode={readingMode}
                                 chapter={chapter}
-                                bookmark={bookmark}
-                                setBookmark={setBookmark}
+                                bookmarks={bookmarks}
+                                toggleBookmark={toggleBookmark}
                                 addRecentlyRead={addRecentlyRead}
                                 fontSize={fontSize}
                                 arabicFont={arabicFont}

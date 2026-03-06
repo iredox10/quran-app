@@ -4,11 +4,11 @@ import { getChapters } from '../services/api/quranApi';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAppStore } from '../store/useAppStore';
-import { Search, Mic } from 'lucide-react';
+import { Search, Mic, Bookmark, Folder, ArrowRight } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
 
 export default function MemorizeIndex() {
-    const { setNavHeaderTitle } = useAppStore();
+    const { setNavHeaderTitle, bookmarks, collections } = useAppStore();
     const [searchQuery, setSearchQuery] = useState('');
 
     useEffect(() => {
@@ -68,6 +68,70 @@ export default function MemorizeIndex() {
                         Select a Surah to begin your distraction-free Hifdh session.
                     </p>
                 </div>
+
+                {/* Library Quick Access */}
+                {(bookmarks?.length > 0 || collections?.length > 0) && (
+                    <div style={{ marginBottom: '3rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                            <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <Bookmark size={20} color="var(--accent-primary)" /> Quick Resume from Library
+                            </h2>
+                            <Link to="/library" style={{ fontSize: '0.875rem', color: 'var(--accent-primary)', textDecoration: 'none', fontWeight: 600 }}>View Hub</Link>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '1rem' }}>
+                            {bookmarks?.slice(0, 4).map((b, i) => (
+                                <Link
+                                    key={`b-${i}`}
+                                    to={`/memorize/${b.chapterId}?verse=${b.verseKey}`}
+                                    className="interactive-hover"
+                                    style={{
+                                        padding: '1.25rem',
+                                        background: 'var(--bg-surface)',
+                                        border: '1px solid var(--border-color)',
+                                        borderRadius: '16px',
+                                        textDecoration: 'none',
+                                        color: 'inherit',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between'
+                                    }}
+                                >
+                                    <div>
+                                        <div style={{ fontWeight: 600, color: 'var(--accent-primary)', fontSize: '1rem' }}>{b.surahName}</div>
+                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Ayah {b.verseKey.split(':')[1]}</div>
+                                    </div>
+                                    <ArrowRight size={16} color="var(--accent-primary)" />
+                                </Link>
+                            ))}
+                            {collections?.slice(0, 2).map((c) => (
+                                <Link
+                                    key={c.id}
+                                    to={`/memorize/${c.items[0]?.chapterId}`}
+                                    className="interactive-hover"
+                                    style={{
+                                        padding: '1.25rem',
+                                        background: 'var(--accent-light)',
+                                        border: '1px solid var(--accent-primary)',
+                                        borderRadius: '16px',
+                                        textDecoration: 'none',
+                                        color: 'inherit',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between'
+                                    }}
+                                >
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                        <Folder size={20} color="var(--accent-primary)" />
+                                        <div>
+                                            <div style={{ fontWeight: 600, color: 'var(--accent-primary)', fontSize: '1rem' }}>{c.name}</div>
+                                            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{c.items.length} verses</div>
+                                        </div>
+                                    </div>
+                                </Link>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 <div style={{
                     marginBottom: '3rem',

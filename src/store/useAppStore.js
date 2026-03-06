@@ -16,6 +16,8 @@ export const useAppStore = create(
             downloadedSurahs: [], // Array of chapter IDs with offline audio
 
             bookmark: null, // { verseKey, surahName }
+            bookmarks: [], // Array of { verseKey, surahName, chapterId }
+            collections: [], // Array of { id, name, items: [{ verseKey, surahName, chapterId }] }
             recentlyRead: [], // Array of { chapterId, chapterName, verseKey, timestamp }
 
             toggleTheme: () => set((state) => ({
@@ -34,8 +36,46 @@ export const useAppStore = create(
                 downloadedSurahs: state.downloadedSurahs.includes(id) ? state.downloadedSurahs : [...state.downloadedSurahs, id]
             })),
 
-            setBookmark: (verseKey, surahName) => set((state) => ({
-                bookmark: state.bookmark?.verseKey === verseKey ? null : { verseKey, surahName }
+            setBookmark: (verseKey, surahName, chapterId = null) => set((state) => ({
+                bookmark: state.bookmark?.verseKey === verseKey ? null : { verseKey, surahName, chapterId }
+            })),
+
+            toggleBookmark: (verseKey, surahName, chapterId = null) => set((state) => {
+                const exists = state.bookmarks?.find(b => b.verseKey === verseKey);
+                if (exists) {
+                    return { bookmarks: state.bookmarks.filter(b => b.verseKey !== verseKey) };
+                } else {
+                    return { bookmarks: [...(state.bookmarks || []), { verseKey, surahName, chapterId }] };
+                }
+            }),
+
+            addCollection: (name) => set((state) => ({
+                collections: [...(state.collections || []), { id: Date.now(), name, items: [] }]
+            })),
+
+            deleteCollection: (id) => set((state) => ({
+                collections: (state.collections || []).filter(c => c.id !== id)
+            })),
+
+            addToCollection: (collectionId, verseKey, surahName, chapterId = null) => set((state) => ({
+                collections: (state.collections || []).map(c => {
+                    if (c.id === collectionId) {
+                        const exists = c.items.find(item => item.verseKey === verseKey);
+                        if (!exists) {
+                            return { ...c, items: [...c.items, { verseKey, surahName, chapterId }] };
+                        }
+                    }
+                    return c;
+                })
+            })),
+
+            removeFromCollection: (collectionId, verseKey) => set((state) => ({
+                collections: (state.collections || []).map(c => {
+                    if (c.id === collectionId) {
+                        return { ...c, items: c.items.filter(item => item.verseKey !== verseKey) };
+                    }
+                    return c;
+                })
             })),
 
             addRecentlyRead: (chapterId, chapterName, verseKey = null) => set((state) => {
@@ -66,6 +106,8 @@ export const useAppStore = create(
                 tajweedEnabled: state.tajweedEnabled,
                 tafsirId: state.tafsirId,
                 bookmark: state.bookmark,
+                bookmarks: state.bookmarks || [],
+                collections: state.collections || [],
                 recentlyRead: state.recentlyRead || [],
                 offlineDataStatus: state.offlineDataStatus,
                 downloadedSurahs: state.downloadedSurahs || []

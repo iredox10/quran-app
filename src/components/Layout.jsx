@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Outlet, Link } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
-import { Moon, Sun, Settings, TrendingUp, Mic, LayoutDashboard } from 'lucide-react';
+import { Moon, Sun, Settings, TrendingUp, Mic, LayoutDashboard, Bookmark } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import GlobalAudioPlayer from './GlobalAudioPlayer';
 import SettingsDrawer from './SettingsDrawer';
@@ -51,6 +51,9 @@ export default function Layout() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <Link to="/dashboard" className="btn-icon" title="Smart Dashboard" style={{ color: 'var(--text-muted)' }}>
                             <LayoutDashboard size={20} />
+                        </Link>
+                        <Link to="/library" className="btn-icon" title="My Library" style={{ color: 'var(--text-muted)' }}>
+                            <Bookmark size={20} />
                         </Link>
                         <Link to="/memorize" className="btn-icon" title="Hifdh Mode" style={{ color: 'var(--text-muted)' }}>
                             <Mic size={20} />

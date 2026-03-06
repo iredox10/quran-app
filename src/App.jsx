@@ -7,6 +7,7 @@ import Page from './pages/Page';
 import Dashboard from './pages/Dashboard';
 import MemorizeIndex from './pages/MemorizeIndex';
 import Memorization from './pages/Memorization';
+import Library from './pages/Library';
 import Progress from './pages/Progress';
 import TajweedTooltip from './components/TajweedTooltip';
 import GlobalAudioPlayer from './components/GlobalAudioPlayer';
@@ -31,6 +32,7 @@ function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/memorize" element={<MemorizeIndex />} />
           <Route path="/memorize/:id" element={<Memorization />} />
+          <Route path="/library" element={<Library />} />
           <Route path="/progress" element={<Progress />} />
           <Route path="/surah/:id" element={<Surah />} />
         </Route>
