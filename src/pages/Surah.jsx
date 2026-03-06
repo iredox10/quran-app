@@ -135,14 +135,17 @@ export default function Surah() {
     const isCurrentAudio = currentAudioUrl === audioData?.audio_url;
 
     const verses = versesResponse?.pages.flatMap(page => page.verses) || [];
+    const hasScrolledRef = React.useRef(null);
 
     useEffect(() => {
         const queryParams = new URLSearchParams(location.search);
         const verseKey = queryParams.get('verse');
-        if (verseKey && verses.length > 0) {
-            // Find the verse in currently loaded pages
+
+        // Ensure we only jump to the verse once per unique verseKey, not continuously when scrolling
+        if (verseKey && verses.length > 0 && hasScrolledRef.current !== verseKey) {
             const element = document.getElementById(`verse-${verseKey}`);
             if (element) {
+                hasScrolledRef.current = verseKey; // Track that we've found and scrolled to it
                 element.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 // Briefly highlight it
                 element.style.backgroundColor = 'var(--accent-light)';
