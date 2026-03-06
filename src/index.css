@@ -1,5 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Amiri+Quran&family=Lateef&family=Noto+Naskh+Arabic:wght@400;500;600;700&family=Scheherazade+New:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=Geist+Mono:wght@400&family=Piazzolla:wght@400&family=Scheherazade+New:wght@400;700&display=swap');
 
 @font-face {
   font-family: 'KFGQPC Uthman Taha Naskh';
@@ -9,52 +8,71 @@
 }
 
 :root {
-  /* Dynamic Palette: Light Mode */
-  --bg-primary: #f8fafc;
-  --bg-secondary: #ffffff;
-  --bg-surface: rgba(255, 255, 255, 0.7);
+  /* Nur Design Tokens */
+  --color-ink: #2D2D2A;
+  --color-paper: #F9F7F1;
+  --color-overlay: #EFECE4;
+  --color-gold: #C6A87C;
+  --font-arabic: 'Scheherazade New', serif;
+  --font-ui: 'Cormorant Garamond', serif;
+  --font-body: 'Piazzolla', serif;
+  --font-mono: 'Geist Mono', monospace;
 
-  --text-primary: #0f172a;
-  --text-secondary: #475569;
-  --text-muted: #94a3b8;
+  --shadow-soft: 0 10px 40px -10px rgba(0, 0, 0, 0.08);
+  --easing-page: cubic-bezier(0.25, 1, 0.5, 1);
 
-  --accent-primary: #0ea5e9;
-  --accent-hover: #0284c7;
-  --accent-light: #e0f2fe;
+  /* Mapping to existing app variables */
+  --bg-primary: var(--color-paper);
+  --bg-secondary: var(--color-overlay);
+  --bg-surface: var(--color-overlay);
 
-  --border-color: #e2e8f0;
+  --text-primary: var(--color-ink);
+  --text-secondary: #5C5855;
+  --text-muted: #B0ABA5;
 
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --accent-primary: var(--color-gold);
+  --accent-hover: #b08f5c;
+  --accent-light: rgba(198, 168, 124, 0.15);
+
+  --border-color: transparent;
+
+  --shadow-sm: 0 4px 20px rgba(45, 45, 42, 0.04);
+  --shadow-md: var(--shadow-soft);
+  --shadow-lg: var(--shadow-soft);
 
   --glass-border: 1px solid rgba(255, 255, 255, 0.3);
-  --glass-bg: rgba(255, 255, 255, 0.6);
-  --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+  --glass-bg: rgba(239, 236, 228, 0.6);
+  /* EFECE4 with opacity */
+  --glass-shadow: 0 8px 32px 0 rgba(45, 45, 42, 0.07);
 }
 
 html[data-theme='dark'] {
-  /* Dynamic Palette: Dark Mode */
-  --bg-primary: #0b0f19;
-  --bg-secondary: #111827;
-  --bg-surface: rgba(17, 24, 39, 0.7);
+  /* Dynamic Palette: Dark Mode (Noon/Dusk could be here, but for now we'll match a deep sepia/dark setup if needed) */
+  --color-ink: #EFECE4;
+  --color-paper: #1A1A18;
+  --color-overlay: #2D2D2A;
+  --color-gold: #C6A87C;
 
-  --text-primary: #f8fafc;
-  --text-secondary: #cbd5e1;
-  --text-muted: #64748b;
+  --bg-primary: var(--color-paper);
+  --bg-secondary: var(--color-overlay);
+  --bg-surface: var(--color-overlay);
 
-  --accent-primary: #38bdf8;
-  --accent-hover: #7dd3fc;
-  --accent-light: rgba(56, 189, 248, 0.1);
+  --text-primary: var(--color-ink);
+  --text-secondary: #B0ABA5;
+  --text-muted: #5C5855;
 
-  --border-color: #1e293b;
+  --accent-primary: var(--color-gold);
+  --accent-hover: #e0cca1;
+  --accent-light: rgba(198, 168, 124, 0.1);
 
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.5);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+  --border-color: transparent;
+
+  --shadow-sm: 0 4px 20px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 10px 40px -10px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 40px -10px rgba(0, 0, 0, 0.4);
 
   --glass-border: 1px solid rgba(255, 255, 255, 0.05);
-  --glass-bg: rgba(17, 24, 39, 0.5);
+  --glass-bg: rgba(45, 45, 42, 0.5);
 }
 
 * {
@@ -64,10 +82,10 @@ html[data-theme='dark'] {
 }
 
 body {
-  font-family: 'Outfit', sans-serif;
+  font-family: var(--font-body);
   background-color: var(--bg-primary);
   color: var(--text-primary);
-  transition: background-color 0.3s ease, color 0.3s ease;
+  transition: background-color 0.8s ease, color 0.8s ease;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -75,16 +93,42 @@ body {
 
 /* Typography Utility Classes */
 .quran-text {
-  font-family: 'KFGQPC Uthman Taha Naskh', 'Amiri Quran', serif;
+  font-family: var(--font-arabic);
   direction: rtl;
-  line-height: 2;
-  font-size: 2rem;
-  font-weight: 500;
+  line-height: 2.2;
+  font-weight: 400;
   color: var(--text-primary);
 }
 
 .text-english {
-  font-family: 'Outfit', sans-serif;
+  font-family: var(--font-body);
+}
+
+.ui-text {
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.heading-english {
+  font-family: var(--font-ui);
+  font-weight: 600;
+}
+
+/* Ambient Glow Overlay */
+.ambient-glow {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  background: radial-gradient(circle at top right, var(--accent-light), transparent 40%);
+  z-index: 0;
+  transition: background 2s ease;
+}
+
+.ambient-glow-evening {
+  background: radial-gradient(circle at bottom left, var(--accent-light), transparent 40%);
 }
 
 /* Layout */

@@ -3,6 +3,11 @@ import { useInView } from 'react-intersection-observer';
 import { Bookmark, Info, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+const toArabicNumerals = (num) => {
+    const arabicNumbers = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+    return String(num).split('').map(char => arabicNumbers[parseInt(char)]).join('');
+};
+
 const TAFSIR_NAMES = {
     169: 'Ibn Kathir (Abridged)',
     168: "Ma'arif al-Qur'an",
@@ -87,18 +92,18 @@ const VerseRow = ({
                         display: 'inline-flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        width: '1.2em',
-                        height: '1.2em',
+                        width: '1.4em',
+                        height: '1.4em',
                         borderRadius: '50%',
-                        backgroundColor: 'var(--bg-secondary)',
-                        border: '1px solid var(--border-color)',
-                        color: 'var(--text-muted)',
-                        fontSize: '0.4em',
+                        border: '1.5px solid var(--accent-primary)',
+                        color: 'var(--accent-primary)',
+                        fontSize: '0.45em',
                         margin: '0 0.5rem',
                         position: 'relative',
-                        bottom: '0.3em'
+                        bottom: '0.2em',
+                        fontFamily: "'Amiri Quran', serif"
                     }}>
-                        {verse.verse_key.split(':')[1]}
+                        {toArabicNumerals(verse.verse_key.split(':')[1])}
                     </span>
                 </span>
             </React.Fragment>
@@ -131,12 +136,12 @@ const VerseRow = ({
                             width: '40px',
                             height: '40px',
                             borderRadius: '50%',
-                            backgroundColor: 'var(--accent-light)',
+                            border: '1.5px solid var(--accent-primary)',
                             color: 'var(--accent-primary)',
-                            fontWeight: 'bold',
-                            fontSize: '0.9rem'
+                            fontSize: '1.2rem',
+                            fontFamily: "'Amiri Quran', serif"
                         }}>
-                            {verse.verse_key.split(':')[1]}
+                            {toArabicNumerals(verse.verse_key.split(':')[1])}
                         </div>
                         <button
                             className="btn-icon"

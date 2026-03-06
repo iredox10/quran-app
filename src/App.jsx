@@ -12,8 +12,8 @@ function App() {
         <Route path="/" element={<Layout />}>
           <Route index element={<Home />} />
           <Route path="surah/:id" element={<Surah />} />
-          <Route path="page/:id" element={<Page />} />
         </Route>
+        <Route path="/page/:id" element={<Page />} />
       </Routes>
       <TajweedTooltip />
     </BrowserRouter>

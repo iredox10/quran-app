@@ -67,7 +67,7 @@ if (!self.define) {
     });
   };
 }
-define(['./workbox-af8ff8c3'], (function (workbox) { 'use strict';
+define(['./workbox-fec5aa16'], (function (workbox) { 'use strict';
 
   self.skipWaiting();
   workbox.clientsClaim();
@@ -79,7 +79,7 @@ define(['./workbox-af8ff8c3'], (function (workbox) { 'use strict';
    */
   workbox.precacheAndRoute([{
     "url": "index.html",
-    "revision": "0.no38bifghdo"
+    "revision": "0.7libgdg7deo"
   }], {});
   workbox.cleanupOutdatedCaches();
   workbox.registerRoute(new workbox.NavigationRoute(workbox.createHandlerBoundToURL("index.html"), {
@@ -87,11 +87,11 @@ define(['./workbox-af8ff8c3'], (function (workbox) { 'use strict';
   }));
   workbox.registerRoute(({
     url
-  }) => url.origin === "https://api.quran.com", new workbox.StaleWhileRevalidate({
+  }) => url.origin === "https://api.quran.com", new workbox.CacheFirst({
     "cacheName": "quran-api-cache",
     plugins: [new workbox.ExpirationPlugin({
-      maxEntries: 200,
-      maxAgeSeconds: 2592000
+      maxEntries: 500,
+      maxAgeSeconds: 5184000
     }), new workbox.CacheableResponsePlugin({
       statuses: [0, 200]
     })]
@@ -101,11 +101,22 @@ define(['./workbox-af8ff8c3'], (function (workbox) { 'use strict';
   }) => url.origin === "https://fonts.googleapis.com" || url.origin === "https://fonts.gstatic.com", new workbox.CacheFirst({
     "cacheName": "google-fonts-cache",
     plugins: [new workbox.ExpirationPlugin({
-      maxEntries: 10,
+      maxEntries: 20,
       maxAgeSeconds: 31536000
     }), new workbox.CacheableResponsePlugin({
       statuses: [0, 200]
     })]
+  }), 'GET');
+  workbox.registerRoute(({
+    url
+  }) => url.hostname === "download.quranicaudio.com", new workbox.CacheFirst({
+    "cacheName": "quran-audio-cache",
+    plugins: [new workbox.ExpirationPlugin({
+      maxEntries: 114,
+      maxAgeSeconds: 7776000
+    }), new workbox.CacheableResponsePlugin({
+      statuses: [0, 200]
+    }), new workbox.RangeRequestsPlugin()]
   }), 'GET');
 
 }));

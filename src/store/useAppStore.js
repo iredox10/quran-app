@@ -9,7 +9,7 @@ export const useAppStore = create(
             reciterId: 7, // Default: Mishary
             fontSize: 2, // 1, 2, 3, 4
             readingMode: false, // false = translation, true = arabic only
-            arabicFont: "'KFGQPC Uthman Taha Naskh', 'Amiri Quran', serif", // Default font
+            arabicFont: "'Scheherazade New', serif", // Default font
             tajweedEnabled: false, // Show tajweed color rules
             tafsirId: 169, // Default: Ibn Kathir (Abridged) English
             offlineDataStatus: 'idle', // 'idle', 'syncing', 'completed', 'error'
