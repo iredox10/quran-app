@@ -4,7 +4,12 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getVerses, getChapter } from '../services/api/quranApi';
 import { useAppStore } from '../store/useAppStore';
-import { Mic, EyeOff, Eye, Repeat, ArrowLeft, ArrowRight, X, Play, ShieldAlert, Award, Languages } from 'lucide-react';
+import { Mic, EyeOff, Eye, Repeat, ArrowLeft, ArrowRight, X, Play, ShieldAlert, Award, Languages, Layers } from 'lucide-react';
+
+const toArabicNumerals = (num) => {
+    const arabicNumbers = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+    return String(num).split('').map(char => arabicNumbers[parseInt(char)]).join('');
+};
 
 export default function Memorization() {
     const { id } = useParams(); // Surah ID
@@ -16,6 +21,7 @@ export default function Memorization() {
     const [isRecording, setIsRecording] = useState(false);
     const [showAnalysis, setShowAnalysis] = useState(false);
     const [showTranslation, setShowTranslation] = useState(false);
+    const [ayahsPerSwipe, setAyahsPerSwipe] = useState(1);
 
     const { data: chapter, isLoading: isChapterLoading } = useQuery({
         queryKey: ['memorizeChapter', id],
@@ -37,15 +43,21 @@ export default function Memorization() {
     }, [id, chapter, setNavHeaderTitle]);
 
     const verses = versesResponse?.verses || [];
-    const currentVerse = verses[currentVerseIndex];
+    const currentVerses = verses.slice(currentVerseIndex, currentVerseIndex + ayahsPerSwipe);
 
     const handleNext = () => {
-        if (currentVerseIndex < verses.length - 1) setCurrentVerseIndex(p => p + 1);
+        if (currentVerseIndex + ayahsPerSwipe < verses.length) {
+            setCurrentVerseIndex(p => p + ayahsPerSwipe);
+        }
         setIsBlurred(false);
     };
 
     const handlePrev = () => {
-        if (currentVerseIndex > 0) setCurrentVerseIndex(p => p - 1);
+        if (currentVerseIndex - ayahsPerSwipe >= 0) {
+            setCurrentVerseIndex(p => p - ayahsPerSwipe);
+        } else {
+            setCurrentVerseIndex(0);
+        }
         setIsBlurred(false);
     };
 
@@ -65,7 +77,7 @@ export default function Memorization() {
         return <div className="container" style={{ textAlign: 'center', paddingTop: '10vh' }}>Loading Hifdh Mode...</div>;
     }
 
-    if (!currentVerse) return null;
+    if (verses.length === 0) return null;
 
     return (
         <div style={{ position: 'relative', minHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
@@ -91,12 +103,35 @@ export default function Memorization() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--bg-surface)', padding: '0.5rem 1rem', borderRadius: '24px', border: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
                     <Repeat size={16} /> <span style={{ fontSize: '0.875rem' }}>Loop 3x</span>
                 </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--bg-surface)', padding: '0.5rem 1rem', borderRadius: '24px', border: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
+                    <Layers size={16} />
+                    <select
+                        value={ayahsPerSwipe}
+                        onChange={(e) => {
+                            setAyahsPerSwipe(Number(e.target.value));
+                            setCurrentVerseIndex(0);
+                        }}
+                        style={{
+                            background: 'transparent',
+                            border: 'none',
+                            color: 'inherit',
+                            outline: 'none',
+                            fontSize: '0.875rem',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        <option value={1} style={{ color: 'black' }}>1 Ayah</option>
+                        <option value={3} style={{ color: 'black' }}>3 Ayahs</option>
+                        <option value={5} style={{ color: 'black' }}>5 Ayahs</option>
+                        <option value={10} style={{ color: 'black' }}>10 Ayahs</option>
+                    </select>
+                </div>
             </div>
 
             {/* Central Verse Display */}
-            <div className="container" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+            <div className="container" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', margin: '2rem 0' }}>
                 <motion.div
-                    key={currentVerse.id}
+                    key={`${currentVerseIndex}-${ayahsPerSwipe}`}
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -20 }}
@@ -105,15 +140,50 @@ export default function Memorization() {
                         filter: isBlurred ? 'blur(8px)' : 'none',
                         transition: 'filter 0.3s ease',
                         cursor: isBlurred ? 'pointer' : 'default',
-                        maxWidth: '800px'
+                        maxWidth: '800px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '2rem'
                     }}
                     onClick={() => isBlurred && setIsBlurred(false)}
                 >
-                    <div className="quran-text" style={{ fontSize: `${(fontSize * 0.4) + 2.5}rem`, fontFamily: arabicFont, lineHeight: 2.2, color: 'var(--text-primary)' }}>
-                        {currentVerse.text_uthmani}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
+                        {currentVerses.map(verse => (
+                            <div key={verse.id}>
+                                <div className="quran-text" style={{ fontSize: `${(fontSize * 0.4) + 2.5}rem`, fontFamily: arabicFont, lineHeight: 2.2, color: 'var(--text-primary)' }}>
+                                    {verse.text_uthmani} <span style={{ fontSize: '0.5em', color: 'var(--accent-primary)', padding: '0 8px', verticalAlign: 'middle' }}>{toArabicNumerals(verse.verse_key.split(':')[1])}</span>
+                                </div>
+
+                                <AnimatePresence>
+                                    {showTranslation && (
+                                        <motion.div
+                                            initial={{ opacity: 0, height: 0, y: -10 }}
+                                            animate={{ opacity: 1, height: 'auto', y: 0 }}
+                                            exit={{ opacity: 0, height: 0, y: -10 }}
+                                            className="text-english"
+                                            style={{
+                                                marginTop: '1.5rem',
+                                                padding: '1.5rem',
+                                                background: 'var(--bg-surface)',
+                                                borderRadius: '16px',
+                                                border: '1px solid var(--border-color)',
+                                                color: 'var(--text-secondary)',
+                                                fontSize: `${(fontSize * 0.1) + 1}rem`,
+                                                lineHeight: 1.6,
+                                                boxShadow: 'var(--shadow-sm)',
+                                                overflow: 'hidden'
+                                            }}
+                                        >
+                                            {verse.translations?.[0]?.text?.replace(/<[^>]*>?/gm, '')}
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                            </div>
+                        ))}
                     </div>
+
                     <div style={{
-                        marginTop: '2rem',
+                        marginTop: '1rem',
                         display: 'flex',
                         gap: '0.75rem',
                         justifyContent: 'center',
@@ -125,42 +195,17 @@ export default function Memorization() {
                     }}>
                         <span style={{ color: 'var(--accent-primary)', fontWeight: 600 }}>Surah {chapter?.name_simple}</span>
                         <span>•</span>
-                        <span>Page {currentVerse.page_number}</span>
+                        <span>Page {currentVerses[0]?.page_number}</span>
                         <span>•</span>
-                        <span>Verse {currentVerse.verse_key.split(':')[1]}</span>
+                        <span>Verses {currentVerses[0]?.verse_key.split(':')[1]}{currentVerses.length > 1 ? ` - ${currentVerses[currentVerses.length - 1]?.verse_key.split(':')[1]}` : ''}</span>
                     </div>
-
-                    <AnimatePresence>
-                        {showTranslation && (
-                            <motion.div
-                                initial={{ opacity: 0, height: 0, y: -10 }}
-                                animate={{ opacity: 1, height: 'auto', y: 0 }}
-                                exit={{ opacity: 0, height: 0, y: -10 }}
-                                className="text-english"
-                                style={{
-                                    marginTop: '2rem',
-                                    padding: '1.5rem',
-                                    background: 'var(--bg-surface)',
-                                    borderRadius: '16px',
-                                    border: '1px solid var(--border-color)',
-                                    color: 'var(--text-secondary)',
-                                    fontSize: `${(fontSize * 0.1) + 1}rem`,
-                                    lineHeight: 1.6,
-                                    boxShadow: 'var(--shadow-sm)',
-                                    overflow: 'hidden'
-                                }}
-                            >
-                                {currentVerse.translations?.[0]?.text?.replace(/<[^>]*>?/gm, '')}
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
                 </motion.div>
 
                 {/* Left/Right Nav */}
                 <button onClick={handlePrev} disabled={currentVerseIndex === 0} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: currentVerseIndex === 0 ? 'default' : 'pointer', opacity: currentVerseIndex === 0 ? 0.2 : 0.6 }}>
                     <ArrowLeft size={32} />
                 </button>
-                <button onClick={handleNext} disabled={currentVerseIndex === verses.length - 1} style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: currentVerseIndex === verses.length - 1 ? 'default' : 'pointer', opacity: currentVerseIndex === verses.length - 1 ? 0.2 : 0.6 }}>
+                <button onClick={handleNext} disabled={currentVerseIndex + ayahsPerSwipe >= verses.length} style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: currentVerseIndex + ayahsPerSwipe >= verses.length ? 'default' : 'pointer', opacity: currentVerseIndex + ayahsPerSwipe >= verses.length ? 0.2 : 0.6 }}>
                     <ArrowRight size={32} />
                 </button>
             </div>
@@ -245,7 +290,7 @@ export default function Memorization() {
                                     <ShieldAlert size={20} color="#dc2626" style={{ marginTop: '2px' }} />
                                     <div>
                                         <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Missed Ghunnah</div>
-                                        <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Verse {currentVerse.verse_key.split(':')[1]} - Word 3</div>
+                                        <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Verses {currentVerses.map(v => v.verse_key.split(':')[1]).join(', ')}</div>
                                         <button style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
                                             <Play size={14} /> Listen to Expert
                                         </button>
