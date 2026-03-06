@@ -114,39 +114,37 @@ const VerseRow = ({
     return (
         <React.Fragment>
             {pageDivider}
+            {/* Ayah Divider */}
+            <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '1rem',
+                padding: '0.5rem 0'
+            }}>
+                <div style={{ flex: 1, height: '1px', background: 'linear-gradient(to right, transparent, var(--accent-light), var(--border-color), var(--accent-light), transparent)' }} />
+                <div style={{
+                    width: '6px',
+                    height: '6px',
+                    borderRadius: '50%',
+                    background: 'var(--accent-primary)',
+                    opacity: 0.4
+                }} />
+                <div style={{ flex: 1, height: '1px', background: 'linear-gradient(to left, transparent, var(--accent-light), var(--border-color), var(--accent-light), transparent)' }} />
+            </div>
             <div
                 ref={ref}
                 id={`verse-${verse.verse_key}`}
                 className="verse-container"
                 style={{
-                    borderBottom: '1px solid var(--border-color)',
-                    padding: '2.5rem 0',
+                    padding: '1.5rem 0',
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: '1.5rem',
+                    gap: '1rem',
                     transition: 'background-color 0.5s ease',
                     borderRadius: '12px'
                 }}
             >
-                {/* Arabic Text */}
-                <div
-                    className="quran-text tajweed-text"
-                    style={{
-                        textAlign: 'right',
-                        fontSize: `clamp(${0.9 + fontSize * 0.15}rem, ${fontSize * 1.2}vw, ${fontSize * 0.4 + 1.5}rem)`,
-                        lineHeight: 2.0,
-                        fontFamily: arabicFont,
-                        wordBreak: 'break-word',
-                        overflowWrap: 'anywhere'
-                    }}
-                >
-                    {tajweedEnabled && tajweedMap?.[verse.verse_key]
-                        ? <span dangerouslySetInnerHTML={{ __html: tajweedMap[verse.verse_key] }} />
-                        : verse.text_uthmani
-                    }
-                </div>
-
-                {/* Verse Actions Row */}
+                {/* Verse Actions Row — on top */}
                 <div className="verse-actions-row" style={{
                     display: 'flex',
                     flexDirection: 'row',
@@ -202,8 +200,25 @@ const VerseRow = ({
                     </button>
                 </div>
 
+                {/* Arabic Text */}
+                <div
+                    className="quran-text tajweed-text"
+                    style={{
+                        textAlign: 'right',
+                        fontSize: `clamp(${0.9 + fontSize * 0.15}rem, ${fontSize * 1.2}vw, ${fontSize * 0.4 + 1.5}rem)`,
+                        lineHeight: 2.0,
+                        fontFamily: arabicFont,
+                        wordBreak: 'break-word',
+                        overflowWrap: 'anywhere'
+                    }}
+                >
+                    {tajweedEnabled && tajweedMap?.[verse.verse_key]
+                        ? <span dangerouslySetInnerHTML={{ __html: tajweedMap[verse.verse_key] }} />
+                        : verse.text_uthmani
+                    }
+                </div>
+
                 <div className="text-english" style={{
-                    paddingRight: '40px',
                     fontSize: `${(translationFontSize || 2) * 0.15 + 0.75}rem`,
                     color: 'var(--text-secondary)',
                     lineHeight: 1.6
