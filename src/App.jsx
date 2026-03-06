@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
 import Home from './pages/Home';
@@ -9,8 +10,18 @@ import Memorization from './pages/Memorization';
 import Progress from './pages/Progress';
 import TajweedTooltip from './components/TajweedTooltip';
 import GlobalAudioPlayer from './components/GlobalAudioPlayer';
+import { useAppStore } from './store/useAppStore';
 
 function App() {
+  const { translationId, setTranslation } = useAppStore();
+
+  useEffect(() => {
+    // Migrate 131 (Clear Quran, removed from API v4) to 85 (Abdul Haleem) silently
+    if (translationId === 131) {
+      setTranslation(85);
+    }
+  }, [translationId, setTranslation]);
+
   return (
     <BrowserRouter>
       <Routes>

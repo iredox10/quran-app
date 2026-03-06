@@ -21,7 +21,7 @@ export const getChapter = async (id) => {
   return data.chapter;
 };
 
-export const getVerses = async (chapterId, translationId = 131, reciterId = 7, page = 1) => {
+export const getVerses = async (chapterId, translationId = 85, reciterId = 7, page = 1) => {
   const { data } = await api.get(`/verses/by_chapter/${chapterId}`, {
     params: {
       language: 'en',
@@ -36,7 +36,7 @@ export const getVerses = async (chapterId, translationId = 131, reciterId = 7, p
   return data;
 };
 
-export const getVersesByPage = async (pageNumber, translationId = 131, reciterId = 7) => {
+export const getVersesByPage = async (pageNumber, translationId = 85, reciterId = 7) => {
   const { data } = await api.get(`/verses/by_page/${pageNumber}`, {
     params: {
       language: 'en',

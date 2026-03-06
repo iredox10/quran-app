@@ -4,17 +4,18 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getVerses } from '../services/api/quranApi';
 import { useAppStore } from '../store/useAppStore';
-import { Mic, EyeOff, Eye, Repeat, ArrowLeft, ArrowRight, X, Play, ShieldAlert, Award } from 'lucide-react';
+import { Mic, EyeOff, Eye, Repeat, ArrowLeft, ArrowRight, X, Play, ShieldAlert, Award, Languages } from 'lucide-react';
 
 export default function Memorization() {
     const { id } = useParams(); // Surah ID
     const navigate = useNavigate();
-    const { setNavHeaderTitle, arabicFont, fontSize } = useAppStore();
+    const { setNavHeaderTitle, arabicFont, fontSize, translationId } = useAppStore();
 
     const [currentVerseIndex, setCurrentVerseIndex] = useState(0);
     const [isBlurred, setIsBlurred] = useState(false);
     const [isRecording, setIsRecording] = useState(false);
     const [showAnalysis, setShowAnalysis] = useState(false);
+    const [showTranslation, setShowTranslation] = useState(false);
 
     useEffect(() => {
         setNavHeaderTitle(`Hifdh Mode: Surah ${id}`);
@@ -22,8 +23,8 @@ export default function Memorization() {
     }, [id, setNavHeaderTitle]);
 
     const { data: versesResponse, isLoading } = useQuery({
-        queryKey: ['memorizeVerses', id],
-        queryFn: () => getVerses(id, 131, 7, 1),
+        queryKey: ['memorizeVerses', id, translationId],
+        queryFn: () => getVerses(id, translationId, 7, 1),
     });
 
     const verses = versesResponse?.verses || [];
@@ -70,6 +71,14 @@ export default function Memorization() {
                 >
                     {isBlurred ? <Eye size={20} /> : <EyeOff size={20} />}
                 </button>
+                <button
+                    className="btn-icon"
+                    onClick={() => setShowTranslation(!showTranslation)}
+                    style={{ background: showTranslation ? 'var(--accent-light)' : 'var(--bg-surface)', border: '1px solid var(--border-color)', color: showTranslation ? 'var(--accent-primary)' : 'inherit' }}
+                    title={showTranslation ? "Hide Translation" : "Show Translation"}
+                >
+                    <Languages size={20} />
+                </button>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--bg-surface)', padding: '0.5rem 1rem', borderRadius: '24px', border: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
                     <Repeat size={16} /> <span style={{ fontSize: '0.875rem' }}>Loop 3x</span>
                 </div>
@@ -97,6 +106,31 @@ export default function Memorization() {
                     <div style={{ marginTop: '2rem', color: 'var(--accent-primary)', fontFamily: 'var(--font-mono)', fontSize: '1rem' }}>
                         Verse {currentVerse.verse_key.split(':')[1]}
                     </div>
+
+                    <AnimatePresence>
+                        {showTranslation && (
+                            <motion.div
+                                initial={{ opacity: 0, height: 0, y: -10 }}
+                                animate={{ opacity: 1, height: 'auto', y: 0 }}
+                                exit={{ opacity: 0, height: 0, y: -10 }}
+                                className="text-english"
+                                style={{
+                                    marginTop: '2rem',
+                                    padding: '1.5rem',
+                                    background: 'var(--bg-surface)',
+                                    borderRadius: '16px',
+                                    border: '1px solid var(--border-color)',
+                                    color: 'var(--text-secondary)',
+                                    fontSize: `${(fontSize * 0.1) + 1}rem`,
+                                    lineHeight: 1.6,
+                                    boxShadow: 'var(--shadow-sm)',
+                                    overflow: 'hidden'
+                                }}
+                            >
+                                {currentVerse.translations?.[0]?.text?.replace(/<[^>]*>?/gm, '')}
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                 </motion.div>
 
                 {/* Left/Right Nav */}

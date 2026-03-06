@@ -5,7 +5,7 @@ export const useAppStore = create(
     persist(
         (set) => ({
             theme: 'light', // 'light' or 'dark'
-            translationId: 131, // Default: Clear Quran
+            translationId: 85, // Default: M.A.S. Abdel Haleem (131 was removed from API)
             reciterId: 7, // Default: Mishary
             fontSize: 2, // 1, 2, 3, 4
             readingMode: false, // false = translation, true = arabic only
