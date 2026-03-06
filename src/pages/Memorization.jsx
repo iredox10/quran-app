@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getVerses, getChapter } from '../services/api/quranApi';
 import { useAppStore } from '../store/useAppStore';
-import { Mic, EyeOff, Eye, Repeat, ArrowLeft, ArrowRight, X, Play, ShieldAlert, Award, Languages, Layers } from 'lucide-react';
+import { Mic, EyeOff, Eye, Repeat, ArrowLeft, ArrowRight, X, Play, Pause, ShieldAlert, Award, Languages, Layers } from 'lucide-react';
 
 const toArabicNumerals = (num) => {
     const arabicNumbers = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
@@ -22,6 +22,76 @@ export default function Memorization() {
     const [showAnalysis, setShowAnalysis] = useState(false);
     const [showTranslation, setShowTranslation] = useState(false);
     const [ayahsPerSwipe, setAyahsPerSwipe] = useState(1);
+
+    const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+    const [audioVerseIndex, setAudioVerseIndex] = useState(0); // 0 to ayahsPerSwipe - 1
+    const [loopMode, setLoopMode] = useState(0); // 0 = No loop, 1 = Loop 3x, 2 = Infinite Loop
+    const [loopCount, setLoopCount] = useState(0);
+    const audioRef = React.useRef(null);
+
+    // Stop audio when user flips pages manually
+    useEffect(() => {
+        setIsPlayingAudio(false);
+        setAudioVerseIndex(0);
+        setLoopCount(0);
+        if (audioRef.current) {
+            audioRef.current.pause();
+        }
+    }, [currentVerseIndex, ayahsPerSwipe]);
+
+    useEffect(() => {
+        if (isPlayingAudio && audioRef.current) {
+            audioRef.current.play().catch(e => {
+                console.error("Audio playback error", e);
+                setIsPlayingAudio(false);
+            });
+        }
+    }, [isPlayingAudio, audioVerseIndex, currentVerseIndex]); // Depend on currentVerseIndex to ensure changes propagate
+
+    const handleAudioEnded = () => {
+        if (audioVerseIndex < currentVerses.length - 1) {
+            setAudioVerseIndex(prev => prev + 1);
+        } else {
+            // Reached end of selection mode
+            if (loopMode === 1) { // 3x Loop
+                if (loopCount < 2) {
+                    setLoopCount(prev => prev + 1);
+                    setAudioVerseIndex(0);
+                } else {
+                    setIsPlayingAudio(false);
+                    setLoopCount(0);
+                    setAudioVerseIndex(0);
+                }
+            } else if (loopMode === 2) { // Infinite Loop
+                setAudioVerseIndex(0);
+            } else {
+                // No loop
+                setIsPlayingAudio(false);
+                setAudioVerseIndex(0);
+            }
+        }
+    };
+
+    const toggleAudio = () => {
+        if (isPlayingAudio) {
+            setIsPlayingAudio(false);
+            if (audioRef.current) audioRef.current.pause();
+        } else {
+            setIsPlayingAudio(true);
+            if (audioVerseIndex >= currentVerses.length) setAudioVerseIndex(0);
+        }
+    };
+
+    const cycleLoopMode = () => {
+        setLoopMode(prev => (prev + 1) % 3);
+        setLoopCount(0); // Reset count on mode switch
+    };
+
+    const getLoopLabel = () => {
+        if (loopMode === 0) return "No Loop";
+        if (loopMode === 1) return `Loop 3x (${loopCount + 1}/3)`;
+        return "Loop ∞";
+    };
 
     const { data: chapter, isLoading: isChapterLoading } = useQuery({
         queryKey: ['memorizeChapter', id],
@@ -82,8 +152,30 @@ export default function Memorization() {
     return (
         <div style={{ position: 'relative', minHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
 
+            {/* Hidden Audio Player for Memorization Sequence */}
+            {currentVerses[audioVerseIndex]?.audio?.url && (
+                <audio
+                    ref={audioRef}
+                    src={`https://verses.quran.com/${currentVerses[audioVerseIndex].audio.url}`}
+                    onEnded={handleAudioEnded}
+                />
+            )}
+
             {/* Top Controls */}
-            <div className="container" style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginBottom: '2rem' }}>
+            <div className="container" style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
+                <button
+                    className="btn-icon"
+                    onClick={toggleAudio}
+                    style={{ background: isPlayingAudio ? 'var(--accent-light)' : 'var(--bg-surface)', border: '1px solid var(--border-color)', color: isPlayingAudio ? 'var(--accent-primary)' : 'inherit' }}
+                    title={isPlayingAudio ? "Pause Audio" : "Play selected Ayahs"}
+                >
+                    {isPlayingAudio ? <Pause size={20} /> : <Play size={20} />}
+                </button>
+                <div
+                    onClick={cycleLoopMode}
+                    style={{ display: 'flex', alignItems: 'center', gap: '8px', background: loopMode > 0 ? 'var(--accent-light)' : 'var(--bg-surface)', padding: '0.5rem 1rem', borderRadius: '24px', border: '1px solid var(--border-color)', color: loopMode > 0 ? 'var(--accent-primary)' : 'var(--text-muted)', cursor: 'pointer', transition: 'all 0.3s' }}>
+                    <Repeat size={16} /> <span style={{ fontSize: '0.875rem' }}>{getLoopLabel()}</span>
+                </div>
                 <button
                     className="btn-icon"
                     onClick={() => setIsBlurred(!isBlurred)}
@@ -100,9 +192,6 @@ export default function Memorization() {
                 >
                     <Languages size={20} />
                 </button>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--bg-surface)', padding: '0.5rem 1rem', borderRadius: '24px', border: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
-                    <Repeat size={16} /> <span style={{ fontSize: '0.875rem' }}>Loop 3x</span>
-                </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--bg-surface)', padding: '0.5rem 1rem', borderRadius: '24px', border: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
                     <Layers size={16} />
                     <select
@@ -148,9 +237,15 @@ export default function Memorization() {
                     onClick={() => isBlurred && setIsBlurred(false)}
                 >
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
-                        {currentVerses.map(verse => (
+                        {currentVerses.map((verse, idx) => (
                             <div key={verse.id}>
-                                <div className="quran-text" style={{ fontSize: `${(fontSize * 0.4) + 2.5}rem`, fontFamily: arabicFont, lineHeight: 2.2, color: 'var(--text-primary)' }}>
+                                <div className="quran-text" style={{
+                                    fontSize: `${(fontSize * 0.4) + 2.5}rem`,
+                                    fontFamily: arabicFont,
+                                    lineHeight: 2.2,
+                                    color: (isPlayingAudio && audioVerseIndex === idx) ? 'var(--accent-primary)' : 'var(--text-primary)',
+                                    transition: 'color 0.3s ease'
+                                }}>
                                     {verse.text_uthmani} <span style={{ fontSize: '0.5em', color: 'var(--accent-primary)', padding: '0 8px', verticalAlign: 'middle' }}>{toArabicNumerals(verse.verse_key.split(':')[1])}</span>
                                 </div>
 
