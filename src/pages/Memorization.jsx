@@ -161,20 +161,50 @@ export default function Memorization() {
     }, [id, chapter, setNavHeaderTitle]);
 
     const verses = versesResponse?.verses || [];
-    const currentVerses = verses.slice(currentVerseIndex, currentVerseIndex + ayahsPerSwipe);
+
+    let currentVerses = [];
+    if (verses.length > 0) {
+        if (ayahsPerSwipe === -1) {
+            let startIdx = currentVerseIndex;
+            const currentPage = verses[startIdx].page_number;
+            // Ensure we are exactly at the start of the page
+            while (startIdx > 0 && verses[startIdx - 1].page_number === currentPage) {
+                startIdx--;
+            }
+            let endIdx = startIdx;
+            while (endIdx < verses.length && verses[endIdx].page_number === currentPage) {
+                endIdx++;
+            }
+            currentVerses = verses.slice(startIdx, endIdx);
+        } else {
+            currentVerses = verses.slice(currentVerseIndex, currentVerseIndex + ayahsPerSwipe);
+        }
+    }
 
     const handleNext = () => {
-        if (currentVerseIndex + ayahsPerSwipe < verses.length) {
-            setCurrentVerseIndex(p => p + ayahsPerSwipe);
+        const step = ayahsPerSwipe === -1 ? currentVerses.length : ayahsPerSwipe;
+        if (currentVerseIndex + step < verses.length) {
+            setCurrentVerseIndex(p => p + step);
         }
         setIsBlurred(false);
     };
 
     const handlePrev = () => {
-        if (currentVerseIndex - ayahsPerSwipe >= 0) {
-            setCurrentVerseIndex(p => p - ayahsPerSwipe);
+        if (ayahsPerSwipe === -1) {
+            if (currentVerseIndex > 0) {
+                const prevPage = verses[currentVerseIndex - 1].page_number;
+                let newIndex = currentVerseIndex - 1;
+                while (newIndex > 0 && verses[newIndex - 1].page_number === prevPage) {
+                    newIndex--;
+                }
+                setCurrentVerseIndex(newIndex);
+            }
         } else {
-            setCurrentVerseIndex(0);
+            if (currentVerseIndex - ayahsPerSwipe >= 0) {
+                setCurrentVerseIndex(p => p - ayahsPerSwipe);
+            } else {
+                setCurrentVerseIndex(0);
+            }
         }
         setIsBlurred(false);
     };
@@ -272,8 +302,18 @@ export default function Memorization() {
                     <select
                         value={ayahsPerSwipe}
                         onChange={(e) => {
-                            setAyahsPerSwipe(Number(e.target.value));
-                            setCurrentVerseIndex(0);
+                            const val = Number(e.target.value);
+                            setAyahsPerSwipe(val);
+                            if (val === -1 && verses.length > 0) {
+                                const currentPage = verses[currentVerseIndex].page_number;
+                                let startIdx = currentVerseIndex;
+                                while (startIdx > 0 && verses[startIdx - 1].page_number === currentPage) {
+                                    startIdx--;
+                                }
+                                setCurrentVerseIndex(startIdx);
+                            } else {
+                                setCurrentVerseIndex(0);
+                            }
                         }}
                         style={{
                             background: 'transparent',
@@ -288,6 +328,7 @@ export default function Memorization() {
                         <option value={3} style={{ color: 'black' }}>3 Ayahs</option>
                         <option value={5} style={{ color: 'black' }}>5 Ayahs</option>
                         <option value={10} style={{ color: 'black' }}>10 Ayahs</option>
+                        <option value={-1} style={{ color: 'black' }}>By Page</option>
                     </select>
                 </div>
             </div>
@@ -375,7 +416,7 @@ export default function Memorization() {
                 <button onClick={handlePrev} disabled={currentVerseIndex === 0} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: currentVerseIndex === 0 ? 'default' : 'pointer', opacity: currentVerseIndex === 0 ? 0.2 : 0.6 }}>
                     <ArrowLeft size={32} />
                 </button>
-                <button onClick={handleNext} disabled={currentVerseIndex + ayahsPerSwipe >= verses.length} style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: currentVerseIndex + ayahsPerSwipe >= verses.length ? 'default' : 'pointer', opacity: currentVerseIndex + ayahsPerSwipe >= verses.length ? 0.2 : 0.6 }}>
+                <button onClick={handleNext} disabled={currentVerseIndex + currentVerses.length >= verses.length} style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: currentVerseIndex + currentVerses.length >= verses.length ? 'default' : 'pointer', opacity: currentVerseIndex + currentVerses.length >= verses.length ? 0.2 : 0.6 }}>
                     <ArrowRight size={32} />
                 </button>
             </div>
