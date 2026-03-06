@@ -232,7 +232,8 @@ export default function Surah() {
                 <div style={{
                     display: 'flex',
                     justifyContent: 'center',
-                    gap: '1rem'
+                    gap: '1rem',
+                    flexWrap: 'wrap'
                 }}>
                     <button
                         className="btn-primary"
@@ -264,14 +265,6 @@ export default function Surah() {
                             <Download size={18} />
                         )}
                         {isDownloading ? 'Downloading...' : isDownloaded ? 'Offline Ready' : 'Download for Offline'}
-                    </button>
-                    <button
-                        className="btn-primary"
-                        style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }}
-                        onClick={() => setReadingMode(!readingMode)}
-                    >
-                        <BookOpen size={18} style={{ marginRight: '8px' }} />
-                        {readingMode ? 'Translation Mode' : 'Reading Mode'}
                     </button>
                 </div>
             </div>

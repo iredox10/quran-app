@@ -106,8 +106,7 @@ export default function SettingsDrawer({ isOpen, onClose }) {
                 top: 0,
                 right: 0,
                 bottom: 0,
-                width: '100%',
-                maxWidth: '400px',
+                width: 'min(400px, 85vw)',
                 backgroundColor: 'var(--bg-secondary)',
                 borderLeft: '1px solid var(--border-color)',
                 zIndex: 1000,
@@ -157,37 +156,41 @@ export default function SettingsDrawer({ isOpen, onClose }) {
 
                     {/* Font Size (Arabic) */}
                     <div>
-                        <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '1rem', color: 'var(--text-muted)' }}>Arabic Font Size</h3>
-                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                            <button
-                                className="btn-icon"
-                                style={{ border: '1px solid var(--border-color)' }}
-                                onClick={() => setFontSize(Math.max(1, fontSize - 1))}
-                            >A-</button>
-                            <div style={{ flex: 1, textAlign: 'center', fontSize: '1.1rem', fontWeight: 600 }}>{fontSize}</div>
-                            <button
-                                className="btn-icon"
-                                style={{ border: '1px solid var(--border-color)' }}
-                                onClick={() => setFontSize(Math.min(4, fontSize + 1))}
-                            >A+</button>
+                        <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-muted)' }}>Arabic Font Size</h3>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500, minWidth: '18px' }}>A</span>
+                            <input
+                                type="range"
+                                min="1"
+                                max="8"
+                                step="1"
+                                value={fontSize}
+                                onChange={(e) => setFontSize(Number(e.target.value))}
+                                className="settings-slider"
+                                style={{ flex: 1 }}
+                            />
+                            <span style={{ fontSize: '1.2rem', color: 'var(--text-muted)', fontWeight: 600, minWidth: '18px' }}>A</span>
+                            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--accent-primary)', minWidth: '20px', textAlign: 'center' }}>{fontSize}</span>
                         </div>
                     </div>
 
                     {/* Font Size (Translation) */}
                     <div>
-                        <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '1rem', color: 'var(--text-muted)' }}>Translation Font Size</h3>
-                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                            <button
-                                className="btn-icon"
-                                style={{ border: '1px solid var(--border-color)' }}
-                                onClick={() => setTranslationFontSize(Math.max(1, (translationFontSize || 2) - 1))}
-                            >A-</button>
-                            <div style={{ flex: 1, textAlign: 'center', fontSize: '1.1rem', fontWeight: 600 }}>{translationFontSize || 2}</div>
-                            <button
-                                className="btn-icon"
-                                style={{ border: '1px solid var(--border-color)' }}
-                                onClick={() => setTranslationFontSize(Math.min(4, (translationFontSize || 2) + 1))}
-                            >A+</button>
+                        <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-muted)' }}>Translation Font Size</h3>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500, minWidth: '18px' }}>A</span>
+                            <input
+                                type="range"
+                                min="1"
+                                max="8"
+                                step="1"
+                                value={translationFontSize || 2}
+                                onChange={(e) => setTranslationFontSize(Number(e.target.value))}
+                                className="settings-slider"
+                                style={{ flex: 1 }}
+                            />
+                            <span style={{ fontSize: '1.2rem', color: 'var(--text-muted)', fontWeight: 600, minWidth: '18px' }}>A</span>
+                            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--accent-primary)', minWidth: '20px', textAlign: 'center' }}>{translationFontSize || 2}</span>
                         </div>
                     </div>
 
