@@ -225,82 +225,94 @@ export default function Surah() {
                 <ArrowLeft size={18} /> Back to Surahs
             </Link>
 
-            <div
-                className="surah-header"
-                style={{
-                    padding: '3rem',
-                    background: 'linear-gradient(135deg, var(--bg-secondary), var(--bg-surface))',
-                    borderRadius: '24px',
-                    textAlign: 'center',
-                    marginBottom: '3rem',
-                    position: 'relative',
-                    overflow: 'hidden',
-                    border: '1px solid var(--border-color)',
-                    boxShadow: 'var(--shadow-lg)'
-                }}
-            >
+            <div className="surah-hero-card" style={{ padding: 'clamp(2rem, 5vw, 4rem) 1.5rem' }}>
+                <div className="surah-bg-glow" />
+
                 {/* Subtle decorative background Arabic text */}
                 <div style={{
                     fontFamily: "'Amiri Quran', serif",
-                    fontSize: '12rem',
+                    fontSize: 'clamp(8rem, 25vw, 15rem)',
                     position: 'absolute',
-                    opacity: 0.03,
-                    top: '-2rem',
+                    opacity: 0.04,
+                    top: '50%',
                     left: '50%',
-                    transform: 'translateX(-50%)',
+                    transform: 'translate(-50%, -50%)',
                     pointerEvents: 'none',
-                    userSelect: 'none'
+                    userSelect: 'none',
+                    whiteSpace: 'nowrap',
+                    color: 'var(--text-primary)'
                 }}>
                     {chapter?.name_arabic}
                 </div>
 
-                <h1
-                    className="surah-title"
-                    style={{ fontSize: '3rem', fontWeight: 800, marginBottom: '0.5rem', color: 'var(--text-primary)' }}
-                >
-                    {chapter?.name_simple}
-                </h1>
-                <p style={{ fontSize: '1.25rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
-                    {chapter?.translated_name.name} • {chapter?.verses_count} Ayahs • {chapter?.revelation_place}
-                </p>
+                <div style={{ position: 'relative', zIndex: 1 }}>
+                    <div style={{
+                        display: 'inline-block',
+                        padding: '0.4rem 1rem',
+                        borderRadius: '999px',
+                        background: 'var(--accent-light)',
+                        color: 'var(--accent-primary)',
+                        fontSize: '0.85rem',
+                        fontWeight: 700,
+                        letterSpacing: '1px',
+                        textTransform: 'uppercase',
+                        marginBottom: '1.5rem'
+                    }}>
+                        Surah {chapter?.id}
+                    </div>
 
-                <div style={{
-                    display: 'flex',
-                    justifyContent: 'center',
-                    gap: '1rem',
-                    flexWrap: 'wrap'
-                }}>
-                    <button
-                        className="btn-primary"
-                        style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-                        onClick={handlePlayClick}
-                    >
-                        {isCurrentAudio && isPlaying ? <Pause size={18} /> : <Play size={18} />}
-                        {isCurrentAudio && isPlaying ? 'Pause Audio' : 'Play Audio'}
-                    </button>
-                    <button
-                        className="btn-primary"
+                    <h1
+                        className="surah-title"
                         style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                            backgroundColor: isDownloaded ? 'var(--accent-light)' : 'var(--bg-primary)',
-                            color: isDownloaded ? 'var(--accent-primary)' : 'var(--text-primary)',
-                            border: '1px solid var(--border-color)',
-                            opacity: isDownloading ? 0.7 : 1
+                            fontSize: 'clamp(2.5rem, 8vw, 4rem)',
+                            fontWeight: 800,
+                            marginBottom: '0.5rem',
+                            color: 'var(--text-primary)',
+                            letterSpacing: '-1px'
                         }}
-                        onClick={handleDownloadSurah}
-                        disabled={isDownloading || isDownloaded}
                     >
-                        {isDownloading ? (
-                            <RefreshCw size={18} className="spin" />
-                        ) : isDownloaded ? (
-                            <CloudCheck size={18} />
-                        ) : (
-                            <Download size={18} />
-                        )}
-                        {isDownloading ? 'Downloading...' : isDownloaded ? 'Offline Ready' : 'Download for Offline'}
-                    </button>
+                        {chapter?.name_simple}
+                    </h1>
+                    <p style={{
+                        fontSize: 'clamp(1rem, 3vw, 1.25rem)',
+                        color: 'var(--text-secondary)',
+                        marginBottom: '2rem',
+                        fontWeight: 500
+                    }}>
+                        {chapter?.translated_name.name} • {chapter?.verses_count} Ayahs • {chapter?.revelation_place}
+                    </p>
+
+                    <div style={{
+                        display: 'flex',
+                        justifyContent: 'center',
+                        gap: '1rem',
+                        flexWrap: 'wrap'
+                    }}>
+                        <button
+                            className="btn-primary"
+                            style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                            onClick={handlePlayClick}
+                        >
+                            {isCurrentAudio && isPlaying ? <Pause size={18} /> : <Play size={18} />}
+                            {isCurrentAudio && isPlaying ? 'Pause Audio' : 'Play Audio'}
+                        </button>
+                        <button
+                            className="btn-primary"
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                backgroundColor: isDownloaded ? 'var(--accent-light)' : 'var(--bg-primary)',
+                                color: isDownloaded ? 'var(--accent-primary)' : 'var(--text-primary)',
+                                border: '1px solid var(--border-color)',
+                                opacity: isDownloading ? 0.7 : 1
+                            }}
+                            onClick={handleDownloadSurah}
+                            disabled={isDownloading || isDownloaded}
+                        >
+                            {isDownloading ? 'Downloading...' : isDownloaded ? 'Offline Ready' : 'Download for Offline'}
+                        </button>
+                    </div>
                 </div>
             </div>
 

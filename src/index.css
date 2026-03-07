@@ -420,3 +420,40 @@ html[data-theme='dark'] tajweed:hover {
   border-radius: 3px;
   background: var(--bg-secondary);
 }
+
+/* Cinematic Surah Hero */
+.surah-hero-card {
+  position: relative;
+  border-radius: 28px;
+  text-align: center;
+  margin-bottom: 3rem;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-xl);
+  background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-surface) 100%);
+  isolation: isolate;
+}
+
+.surah-hero-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(var(--accent-primary) 1px, transparent 1px);
+  background-size: 24px 24px;
+  opacity: 0.15;
+  z-index: -1;
+  mask-image: radial-gradient(circle at center, black 40%, transparent 80%);
+  -webkit-mask-image: radial-gradient(circle at center, black 40%, transparent 80%);
+}
+
+.surah-bg-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 150%;
+  height: 150%;
+  background: radial-gradient(circle, var(--accent-light) 0%, transparent 60%);
+  opacity: 0.5;
+  z-index: -2;
+}
