@@ -1,7 +1,8 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useInView } from 'react-intersection-observer';
-import { Bookmark, Info, X } from 'lucide-react';
+import { Bookmark, Info, X, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAppStore } from '../store/useAppStore';
 
 const toArabicNumerals = (num) => {
     const arabicNumbers = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
@@ -21,12 +22,17 @@ const TAFSIR_NAMES = {
 const VerseRow = ({
     verse, readingMode, chapter, bookmark, setBookmark, addRecentlyRead,
     fontSize, translationFontSize, arabicFont, tajweedEnabled, tajweedMap, activeTafsir,
-    setActiveTafsir, isTafsirFetching, tafsirId, showPageDivider, tafsirs
+    setActiveTafsir, isTafsirFetching, tafsirId, showPageDivider, tafsirs,
+    isAudioPlaying
 }) => {
     const { ref, inView } = useInView({
         threshold: 0.5,
         triggerOnce: false,
     });
+
+    const { collections, addCollection, addToCollection } = useAppStore();
+    const [showCollectionModal, setShowCollectionModal] = useState(false);
+    const [newCollectionName, setNewCollectionName] = useState('');
 
     useEffect(() => {
         if (inView && chapter) {
@@ -79,7 +85,8 @@ const VerseRow = ({
                         marginRight: '0.4rem',
                         display: 'inline',
                         fontFamily: arabicFont,
-                        transition: 'background-color 0.5s ease',
+                        transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                        backgroundColor: isAudioPlaying ? 'var(--accent-light)' : 'transparent',
                         borderRadius: '8px',
                         padding: '0 0.25rem',
                         wordBreak: 'break-word'
@@ -136,12 +143,16 @@ const VerseRow = ({
                 id={`verse-${verse.verse_key}`}
                 className="verse-container"
                 style={{
-                    padding: '1.5rem 0',
+                    padding: '1.5rem',
+                    margin: '0.5rem 0',
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: '1rem',
-                    transition: 'background-color 0.5s ease',
-                    borderRadius: '12px'
+                    gap: '1.25rem',
+                    transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                    backgroundColor: isAudioPlaying ? 'var(--accent-light)' : 'transparent',
+                    transform: isAudioPlaying ? 'scale(1.01)' : 'scale(1)',
+                    boxShadow: isAudioPlaying ? '0 4px 12px rgba(0,0,0,0.05)' : 'none',
+                    borderRadius: '16px'
                 }}
             >
                 {/* Verse Actions Row — on top */}
@@ -152,21 +163,14 @@ const VerseRow = ({
                     gap: '0.75rem',
                     flexWrap: 'wrap'
                 }}>
-                    <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: `clamp(28px, ${fontSize * 0.3 + 1.2}rem, ${fontSize * 0.35 + 1.4}rem)`,
-                        height: `clamp(28px, ${fontSize * 0.3 + 1.2}rem, ${fontSize * 0.35 + 1.4}rem)`,
-                        borderRadius: '50%',
-                        border: '1.5px solid var(--accent-primary)',
-                        color: 'var(--accent-primary)',
-                        fontSize: `clamp(0.7rem, ${fontSize * 0.2 + 0.5}rem, ${fontSize * 0.25 + 0.7}rem)`,
-                        fontFamily: "'Amiri Quran', serif",
-                        flexShrink: 0
-                    }}>
-                        {toArabicNumerals(verse.verse_key.split(':')[1])}
-                    </div>
+                    <button
+                        className="btn-icon"
+                        style={{ color: 'var(--text-muted)', width: '32px', height: '32px' }}
+                        onClick={() => setShowCollectionModal(true)}
+                        title="Add to Collection"
+                    >
+                        <Plus size={18} />
+                    </button>
                     <button
                         className="btn-icon"
                         style={{ color: bookmark?.verseKey === verse.verse_key ? 'var(--accent-primary)' : 'var(--text-muted)', width: '32px', height: '32px' }}
@@ -216,6 +220,24 @@ const VerseRow = ({
                         ? <span dangerouslySetInnerHTML={{ __html: tajweedMap[verse.verse_key] }} />
                         : verse.text_uthmani
                     }
+                    {/* AYAH SIGN MOVED TO THE END */}
+                    <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: '1.4em',
+                        height: '1.4em',
+                        borderRadius: '50%',
+                        border: '1.5px solid var(--accent-primary)',
+                        color: 'var(--accent-primary)',
+                        fontSize: '0.45em',
+                        margin: '0 0.5rem',
+                        position: 'relative',
+                        bottom: '0.2em',
+                        fontFamily: "'Amiri Quran', serif"
+                    }}>
+                        {toArabicNumerals(verse.verse_key.split(':')[1])}
+                    </span>
                 </div>
 
                 <div className="text-english" style={{
@@ -258,6 +280,100 @@ const VerseRow = ({
                                 />
                             </div>
                         </motion.div>
+                    )}
+                </AnimatePresence>
+
+                {/* Collection Modal per verse (uses AnimatePresence) */}
+                <AnimatePresence>
+                    {showCollectionModal && (
+                        <>
+                            <motion.div
+                                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                                onClick={() => setShowCollectionModal(false)}
+                                style={{ position: 'fixed', inset: 0, zIndex: 1100, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
+                            />
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                                style={{
+                                    position: 'fixed',
+                                    top: 0, left: 0, right: 0, bottom: 0,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    zIndex: 1101,
+                                    pointerEvents: 'none'
+                                }}
+                            >
+                                <div style={{
+                                    width: 'calc(100vw - 2rem)',
+                                    maxWidth: '400px',
+                                    backgroundColor: 'var(--bg-surface)',
+                                    borderRadius: '24px',
+                                    padding: '1.5rem',
+                                    border: '1px solid var(--border-color)',
+                                    boxShadow: 'var(--shadow-xl)',
+                                    pointerEvents: 'auto'
+                                }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                                        <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-primary)', fontWeight: 700 }}>Add to Collection</h3>
+                                        <button className="btn-icon" onClick={() => setShowCollectionModal(false)}><X size={18} /></button>
+                                    </div>
+                                    <div style={{ maxHeight: '200px', overflowY: 'auto', marginBottom: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                        {(collections || []).map(c => {
+                                            const isInCollection = c.items?.some(item => item.verseKey === verse.verse_key);
+                                            return (
+                                                <button
+                                                    key={c.id}
+                                                    className="interactive-hover"
+                                                    onClick={() => {
+                                                        addToCollection(c.id, verse.verse_key, chapter ? chapter.name_simple : `Surah ${verse.verse_key.split(':')[0]}`, chapter?.id);
+                                                        setShowCollectionModal(false);
+                                                    }}
+                                                    style={{
+                                                        display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem 1rem',
+                                                        borderRadius: '12px', background: 'var(--bg-secondary)', border: 'none', cursor: 'pointer',
+                                                        color: 'var(--text-primary)', textAlign: 'left', fontWeight: isInCollection ? 700 : 500
+                                                    }}
+                                                >
+                                                    <span>{c.name}</span>
+                                                    {isInCollection && <span style={{ color: 'var(--accent-primary)', fontSize: '0.8rem' }}>Added</span>}
+                                                </button>
+                                            );
+                                        })}
+                                        {(!collections || collections.length === 0) && (
+                                            <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', textAlign: 'center', padding: '1rem 0' }}>No collections yet</div>
+                                        )}
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                        <input
+                                            type="text"
+                                            placeholder="New collection name..."
+                                            className="form-input"
+                                            value={newCollectionName}
+                                            onChange={(e) => setNewCollectionName(e.target.value)}
+                                            style={{ flex: 1 }}
+                                        />
+                                        <button
+                                            className="btn-primary"
+                                            style={{ padding: '0 1rem', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                            onClick={() => {
+                                                if (newCollectionName.trim()) {
+                                                    const newId = Date.now();
+                                                    addCollection(newCollectionName.trim(), newId);
+                                                    addToCollection(newId, verse.verse_key, chapter ? chapter.name_simple : `Surah ${verse.verse_key.split(':')[0]}`, chapter?.id);
+                                                    setNewCollectionName('');
+                                                    setShowCollectionModal(false);
+                                                }
+                                            }}
+                                        >
+                                            <Plus size={18} />
+                                        </button>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        </>
                     )}
                 </AnimatePresence>
             </div>

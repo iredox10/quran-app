@@ -126,12 +126,13 @@ export default function GlobalAudioPlayer() {
                         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                         style={{
                             position: 'fixed', bottom: '2rem', left: '50%',
-                            width: 'max-content', maxWidth: '96vw',
-                            padding: '0.75rem 1.25rem',
+                            transform: 'translateX(-50%)',
+                            width: 'calc(100vw - 1rem)', maxWidth: '480px',
+                            padding: '0.5rem 0.75rem',
                             backgroundColor: 'var(--glass-bg)',
                             backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
                             border: 'var(--glass-border)', zIndex: 900,
-                            display: 'flex', alignItems: 'center', gap: '1rem',
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem',
                             borderRadius: '9999px', boxShadow: 'var(--shadow-xl)'
                         }}
                     >
@@ -139,51 +140,56 @@ export default function GlobalAudioPlayer() {
 
                         {!hasAudio ? (
                             <>
-                                <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--bg-secondary)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
-                                    <Music size={16} />
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: 0 }}>
+                                    <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--bg-secondary)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
+                                        <Music size={16} />
+                                    </div>
+                                    <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                        Open a Surah & press Play
+                                    </span>
                                 </div>
-                                <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: 500, whiteSpace: 'nowrap' }}>
-                                    Open a Surah and press Play to start
-                                </span>
-                                <button className="btn-icon" onClick={() => setIsPlayerVisible(false)} style={{ width: '28px', height: '28px', color: 'var(--text-muted)' }}>
+                                <button className="btn-icon" onClick={() => setIsPlayerVisible(false)} style={{ width: '28px', height: '28px', color: 'var(--text-muted)', flexShrink: 0 }}>
                                     <X size={16} />
                                 </button>
                             </>
                         ) : (
                             <>
-                                {/* Track info */}
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                    <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'var(--accent-light)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent-primary)' }}>
-                                        <Music size={18} />
+                                {/* Track info (truncates if too long) */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: 0 }}>
+                                    <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--accent-light)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent-primary)' }}>
+                                        <Music size={16} />
                                     </div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', marginRight: '0.5rem', minWidth: '60px' }}>
-                                        <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.2 }}>{currentTitle}</span>
-                                        <span style={{ fontSize: '0.75rem', color: 'var(--accent-primary)', opacity: isPlaying ? 1 : 0.7 }}>
-                                            {isPlaying ? 'Playing...' : 'Paused'}
+                                    <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                                        <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                            {currentTitle}
+                                        </span>
+                                        <span style={{ fontSize: '0.7rem', color: 'var(--accent-primary)', opacity: isPlaying ? 1 : 0.7, whiteSpace: 'nowrap' }}>
+                                            {isPlaying ? 'Playing' : 'Paused'}
                                         </span>
                                     </div>
                                 </div>
 
                                 {/* Controls */}
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                    {audioPlaylist.length > 0 && <button className="btn-icon" onClick={handlePrev} style={{ width: '32px', height: '32px' }}><SkipBack size={18} /></button>}
-                                    <button className="btn-primary" style={{ width: '40px', height: '40px', padding: 0, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setIsPlaying(!isPlaying)}>
-                                        {isPlaying ? <Pause size={20} /> : <Play size={20} style={{ marginLeft: '4px' }} />}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.15rem', flexShrink: 0 }}>
+                                    {audioPlaylist.length > 0 && <button className="btn-icon" onClick={handlePrev} style={{ width: '28px', height: '28px' }}><SkipBack size={16} /></button>}
+                                    <button className="btn-primary" style={{ width: '36px', height: '36px', padding: 0, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 0.2rem' }} onClick={() => setIsPlaying(!isPlaying)}>
+                                        {isPlaying ? <Pause size={18} /> : <Play size={18} style={{ marginLeft: '2px' }} />}
                                     </button>
-                                    <button className="btn-icon" onClick={handleStop} style={{ width: '32px', height: '32px', color: 'var(--accent-primary)' }} title="Stop"><Square size={16} fill="currentColor" /></button>
-                                    {audioPlaylist.length > 0 && <button className="btn-icon" onClick={handleNext} style={{ width: '32px', height: '32px' }}><SkipForward size={18} /></button>}
+                                    <button className="btn-icon" onClick={handleStop} style={{ width: '28px', height: '28px', color: 'var(--accent-primary)' }} title="Stop"><Square size={14} fill="currentColor" /></button>
+                                    {audioPlaylist.length > 0 && <button className="btn-icon" onClick={handleNext} style={{ width: '28px', height: '28px' }}><SkipForward size={16} /></button>}
                                 </div>
 
-                                <div style={{ width: '1px', height: '24px', background: 'var(--border-color)', margin: '0 0.25rem' }} />
+                                <div style={{ width: '1px', height: '20px', background: 'var(--border-color)', margin: '0 0.15rem', flexShrink: 0 }} />
 
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                {/* Settings & Close */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.15rem', flexShrink: 0 }}>
                                     {audioPlaylist.length > 0 && (
-                                        <button className="btn-icon" onClick={() => setIsSettingsOpen(true)} style={{ width: '32px', height: '32px', color: isSettingsOpen ? 'var(--accent-primary)' : 'var(--text-muted)' }} title="Audio Settings">
-                                            <Settings2 size={18} />
+                                        <button className="btn-icon" onClick={() => setIsSettingsOpen(true)} style={{ width: '28px', height: '28px', color: isSettingsOpen ? 'var(--accent-primary)' : 'var(--text-muted)' }} title="Audio Settings">
+                                            <Settings2 size={16} />
                                         </button>
                                     )}
-                                    <button className="btn-icon" onClick={handleStop} style={{ width: '32px', height: '32px', color: 'var(--text-muted)' }} aria-label="Close Player">
-                                        <X size={18} />
+                                    <button className="btn-icon" onClick={handleStop} style={{ width: '28px', height: '28px', color: 'var(--text-muted)' }} aria-label="Close Player">
+                                        <X size={16} />
                                     </button>
                                 </div>
                             </>

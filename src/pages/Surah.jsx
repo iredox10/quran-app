@@ -118,6 +118,9 @@ export default function Surah() {
 
     // Check if the current playing playlist is from THIS surah
     const isCurrentSurahPlaying = audioPlaylist.length > 0 && audioPlaylist[0]?.surahId === id;
+    const activeAudioVerseKey = isPlaying && isCurrentSurahPlaying && audioPlaylist[audioTrackIndex]
+        ? audioPlaylist[audioTrackIndex].verseKey
+        : null;
 
     const handlePlayClick = () => {
         if (!verses || verses.length === 0) return;
@@ -423,6 +426,7 @@ export default function Surah() {
                                 tafsirId={tafsirId}
                                 showPageDivider={showPageDivider}
                                 tafsirs={tafsirs}
+                                isAudioPlaying={activeAudioVerseKey === verse.verse_key}
                             />
                         );
                     })}
