@@ -10,7 +10,7 @@ export const useAppStore = create(
             fontSize: 2, // 1, 2, 3, 4
             translationFontSize: 2, // 1, 2, 3, 4
             readingMode: false, // false = translation, true = arabic only
-            arabicFont: "'Scheherazade New', serif", // Default font
+            arabicFont: "'KFGQPC Hafs Uthmanic Script', 'Amiri Quran', serif", // Default font
             tajweedEnabled: false, // Show tajweed color rules
             tafsirId: 169, // Default: Ibn Kathir (Abridged) English
             offlineDataStatus: 'idle', // 'idle', 'syncing', 'completed', 'error'

@@ -18,6 +18,7 @@ const TRANSLATIONS = [
 ];
 
 const FONTS = [
+    { id: "'KFGQPC Hafs Uthmanic Script', 'Amiri Quran', serif", name: 'KFGQPC Hafs' },
     { id: "'KFGQPC Uthman Taha Naskh', 'Amiri Quran', serif", name: 'Uthman Taha Naskh' },
     { id: "'Amiri Quran', serif", name: 'Amiri Quran' },
     { id: "'Noto Naskh Arabic', serif", name: 'Noto Naskh Arabic' },

@@ -7,6 +7,13 @@
   font-style: normal;
 }
 
+@font-face {
+  font-family: 'KFGQPC Hafs Uthmanic Script';
+  src: url('https://raw.githubusercontent.com/quran/quran.com-frontend-next/master/public/fonts/quran/hafs/uthmanic_hafs/UthmanicHafs1Ver18.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+}
+
 :root {
   /* Nur Design Tokens */
   --color-ink: #2D2D2A;

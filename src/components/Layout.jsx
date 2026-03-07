@@ -15,6 +15,9 @@ export default function Layout() {
         incrementPlayTrigger
     } = useAppStore();
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+    const [showHeader, setShowHeader] = useState(true);
+    const [lastScrollY, setLastScrollY] = useState(0);
+
     const location = useLocation();
     const navigate = useNavigate();
 
@@ -25,14 +28,42 @@ export default function Layout() {
         document.documentElement.setAttribute('data-theme', theme);
     }, [theme]);
 
+    useEffect(() => {
+        const handleScroll = () => {
+            const currentScrollY = window.scrollY;
+
+            // If scrolling down and past 100px, hide header
+            if (currentScrollY > lastScrollY && currentScrollY > 100) {
+                setShowHeader(false);
+            } else {
+                // If scrolling up, show header
+                setShowHeader(true);
+            }
+
+            setLastScrollY(currentScrollY);
+        };
+
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, [lastScrollY]);
+
+    // Ensure header is visible when location changes
+    useEffect(() => {
+        setShowHeader(true);
+    }, [location.pathname]);
+
     return (
         <div className="layout" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
             <header style={{
-                position: 'sticky', top: 0, zIndex: 50,
+                position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1000,
                 backgroundColor: 'var(--bg-surface)',
-                backdropFilter: 'blur(16px)',
-                WebkitBackdropFilter: 'blur(16px)',
-                borderBottom: 'var(--glass-border)'
+                backdropFilter: 'blur(20px)',
+                WebkitBackdropFilter: 'blur(20px)',
+                borderBottom: 'var(--glass-border)',
+                transform: `translateY(${showHeader ? '0' : '-100%'})`,
+                transition: 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+                boxShadow: showHeader ? '0 4px 20px rgba(0,0,0,0.06)' : 'none',
+                pointerEvents: showHeader ? 'auto' : 'none',
             }}>
                 <div className="container" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '56px' }}>
 
@@ -170,7 +201,7 @@ export default function Layout() {
                 </div>
             </header>
 
-            <main style={{ flex: 1, padding: '2rem 0', paddingBottom: '90px' }}>
+            <main style={{ flex: 1, padding: '2rem 0', paddingTop: '56px', paddingBottom: '90px' }}>
                 <Outlet />
             </main>
 
