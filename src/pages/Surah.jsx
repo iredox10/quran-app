@@ -21,6 +21,7 @@ export default function Surah() {
         bookmark, setBookmark,
         addRecentlyRead,
         setAudio, setIsPlaying, currentAudioUrl, isPlaying,
+        audioPlaylist, setAudioPlaylist, audioTrackIndex,
         arabicFont, tajweedEnabled,
         tafsirId,
         downloadedSurahs, addDownloadedSurah,
@@ -105,14 +106,28 @@ export default function Surah() {
         }
     }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-    const handlePlayClick = () => {
-        if (!audioData) return;
+    const verses = versesResponse?.pages.flatMap(page => page.verses) || [];
 
-        if (currentAudioUrl === audioData.audio_url) {
+    // Check if the current playing playlist is from THIS surah
+    const isCurrentSurahPlaying = audioPlaylist.length > 0 && audioPlaylist[0]?.surahId === id;
+
+    const handlePlayClick = () => {
+        if (!verses || verses.length === 0) return;
+
+        if (isCurrentSurahPlaying) {
             setIsPlaying(!isPlaying);
         } else {
-            setAudio(audioData.audio_url);
-            setIsPlaying(true);
+            const playlist = verses.map(v => ({
+                surahId: id,
+                verseKey: v.verse_key,
+                verseNumber: v.verse_number,
+                url: v.audio?.url ? `https://verses.quran.com/${v.audio.url}` : null
+            })).filter(v => v.url);
+
+            if (playlist.length > 0) {
+                setAudioPlaylist(playlist, 0);
+                setIsPlaying(true);
+            }
         }
     };
 
@@ -171,7 +186,7 @@ export default function Surah() {
 
     const isCurrentAudio = currentAudioUrl === audioData?.audio_url;
 
-    const verses = versesResponse?.pages.flatMap(page => page.verses) || [];
+    // Removed duplicate verses declaration
     const hasScrolledRef = React.useRef(null);
 
     useEffect(() => {
@@ -180,7 +195,7 @@ export default function Surah() {
 
         // Ensure we only jump to the verse once per unique verseKey, not continuously when scrolling
         if (verseKey && verses.length > 0 && hasScrolledRef.current !== verseKey) {
-            const element = document.getElementById(`verse-${verseKey}`);
+            const element = document.getElementById(`verse - ${verseKey}`);
             if (element) {
                 hasScrolledRef.current = verseKey; // Track that we've found and scrolled to it
                 element.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -195,10 +210,10 @@ export default function Surah() {
 
     const swipeHandlers = useSwipeable({
         onSwipedLeft: () => {
-            if (parseInt(id) < 114) navigate(`/surah/${parseInt(id) + 1}`);
+            if (parseInt(id) < 114) navigate(`/ surah / ${parseInt(id) + 1} `);
         },
         onSwipedRight: () => {
-            if (parseInt(id) > 1) navigate(`/surah/${parseInt(id) - 1}`);
+            if (parseInt(id) > 1) navigate(`/ surah / ${parseInt(id) - 1} `);
         },
         preventScrollOnSwipe: false,
         trackMouse: false
@@ -219,8 +234,9 @@ export default function Surah() {
         <div className="container" {...swipeHandlers}>
             <Helmet>
                 <title>{chapter ? `${chapter.name_simple} - The Noble Qur'an` : "Surah - The Noble Qur'an"}</title>
-                <meta name="description" content={`Read and listen to ${chapter?.name_simple} (${chapter?.translated_name.name}) online with translations and Tafsir.`} />
-            </Helmet>
+                < meta name="description" content={`Read and listen to ${chapter?.name_simple} (${chapter?.translated_name.name}) online with translations and Tafsir.`
+                } />
+            </Helmet >
 
             <Link
                 to="/"
@@ -570,6 +586,6 @@ export default function Surah() {
                     </>
                 )}
             </AnimatePresence>
-        </div>
+        </div >
     );
 }

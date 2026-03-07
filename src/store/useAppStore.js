@@ -86,9 +86,23 @@ export const useAppStore = create(
                 return { recentlyRead: newList };
             }),
 
-            // Audio State (transient)
-            currentAudioUrl: null,
+            // Advanced Audio State
+            currentAudioUrl: null, // Legacy single file support
+            audioPlaylist: [], // Array of { url, verseKey, verseNumber }
+            audioTrackIndex: 0,
             isPlaying: false,
+
+            // Advanced Audio Settings (Persisted)
+            audioSettings: {
+                startRange: null,
+                endRange: null,
+                reciterId: 7,
+                repeatSelection: 1, // 1 = play once, -1 = infinite loop
+                repeatAya: 1, // 1 = play once, -1 = infinite
+                delayBetweenAyas: 0, // seconds
+                playbackSpeed: 1.0,
+                scrollWhilePlaying: true,
+            },
 
             // Auto-scroll (transient)
             autoScroll: false,
@@ -99,8 +113,18 @@ export const useAppStore = create(
             navHeaderTitle: null,
             setNavHeaderTitle: (title) => set({ navHeaderTitle: title }),
 
-            setAudio: (url) => set({ currentAudioUrl: url }),
+            setAudio: (url) => set({ currentAudioUrl: url, audioPlaylist: [] }),
+            setAudioPlaylist: (playlist, startIndex = 0) => set({
+                audioPlaylist: playlist,
+                audioTrackIndex: startIndex,
+                currentAudioUrl: null,
+            }),
+            setAudioTrackIndex: (index) => set({ audioTrackIndex: index }),
+            updateAudioSettings: (newSettings) => set((state) => ({
+                audioSettings: { ...state.audioSettings, ...newSettings }
+            })),
             setIsPlaying: (playing) => set({ isPlaying: playing }),
+            stopAudio: () => set({ isPlaying: false, currentAudioUrl: null, audioPlaylist: [] }),
         }),
         {
             name: 'quran-app-storage',
@@ -119,7 +143,12 @@ export const useAppStore = create(
                 collections: state.collections || [],
                 recentlyRead: state.recentlyRead || [],
                 offlineDataStatus: state.offlineDataStatus,
-                downloadedSurahs: state.downloadedSurahs || []
+                downloadedSurahs: state.downloadedSurahs || [],
+                audioSettings: state.audioSettings || {
+                    startRange: null, endRange: null, reciterId: 7,
+                    repeatSelection: 1, repeatAya: 1, delayBetweenAyas: 0,
+                    playbackSpeed: 1.0, scrollWhilePlaying: true
+                }
             }), // Persist settings and user data
         }
     )
