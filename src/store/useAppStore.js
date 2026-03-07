@@ -106,8 +106,10 @@ export const useAppStore = create(
 
             // Auto-scroll (transient)
             autoScroll: false,
+            isAutoScrollPaused: false,
             autoScrollSpeed: 2, // 1-5
-            setAutoScroll: (val) => set({ autoScroll: val }),
+            setAutoScroll: (val) => set({ autoScroll: val, isAutoScrollPaused: false }),
+            setIsAutoScrollPaused: (val) => set({ isAutoScrollPaused: val }),
             setAutoScrollSpeed: (speed) => set({ autoScrollSpeed: speed }),
 
             navHeaderTitle: null,

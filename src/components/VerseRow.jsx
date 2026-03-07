@@ -68,7 +68,7 @@ const VerseRow = ({
 
     if (readingMode) {
         return (
-            <React.Fragment>
+            <React.Fragment key={`reading-${verse.verse_key}`}>
                 {pageDivider}
                 <span
                     ref={ref}
@@ -112,7 +112,7 @@ const VerseRow = ({
     }
 
     return (
-        <React.Fragment>
+        <React.Fragment key={`translation-${verse.verse_key}`}>
             {pageDivider}
             {/* Ayah Divider */}
             <div style={{

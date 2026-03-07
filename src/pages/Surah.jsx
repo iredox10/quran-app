@@ -26,7 +26,8 @@ export default function Surah() {
         tafsirId,
         downloadedSurahs, addDownloadedSurah,
         setNavHeaderTitle,
-        autoScroll, setAutoScroll, autoScrollSpeed, setAutoScrollSpeed
+        autoScroll, setAutoScroll, autoScrollSpeed, setAutoScrollSpeed,
+        isAutoScrollPaused, setIsAutoScrollPaused
     } = useAppStore();
 
     const { data: chapter, isLoading: isChapterLoading } = useQuery({
@@ -163,7 +164,9 @@ export default function Surah() {
         const pxPerFrame = speedMap[autoScrollSpeed] || 1.0;
 
         const tick = () => {
-            window.scrollBy(0, pxPerFrame);
+            if (!isAutoScrollPaused) {
+                window.scrollBy(0, pxPerFrame);
+            }
             // Stop at bottom
             if ((window.innerHeight + window.scrollY) >= document.body.scrollHeight - 10) {
                 setAutoScroll(false);
@@ -177,7 +180,33 @@ export default function Surah() {
         return () => {
             if (scrollRafRef.current) cancelAnimationFrame(scrollRafRef.current);
         };
-    }, [autoScroll, autoScrollSpeed, setAutoScroll]);
+    }, [autoScroll, autoScrollSpeed, setAutoScroll, isAutoScrollPaused]);
+
+    // Calculate Estimated Time Remaining for Auto Scroll
+    const [etaMinutes, setEtaMinutes] = useState(0);
+
+    useEffect(() => {
+        if (!autoScroll) return;
+
+        const updateEta = () => {
+            const speedMap = { 1: 0.3, 2: 0.6, 3: 1.0, 4: 1.8, 5: 3.0 };
+            const pixelsPerFrame = speedMap[autoScrollSpeed] || 1.0;
+            const pixelsPerSecond = pixelsPerFrame * 60; // Assuming ~60fps
+            const distanceRemaining = document.body.scrollHeight - (window.scrollY + window.innerHeight);
+
+            if (distanceRemaining > 0 && pixelsPerSecond > 0) {
+                const secondsRemaining = distanceRemaining / pixelsPerSecond;
+                setEtaMinutes(Math.ceil(secondsRemaining / 60));
+            } else {
+                setEtaMinutes(0);
+            }
+        };
+
+        const interval = setInterval(updateEta, 2000);
+        updateEta(); // Initial call
+
+        return () => clearInterval(interval);
+    }, [autoScroll, autoScrollSpeed]);
 
     // Stop auto-scroll when leaving the page
     useEffect(() => {
@@ -449,9 +478,9 @@ export default function Surah() {
             <AnimatePresence>
                 {autoScroll && (
                     <motion.div
-                        initial={{ opacity: 0, y: 40 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 40 }}
+                        initial={{ opacity: 0, y: 40, x: '-50%' }}
+                        animate={{ opacity: 1, y: 0, x: '-50%' }}
+                        exit={{ opacity: 0, y: 40, x: '-50%' }}
                         transition={{ duration: 0.25 }}
                         style={{
                             position: 'fixed',
@@ -460,50 +489,107 @@ export default function Surah() {
                             transform: 'translateX(-50%)',
                             zIndex: 100,
                             display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                        }}
+                    >
+                        {/* ETA Badge */}
+                        <div style={{
+                            background: 'var(--bg-surface)',
+                            color: 'var(--text-secondary)',
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                            padding: '0.25rem 0.75rem',
+                            borderRadius: '9999px',
+                            border: '1px solid var(--border-color)',
+                            boxShadow: 'var(--shadow-sm)'
+                        }}>
+                            ETA: {etaMinutes > 0 ? `${etaMinutes} min` : '< 1 min'}
+                        </div>
+
+                        {/* Controls Panel */}
+                        <div style={{
+                            display: 'flex',
                             alignItems: 'center',
                             gap: '0.75rem',
-                            padding: '0.6rem 1.25rem',
+                            padding: '0.6rem 1rem',
                             borderRadius: '9999px',
                             background: 'var(--glass-bg)',
                             backdropFilter: 'blur(16px)',
                             WebkitBackdropFilter: 'blur(16px)',
                             border: 'var(--glass-border)',
-                            boxShadow: 'var(--shadow-lg)'
-                        }}
-                    >
-                        <ChevronsDown size={16} color="var(--accent-primary)" />
-                        <button
-                            className="btn-icon"
-                            style={{ width: '28px', height: '28px', border: '1px solid var(--border-color)', borderRadius: '50%' }}
-                            onClick={() => setAutoScrollSpeed(Math.max(1, autoScrollSpeed - 1))}
-                        >
-                            <Minus size={14} />
-                        </button>
-                        <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-primary)', minWidth: '50px', textAlign: 'center' }}>
-                            {autoScrollSpeed}x
-                        </span>
-                        <button
-                            className="btn-icon"
-                            style={{ width: '28px', height: '28px', border: '1px solid var(--border-color)', borderRadius: '50%' }}
-                            onClick={() => setAutoScrollSpeed(Math.min(5, autoScrollSpeed + 1))}
-                        >
-                            <Plus size={14} />
-                        </button>
-                        <button
-                            onClick={() => setAutoScroll(false)}
-                            style={{
-                                padding: '0.3rem 0.75rem',
-                                borderRadius: '9999px',
-                                background: 'var(--accent-primary)',
-                                color: 'white',
-                                fontSize: '0.8rem',
-                                fontWeight: 600,
-                                border: 'none',
-                                cursor: 'pointer'
-                            }}
-                        >
-                            Stop
-                        </button>
+                            boxShadow: 'var(--shadow-xl)'
+                        }}>
+                            {/* Manual scroll buttons */}
+                            <div style={{ display: 'flex', gap: '0.25rem' }}>
+                                <button
+                                    className="btn-icon"
+                                    style={{ width: '28px', height: '28px', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                                    onClick={() => window.scrollBy({ top: -200, behavior: 'smooth' })}
+                                >
+                                    <ArrowLeft size={14} style={{ transform: 'rotate(90deg)' }} />
+                                </button>
+                                <button
+                                    className="btn-icon"
+                                    style={{ width: '28px', height: '28px', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                                    onClick={() => window.scrollBy({ top: 200, behavior: 'smooth' })}
+                                >
+                                    <ArrowRight size={14} style={{ transform: 'rotate(90deg)' }} />
+                                </button>
+                            </div>
+
+                            <div style={{ width: '1px', height: '24px', background: 'var(--border-color)' }} />
+
+                            {/* Speed Control & Pause */}
+                            <button
+                                className="btn-icon"
+                                style={{ width: '28px', height: '28px', border: '1px solid var(--border-color)', borderRadius: '50%' }}
+                                onClick={() => setAutoScrollSpeed(Math.max(1, autoScrollSpeed - 1))}
+                            >
+                                <Minus size={14} />
+                            </button>
+                            <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-primary)', minWidth: '40px', textAlign: 'center' }}>
+                                {autoScrollSpeed}x
+                            </span>
+                            <button
+                                className="btn-icon"
+                                style={{ width: '28px', height: '28px', border: '1px solid var(--border-color)', borderRadius: '50%' }}
+                                onClick={() => setAutoScrollSpeed(Math.min(5, autoScrollSpeed + 1))}
+                            >
+                                <Plus size={14} />
+                            </button>
+
+                            <button
+                                className="btn-icon"
+                                style={{
+                                    width: '32px', height: '32px',
+                                    background: isAutoScrollPaused ? 'var(--accent-light)' : 'transparent',
+                                    color: 'var(--accent-primary)'
+                                }}
+                                onClick={() => setIsAutoScrollPaused(!isAutoScrollPaused)}
+                            >
+                                {isAutoScrollPaused ? <Play size={16} fill="currentColor" /> : <Pause size={16} fill="currentColor" />}
+                            </button>
+
+                            <div style={{ width: '1px', height: '24px', background: 'var(--border-color)' }} />
+
+                            <button
+                                onClick={() => setAutoScroll(false)}
+                                style={{
+                                    width: '32px', height: '32px',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    borderRadius: '50%',
+                                    background: 'rgba(239, 68, 68, 0.1)',
+                                    color: 'rgb(239, 68, 68)',
+                                    border: 'none',
+                                    cursor: 'pointer'
+                                }}
+                                title="Stop Scroll"
+                            >
+                                <X size={16} />
+                            </button>
+                        </div>
                     </motion.div>
                 )}
             </AnimatePresence>

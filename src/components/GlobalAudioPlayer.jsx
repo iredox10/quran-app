@@ -276,7 +276,9 @@ export default function GlobalAudioPlayer() {
                             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
                             style={{
                                 position: 'fixed', bottom: '5rem', left: '50%',
-                                transform: 'translateX(-50%)', width: '90%', maxWidth: '400px',
+                                transform: 'translateX(-50%)',
+                                width: 'calc(100% - 2rem)', /* Mobile offset protection */
+                                maxWidth: '400px',
                                 background: 'var(--bg-surface)', zIndex: 999,
                                 borderRadius: '24px', padding: '1.5rem',
                                 boxShadow: 'var(--shadow-xl)', border: '1px solid var(--border-color)',
