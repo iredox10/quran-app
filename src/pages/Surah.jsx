@@ -478,6 +478,85 @@ export default function Surah() {
                     </motion.div>
                 )}
             </AnimatePresence>
+            {/* Tafsir Bottom Drawer */}
+            <AnimatePresence>
+                {activeTafsir && (
+                    <>
+                        {/* Overlay */}
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setActiveTafsir(null)}
+                            style={{
+                                position: 'fixed',
+                                inset: 0,
+                                background: 'rgba(0, 0, 0, 0.5)',
+                                zIndex: 999,
+                                backdropFilter: 'blur(4px)',
+                                WebkitBackdropFilter: 'blur(4px)'
+                            }}
+                        />
+                        {/* Drawer */}
+                        <motion.div
+                            initial={{ y: '100%' }}
+                            animate={{ y: 0 }}
+                            exit={{ y: '100%' }}
+                            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                            style={{
+                                position: 'fixed',
+                                bottom: 0,
+                                left: 0,
+                                right: 0,
+                                background: 'var(--bg-surface)',
+                                zIndex: 1000,
+                                borderTopLeftRadius: '24px',
+                                borderTopRightRadius: '24px',
+                                padding: '1.5rem 1.5rem 2rem 1.5rem',
+                                boxShadow: '0 -10px 40px rgba(0, 0, 0, 0.1)',
+                                maxHeight: '80vh',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                borderTop: '1px solid var(--border-color)'
+                            }}
+                        >
+                            <div style={{
+                                width: '40px',
+                                height: '5px',
+                                background: 'var(--border-color)',
+                                borderRadius: '3px',
+                                margin: '0 auto 1.5rem auto'
+                            }} />
+
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                                <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+                                    Tafsir (Ayah {activeTafsir.verse_key.split(':')[1]})
+                                </h3>
+                                <button
+                                    className="btn-icon"
+                                    onClick={() => setActiveTafsir(null)}
+                                    style={{ background: 'var(--bg-secondary)' }}
+                                    aria-label="Close Tafsir"
+                                >
+                                    <X size={20} />
+                                </button>
+                            </div>
+
+                            <div
+                                className="tafsir-content"
+                                style={{
+                                    overflowY: 'auto',
+                                    paddingRight: '0.5rem',
+                                    color: 'var(--text-secondary)',
+                                    lineHeight: 1.8,
+                                    fontSize: '1rem'
+                                }}
+                                dangerouslySetInnerHTML={{ __html: activeTafsir.text }}
+                            />
+                        </motion.div>
+                    </>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
