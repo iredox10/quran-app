@@ -28,25 +28,23 @@ export default function GlobalAudioPlayer() {
         ? `Ayah ${audioPlaylist[audioTrackIndex]?.verseNumber || '...'}`
         : 'Recitation';
 
-    // Auto-scroll: highlight & scroll to current verse while playing
+    // Scroll to & highlight current verse while playing
     useEffect(() => {
         if (isPlaying && audioSettings.scrollWhilePlaying && audioPlaylist.length > 0) {
             const currentVerse = audioPlaylist[audioTrackIndex];
             if (currentVerse?.verseKey) {
-                const element = document.getElementById(`verse-${currentVerse.verseKey}`);
-                if (element) {
-                    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    element.style.transition = 'background-color 0.5s';
-                    element.style.backgroundColor = 'var(--accent-light)';
-                    setTimeout(() => {
-                        if (element) element.style.backgroundColor = 'transparent';
-                    }, 2000);
+                const el = document.getElementById(`verse-${currentVerse.verseKey}`);
+                if (el) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    el.style.transition = 'background-color 0.5s';
+                    el.style.backgroundColor = 'var(--accent-light)';
+                    setTimeout(() => { if (el) el.style.backgroundColor = 'transparent'; }, 2000);
                 }
             }
         }
     }, [audioTrackIndex, isPlaying, audioPlaylist, audioSettings.scrollWhilePlaying]);
 
-    // Auto-show the player only when playback STARTS (false → true transition)
+    // Auto-show player only on false→true transition
     useEffect(() => {
         const wasPlaying = prevIsPlayingRef.current;
         prevIsPlayingRef.current = isPlaying;
@@ -55,55 +53,44 @@ export default function GlobalAudioPlayer() {
         }
     }, [isPlaying, hasAudio, setIsPlayerVisible]);
 
-    // Sync playback with audio element
+    // Sync with audio element
     useEffect(() => {
-        if (audioRef.current) {
-            audioRef.current.playbackRate = audioSettings.playbackSpeed;
-            if (isPlaying && activeUrl) {
-                if (delayTimeoutRef.current) clearTimeout(delayTimeoutRef.current);
-                audioRef.current.play().catch(e => {
-                    console.error("Audio playback failed", e);
-                    setIsPlaying(false);
-                });
-            } else {
-                audioRef.current.pause();
-            }
+        if (!audioRef.current) return;
+        audioRef.current.playbackRate = audioSettings.playbackSpeed;
+        if (isPlaying && activeUrl) {
+            if (delayTimeoutRef.current) clearTimeout(delayTimeoutRef.current);
+            audioRef.current.play().catch(e => { console.error('Audio failed', e); setIsPlaying(false); });
+        } else {
+            audioRef.current.pause();
         }
     }, [isPlaying, activeUrl, audioSettings.playbackSpeed]);
 
-    const handleStop = () => {
-        stopAudio();
-        setIsPlayerVisible(false);
-        setIsSettingsOpen(false);
-    };
+    const handleStop = () => { stopAudio(); setIsPlayerVisible(false); setIsSettingsOpen(false); };
 
     const handleEnded = () => {
         if (currentAudioUrl) { setIsPlaying(false); return; }
-        if (audioPlaylist.length === 0) return;
+        if (!audioPlaylist.length) return;
 
-        const playNext = (index) => {
+        const playNext = (idx) => {
             if (audioSettings.delayBetweenAyas > 0) {
                 audioRef.current?.pause();
-                delayTimeoutRef.current = setTimeout(() => setAudioTrackIndex(index), audioSettings.delayBetweenAyas * 1000);
-            } else {
-                setAudioTrackIndex(index);
-            }
+                delayTimeoutRef.current = setTimeout(() => setAudioTrackIndex(idx), audioSettings.delayBetweenAyas * 1000);
+            } else { setAudioTrackIndex(idx); }
         };
 
-        // Aya repeat
         if (audioSettings.repeatAya === -1 || currentAyaLoopCount + 1 < audioSettings.repeatAya) {
-            setCurrentAyaLoopCount(prev => prev + 1);
+            setCurrentAyaLoopCount(p => p + 1);
             if (audioRef.current) { audioRef.current.currentTime = 0; audioRef.current.play(); }
             return;
         }
 
         setCurrentAyaLoopCount(0);
-        const endRange = audioSettings.endRange !== null ? audioSettings.endRange : audioPlaylist.length - 1;
-        const startRange = audioSettings.startRange !== null ? audioSettings.startRange : 0;
+        const endRange = audioSettings.endRange ?? audioPlaylist.length - 1;
+        const startRange = audioSettings.startRange ?? 0;
 
         if (audioTrackIndex >= endRange) {
             if (audioSettings.repeatSelection === -1 || currentSelectionLoopCount + 1 < audioSettings.repeatSelection) {
-                setCurrentSelectionLoopCount(prev => prev + 1);
+                setCurrentSelectionLoopCount(p => p + 1);
                 playNext(startRange);
             } else {
                 setCurrentSelectionLoopCount(0);
@@ -116,15 +103,13 @@ export default function GlobalAudioPlayer() {
     };
 
     const handleNext = () => {
-        if (audioPlaylist.length === 0) return;
-        const endRange = audioSettings.endRange !== null ? audioSettings.endRange : audioPlaylist.length - 1;
-        if (audioTrackIndex < endRange) { setAudioTrackIndex(audioTrackIndex + 1); setCurrentAyaLoopCount(0); }
+        const end = audioSettings.endRange ?? audioPlaylist.length - 1;
+        if (audioTrackIndex < end) { setAudioTrackIndex(audioTrackIndex + 1); setCurrentAyaLoopCount(0); }
     };
 
     const handlePrev = () => {
-        if (audioPlaylist.length === 0) return;
-        const startRange = audioSettings.startRange !== null ? audioSettings.startRange : 0;
-        if (audioTrackIndex > startRange) { setAudioTrackIndex(audioTrackIndex - 1); setCurrentAyaLoopCount(0); }
+        const start = audioSettings.startRange ?? 0;
+        if (audioTrackIndex > start) { setAudioTrackIndex(audioTrackIndex - 1); setCurrentAyaLoopCount(0); }
         else if (audioRef.current) audioRef.current.currentTime = 0;
     };
 
@@ -144,8 +129,7 @@ export default function GlobalAudioPlayer() {
                             width: 'max-content', maxWidth: '96vw',
                             padding: '0.75rem 1.25rem',
                             backgroundColor: 'var(--glass-bg)',
-                            backdropFilter: 'blur(16px)',
-                            WebkitBackdropFilter: 'blur(16px)',
+                            backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
                             border: 'var(--glass-border)', zIndex: 900,
                             display: 'flex', alignItems: 'center', gap: '1rem',
                             borderRadius: '9999px', boxShadow: 'var(--shadow-xl)'
@@ -154,14 +138,8 @@ export default function GlobalAudioPlayer() {
                         {hasAudio && <audio ref={audioRef} src={activeUrl || ''} onEnded={handleEnded} />}
 
                         {!hasAudio ? (
-                            // No audio loaded — show prompt
                             <>
-                                <div style={{
-                                    width: '32px', height: '32px', borderRadius: '50%',
-                                    background: 'var(--bg-secondary)', flexShrink: 0,
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    color: 'var(--text-muted)'
-                                }}>
+                                <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--bg-secondary)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
                                     <Music size={16} />
                                 </div>
                                 <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: 500, whiteSpace: 'nowrap' }}>
@@ -172,16 +150,10 @@ export default function GlobalAudioPlayer() {
                                 </button>
                             </>
                         ) : (
-                            // Audio loaded — full player controls
                             <>
                                 {/* Track info */}
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                    <div style={{
-                                        width: '36px', height: '36px', borderRadius: '50%',
-                                        background: 'var(--accent-light)', flexShrink: 0,
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        color: 'var(--accent-primary)'
-                                    }}>
+                                    <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'var(--accent-light)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent-primary)' }}>
                                         <Music size={18} />
                                     </div>
                                     <div style={{ display: 'flex', flexDirection: 'column', marginRight: '0.5rem', minWidth: '60px' }}>
@@ -192,41 +164,21 @@ export default function GlobalAudioPlayer() {
                                     </div>
                                 </div>
 
-                                {/* Playback controls */}
+                                {/* Controls */}
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                    {audioPlaylist.length > 0 && (
-                                        <button className="btn-icon" onClick={handlePrev} style={{ width: '32px', height: '32px' }}>
-                                            <SkipBack size={18} />
-                                        </button>
-                                    )}
-                                    <button
-                                        className="btn-primary"
-                                        style={{ width: '40px', height: '40px', padding: 0, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                                        onClick={() => setIsPlaying(!isPlaying)}
-                                    >
+                                    {audioPlaylist.length > 0 && <button className="btn-icon" onClick={handlePrev} style={{ width: '32px', height: '32px' }}><SkipBack size={18} /></button>}
+                                    <button className="btn-primary" style={{ width: '40px', height: '40px', padding: 0, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setIsPlaying(!isPlaying)}>
                                         {isPlaying ? <Pause size={20} /> : <Play size={20} style={{ marginLeft: '4px' }} />}
                                     </button>
-                                    <button className="btn-icon" onClick={handleStop} style={{ width: '32px', height: '32px', color: 'var(--accent-primary)' }} title="Stop">
-                                        <Square size={16} fill="currentColor" />
-                                    </button>
-                                    {audioPlaylist.length > 0 && (
-                                        <button className="btn-icon" onClick={handleNext} style={{ width: '32px', height: '32px' }}>
-                                            <SkipForward size={18} />
-                                        </button>
-                                    )}
+                                    <button className="btn-icon" onClick={handleStop} style={{ width: '32px', height: '32px', color: 'var(--accent-primary)' }} title="Stop"><Square size={16} fill="currentColor" /></button>
+                                    {audioPlaylist.length > 0 && <button className="btn-icon" onClick={handleNext} style={{ width: '32px', height: '32px' }}><SkipForward size={18} /></button>}
                                 </div>
 
                                 <div style={{ width: '1px', height: '24px', background: 'var(--border-color)', margin: '0 0.25rem' }} />
 
-                                {/* Settings + Close */}
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                                     {audioPlaylist.length > 0 && (
-                                        <button
-                                            className="btn-icon"
-                                            onClick={() => setIsSettingsOpen(true)}
-                                            style={{ width: '32px', height: '32px', color: isSettingsOpen ? 'var(--accent-primary)' : 'var(--text-muted)' }}
-                                            title="Audio Settings"
-                                        >
+                                        <button className="btn-icon" onClick={() => setIsSettingsOpen(true)} style={{ width: '32px', height: '32px', color: isSettingsOpen ? 'var(--accent-primary)' : 'var(--text-muted)' }} title="Audio Settings">
                                             <Settings2 size={18} />
                                         </button>
                                     )}
@@ -240,94 +192,114 @@ export default function GlobalAudioPlayer() {
                 )}
             </AnimatePresence>
 
-            {/* ── Audio Settings Drawer ── */}
+            {/* ── Audio Settings Bottom Drawer (shown during playback) ── */}
             <AnimatePresence>
                 {isSettingsOpen && (
                     <>
+                        {/* Backdrop */}
                         <motion.div
                             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                             onClick={() => setIsSettingsOpen(false)}
-                            style={{ position: 'fixed', inset: 0, zIndex: 998, background: 'rgba(0,0,0,0.5)' }}
+                            style={{ position: 'fixed', inset: 0, zIndex: 998, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
                         />
+                        {/* Bottom Drawer — outer row handles centering via flex */}
                         <motion.div
-                            initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
-                            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                            initial={{ y: '100%' }}
+                            animate={{ y: 0 }}
+                            exit={{ y: '100%' }}
+                            transition={{ type: 'spring', damping: 28, stiffness: 280 }}
                             style={{
-                                position: 'fixed', bottom: '5rem', left: '50%',
-                                transform: 'translateX(-50%)',
-                                width: 'calc(100% - 2rem)', maxWidth: '400px',
-                                background: 'var(--bg-surface)', zIndex: 999,
-                                borderRadius: '24px', padding: '1.5rem',
-                                boxShadow: 'var(--shadow-xl)', border: '1px solid var(--border-color)',
-                                display: 'flex', flexDirection: 'column', gap: '1.5rem',
+                                position: 'fixed',
+                                bottom: 0, left: 0, right: 0,
+                                display: 'flex',
+                                justifyContent: 'center',
+                                zIndex: 999,
                             }}
                         >
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <h3 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '1.1rem', fontWeight: 700 }}>Audio Settings</h3>
-                                <button className="btn-icon" onClick={() => setIsSettingsOpen(false)} style={{ background: 'var(--bg-secondary)', width: '32px', height: '32px' }}>
-                                    <X size={16} />
-                                </button>
-                            </div>
-
-                            <div style={{ display: 'grid', gap: '1rem' }}>
-                                {/* Range */}
-                                <div style={{ display: 'flex', gap: '1rem' }}>
-                                    <div style={{ flex: 1 }}>
-                                        <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Start Ayah</label>
-                                        <select className="form-input" value={audioSettings.startRange ?? 0} onChange={(e) => updateAudioSettings({ startRange: Number(e.target.value) })}>
-                                            {audioPlaylist.map((v, i) => <option key={v.verseKey || i} value={i}>{v.verseKey}</option>)}
-                                        </select>
-                                    </div>
-                                    <div style={{ flex: 1 }}>
-                                        <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>End Ayah</label>
-                                        <select className="form-input" value={audioSettings.endRange ?? audioPlaylist.length - 1} onChange={(e) => updateAudioSettings({ endRange: Number(e.target.value) })}>
-                                            {audioPlaylist.map((v, i) => <option key={v.verseKey || i} value={i}>{v.verseKey}</option>)}
-                                        </select>
-                                    </div>
+                            {/* Inner card */}
+                            <div style={{
+                                width: '100%', maxWidth: '520px',
+                                maxHeight: '85vh',
+                                display: 'flex', flexDirection: 'column',
+                                background: 'var(--bg-surface)',
+                                borderTopLeftRadius: '24px', borderTopRightRadius: '24px',
+                                boxShadow: '0 -8px 40px rgba(0,0,0,0.25)',
+                                border: '1px solid var(--border-color)',
+                                borderBottom: 'none',
+                                overflow: 'hidden',
+                            }}>
+                                {/* Drag handle */}
+                                <div style={{ display: 'flex', justifyContent: 'center', paddingTop: '0.75rem', paddingBottom: '0.25rem', flexShrink: 0 }}>
+                                    <div style={{ width: '40px', height: '5px', borderRadius: '9999px', background: 'var(--border-color)' }} />
                                 </div>
 
-                                {/* Repeats */}
-                                <div style={{ display: 'flex', gap: '1rem' }}>
-                                    <div style={{ flex: 1 }}>
-                                        <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Repeat Ayah</label>
-                                        <select className="form-input" value={audioSettings.repeatAya} onChange={(e) => updateAudioSettings({ repeatAya: Number(e.target.value) })}>
-                                            {REPEAT_OPTIONS.map(opt => <option key={opt} value={opt}>{opt === -1 ? 'Infinite' : `${opt}x`}</option>)}
-                                        </select>
-                                    </div>
-                                    <div style={{ flex: 1 }}>
-                                        <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Repeat Selection</label>
-                                        <select className="form-input" value={audioSettings.repeatSelection} onChange={(e) => updateAudioSettings({ repeatSelection: Number(e.target.value) })}>
-                                            {REPEAT_OPTIONS.map(opt => <option key={opt} value={opt}>{opt === -1 ? 'Infinite' : `${opt}x`}</option>)}
-                                        </select>
-                                    </div>
+                                {/* Header */}
+                                <div style={{ padding: '0 1.5rem 1rem', flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <h3 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '1.1rem', fontWeight: 700 }}>Audio Settings</h3>
+                                    <button className="btn-icon" onClick={() => setIsSettingsOpen(false)} style={{ background: 'var(--bg-secondary)', width: '32px', height: '32px' }}>
+                                        <X size={16} />
+                                    </button>
                                 </div>
 
-                                {/* Advanced */}
-                                <div style={{ display: 'flex', gap: '1rem' }}>
-                                    <div style={{ flex: 1 }}>
-                                        <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Delay (Sec)</label>
-                                        <select className="form-input" value={audioSettings.delayBetweenAyas} onChange={(e) => updateAudioSettings({ delayBetweenAyas: Number(e.target.value) })}>
-                                            {DELAY_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}s</option>)}
-                                        </select>
+                                {/* Scrollable body */}
+                                <div style={{ flex: 1, overflowY: 'auto', padding: '0 1.5rem 1.5rem', display: 'grid', gap: '1rem' }}>
+                                    {/* Range */}
+                                    <div style={{ display: 'flex', gap: '1rem' }}>
+                                        <div style={{ flex: 1 }}>
+                                            <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Start Ayah</label>
+                                            <select className="form-input" value={audioSettings.startRange ?? 0} onChange={(e) => updateAudioSettings({ startRange: Number(e.target.value) })}>
+                                                {audioPlaylist.map((v, i) => <option key={v.verseKey || i} value={i}>{v.verseKey}</option>)}
+                                            </select>
+                                        </div>
+                                        <div style={{ flex: 1 }}>
+                                            <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>End Ayah</label>
+                                            <select className="form-input" value={audioSettings.endRange ?? audioPlaylist.length - 1} onChange={(e) => updateAudioSettings({ endRange: Number(e.target.value) })}>
+                                                {audioPlaylist.map((v, i) => <option key={v.verseKey || i} value={i}>{v.verseKey}</option>)}
+                                            </select>
+                                        </div>
                                     </div>
-                                    <div style={{ flex: 1 }}>
-                                        <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Speed</label>
-                                        <select className="form-input" value={audioSettings.playbackSpeed} onChange={(e) => updateAudioSettings({ playbackSpeed: Number(e.target.value) })}>
-                                            {SPEED_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}x</option>)}
-                                        </select>
-                                    </div>
-                                </div>
 
-                                {/* Auto-scroll toggle */}
-                                <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '0.5rem', cursor: 'pointer' }}>
-                                    <input
-                                        type="checkbox"
-                                        checked={audioSettings.scrollWhilePlaying}
-                                        onChange={(e) => updateAudioSettings({ scrollWhilePlaying: e.target.checked })}
-                                        style={{ width: '18px', height: '18px', accentColor: 'var(--accent-primary)' }}
-                                    />
-                                    <span style={{ fontSize: '0.9rem', color: 'var(--text-primary)', fontWeight: 500 }}>Auto-scroll along with audio</span>
-                                </label>
+                                    {/* Repeats */}
+                                    <div style={{ display: 'flex', gap: '1rem' }}>
+                                        <div style={{ flex: 1 }}>
+                                            <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Repeat Ayah</label>
+                                            <select className="form-input" value={audioSettings.repeatAya} onChange={(e) => updateAudioSettings({ repeatAya: Number(e.target.value) })}>
+                                                {REPEAT_OPTIONS.map(opt => <option key={opt} value={opt}>{opt === -1 ? '∞ Infinite' : `${opt}×`}</option>)}
+                                            </select>
+                                        </div>
+                                        <div style={{ flex: 1 }}>
+                                            <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Repeat Selection</label>
+                                            <select className="form-input" value={audioSettings.repeatSelection} onChange={(e) => updateAudioSettings({ repeatSelection: Number(e.target.value) })}>
+                                                {REPEAT_OPTIONS.map(opt => <option key={opt} value={opt}>{opt === -1 ? '∞ Infinite' : `${opt}×`}</option>)}
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    {/* Advanced */}
+                                    <div style={{ display: 'flex', gap: '1rem' }}>
+                                        <div style={{ flex: 1 }}>
+                                            <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Delay (sec)</label>
+                                            <select className="form-input" value={audioSettings.delayBetweenAyas} onChange={(e) => updateAudioSettings({ delayBetweenAyas: Number(e.target.value) })}>
+                                                {DELAY_OPTIONS.map(opt => <option key={opt} value={opt}>{opt === 0 ? 'None' : `${opt}s`}</option>)}
+                                            </select>
+                                        </div>
+                                        <div style={{ flex: 1 }}>
+                                            <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Speed</label>
+                                            <select className="form-input" value={audioSettings.playbackSpeed} onChange={(e) => updateAudioSettings({ playbackSpeed: Number(e.target.value) })}>
+                                                {SPEED_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}×</option>)}
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    {/* Auto-scroll toggle */}
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', padding: '0.75rem', borderRadius: '12px', background: 'var(--bg-secondary)' }}>
+                                        <input type="checkbox" checked={audioSettings.scrollWhilePlaying} onChange={(e) => updateAudioSettings({ scrollWhilePlaying: e.target.checked })} style={{ width: '18px', height: '18px', accentColor: 'var(--accent-primary)', flexShrink: 0 }} />
+                                        <div>
+                                            <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>Auto-scroll while playing</div>
+                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Highlights and scrolls to each Ayah</div>
+                                        </div>
+                                    </label>
+                                </div>
                             </div>
                         </motion.div>
                     </>
