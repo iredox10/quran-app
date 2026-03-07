@@ -1,18 +1,20 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
-import { useParams, Link, useLocation } from 'react-router-dom';
+import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useInView } from 'react-intersection-observer';
 import { getChapter, getVerses, getChapterAudio, getChapterTafsirs, getTajweedVerses } from '../services/api/quranApi';
 import { useAppStore } from '../store/useAppStore';
 import { ArrowLeft, ArrowRight, Play, Pause, BookOpen, Bookmark, Info, X, Download, CloudCheck, RefreshCw, ChevronsDown, Minus, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Helmet } from 'react-helmet-async';
+import { useSwipeable } from 'react-swipeable';
 import VerseRow from '../components/VerseRow';
 
 // VerseRow is now imported from components
 export default function Surah() {
     const { id } = useParams();
     const location = useLocation();
+    const navigate = useNavigate();
     const {
         translationId, reciterId, fontSize, translationFontSize,
         readingMode, setReadingMode,
@@ -191,6 +193,17 @@ export default function Surah() {
         }
     }, [location.search, verses, isVersesLoading]);
 
+    const swipeHandlers = useSwipeable({
+        onSwipedLeft: () => {
+            if (parseInt(id) < 114) navigate(`/surah/${parseInt(id) + 1}`);
+        },
+        onSwipedRight: () => {
+            if (parseInt(id) > 1) navigate(`/surah/${parseInt(id) - 1}`);
+        },
+        preventScrollOnSwipe: false,
+        trackMouse: false
+    });
+
     if (isChapterLoading || isVersesLoading) return (
         <div className="container" style={{ textAlign: 'center', padding: '10vh 0', color: 'var(--text-muted)' }}>
             <motion.div
@@ -203,7 +216,7 @@ export default function Surah() {
     );
 
     return (
-        <div className="container">
+        <div className="container" {...swipeHandlers}>
             <Helmet>
                 <title>{chapter ? `${chapter.name_simple} - The Noble Qur'an` : "Surah - The Noble Qur'an"}</title>
                 <meta name="description" content={`Read and listen to ${chapter?.name_simple} (${chapter?.translated_name.name}) online with translations and Tafsir.`} />
