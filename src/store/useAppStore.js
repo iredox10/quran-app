@@ -90,6 +90,12 @@ export const useAppStore = create(
             currentAudioUrl: null,
             isPlaying: false,
 
+            // Auto-scroll (transient)
+            autoScroll: false,
+            autoScrollSpeed: 2, // 1-5
+            setAutoScroll: (val) => set({ autoScroll: val }),
+            setAutoScrollSpeed: (speed) => set({ autoScrollSpeed: speed }),
+
             navHeaderTitle: null,
             setNavHeaderTitle: (title) => set({ navHeaderTitle: title }),
 

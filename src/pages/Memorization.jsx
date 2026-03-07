@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getVerses, getChapter } from '../services/api/quranApi';
 import { useAppStore } from '../store/useAppStore';
-import { Mic, EyeOff, Eye, Repeat, ArrowLeft, ArrowRight, X, Play, Pause, ShieldAlert, Award, Languages, Layers, RefreshCw, Clock, Bookmark, FolderPlus, Plus, Folder } from 'lucide-react';
+import { Mic, EyeOff, Eye, Repeat, ArrowLeft, ArrowRight, X, Play, Pause, ShieldAlert, Award, Languages, Layers, RefreshCw, Clock, Bookmark, FolderPlus, Plus, Folder, Settings2 } from 'lucide-react';
 
 const toArabicNumerals = (num) => {
     const arabicNumbers = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
@@ -31,6 +31,7 @@ export default function Memorization() {
     const [ayahsPerSwipe, setAyahsPerSwipe] = useState(1);
     const [isCollectionsOpen, setIsCollectionsOpen] = useState(false);
     const [newCollectionName, setNewCollectionName] = useState('');
+    const [isAudioSettingsOpen, setIsAudioSettingsOpen] = useState(false);
 
     const [isPlayingAudio, setIsPlayingAudio] = useState(false);
     const [audioVerseIndex, setAudioVerseIndex] = useState(0); // 0 to ayahsPerSwipe - 1
@@ -234,77 +235,142 @@ export default function Memorization() {
                 >
                     {isPlayingAudio ? <Pause size={20} /> : <Play size={20} />}
                 </button>
-                <div
-                    style={{ display: 'flex', alignItems: 'center', gap: '8px', background: ayahRepeatTarget !== 1 ? 'var(--accent-light)' : 'var(--bg-surface)', padding: '0.5rem 1rem', borderRadius: '24px', border: '1px solid var(--border-color)', color: ayahRepeatTarget !== 1 ? 'var(--accent-primary)' : 'var(--text-muted)' }}>
-                    <RefreshCw size={16} />
-                    <select
-                        value={ayahRepeatTarget}
-                        onChange={(e) => {
-                            setAyahRepeatTarget(Number(e.target.value));
-                            setCurrentAyahPlayCount(0);
-                        }}
+                <div style={{ position: 'relative' }}>
+                    <button
+                        className="btn-icon"
+                        onClick={() => setIsAudioSettingsOpen(!isAudioSettingsOpen)}
                         style={{
-                            background: 'transparent',
-                            border: 'none',
-                            color: 'inherit',
-                            outline: 'none',
-                            fontSize: '0.875rem',
-                            cursor: 'pointer'
+                            background: (ayahRepeatTarget !== 1 || ayahDelay > 0 || rangeLoopTarget !== 1) ? 'var(--accent-light)' : 'var(--bg-surface)',
+                            border: '1px solid var(--border-color)',
+                            color: (ayahRepeatTarget !== 1 || ayahDelay > 0 || rangeLoopTarget !== 1) ? 'var(--accent-primary)' : 'inherit'
                         }}
+                        title="Audio Repeat Settings"
                     >
-                        {AYAH_REPEAT_OPTIONS.map(opt => (
-                            <option key={opt} value={opt} style={{ color: 'black' }}>
-                                {opt === 1 ? "Ayah 1x" : opt === -1 ? "Ayah ∞" : `Ayah ${opt}x`}
-                            </option>
-                        ))}
-                    </select>
-                </div>
-                <div
-                    style={{ display: 'flex', alignItems: 'center', gap: '8px', background: ayahDelay > 0 ? 'var(--accent-light)' : 'var(--bg-surface)', padding: '0.5rem 1rem', borderRadius: '24px', border: '1px solid var(--border-color)', color: ayahDelay > 0 ? 'var(--accent-primary)' : 'var(--text-muted)' }}>
-                    <Clock size={16} />
-                    <select
-                        value={ayahDelay}
-                        onChange={(e) => setAyahDelay(Number(e.target.value))}
-                        style={{
-                            background: 'transparent',
-                            border: 'none',
-                            color: 'inherit',
-                            outline: 'none',
-                            fontSize: '0.875rem',
-                            cursor: 'pointer'
-                        }}
-                    >
-                        {DELAY_OPTIONS.map(delay => (
-                            <option key={delay} value={delay} style={{ color: 'black' }}>
-                                {delay === 0 ? "No Delay" : `Delay ${delay}s`}
-                            </option>
-                        ))}
-                    </select>
-                </div>
-                <div
-                    style={{ display: 'flex', alignItems: 'center', gap: '8px', background: rangeLoopTarget !== 1 ? 'var(--accent-light)' : 'var(--bg-surface)', padding: '0.5rem 1rem', borderRadius: '24px', border: '1px solid var(--border-color)', color: rangeLoopTarget !== 1 ? 'var(--accent-primary)' : 'var(--text-muted)' }}>
-                    <Repeat size={16} />
-                    <select
-                        value={rangeLoopTarget}
-                        onChange={(e) => {
-                            setRangeLoopTarget(Number(e.target.value));
-                            setRangeLoopCurrent(0);
-                        }}
-                        style={{
-                            background: 'transparent',
-                            border: 'none',
-                            color: 'inherit',
-                            outline: 'none',
-                            fontSize: '0.875rem',
-                            cursor: 'pointer'
-                        }}
-                    >
-                        {RANGE_LOOP_OPTIONS.map(opt => (
-                            <option key={opt} value={opt} style={{ color: 'black' }}>
-                                {opt === 1 ? "Range 1x" : opt === -1 ? "Range ∞" : `Range ${opt}x`}
-                            </option>
-                        ))}
-                    </select>
+                        <Settings2 size={20} />
+                    </button>
+
+                    <AnimatePresence>
+                        {isAudioSettingsOpen && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: 10 }}
+                                style={{
+                                    position: 'absolute',
+                                    top: '120%',
+                                    left: '50%',
+                                    transform: 'translateX(-50%)',
+                                    width: '240px',
+                                    background: 'var(--bg-surface)',
+                                    borderRadius: '16px',
+                                    border: '1px solid var(--border-color)',
+                                    boxShadow: 'var(--shadow-lg)',
+                                    padding: '1rem',
+                                    zIndex: 100,
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '1rem'
+                                }}
+                            >
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <h4 style={{ fontSize: '0.9rem', color: 'var(--text-primary)', margin: 0 }}>Repeat Settings</h4>
+                                    <button
+                                        onClick={() => setIsAudioSettingsOpen(false)}
+                                        style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+                                    >
+                                        <X size={16} />
+                                    </button>
+                                </div>
+
+                                {/* Ayah Repeat Option */}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                                        <RefreshCw size={14} /> Ayah
+                                    </div>
+                                    <select
+                                        value={ayahRepeatTarget}
+                                        onChange={(e) => {
+                                            setAyahRepeatTarget(Number(e.target.value));
+                                            setCurrentAyahPlayCount(0);
+                                        }}
+                                        style={{
+                                            background: 'var(--bg-secondary)',
+                                            border: '1px solid var(--border-color)',
+                                            color: 'var(--text-primary)',
+                                            borderRadius: '8px',
+                                            padding: '4px 8px',
+                                            fontSize: '0.8rem',
+                                            outline: 'none',
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        {AYAH_REPEAT_OPTIONS.map(opt => (
+                                            <option key={opt} value={opt}>
+                                                {opt === 1 ? "1x" : opt === -1 ? "Infinite" : `${opt}x`}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {/* Delay Option */}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                                        <Clock size={14} /> Delay
+                                    </div>
+                                    <select
+                                        value={ayahDelay}
+                                        onChange={(e) => setAyahDelay(Number(e.target.value))}
+                                        style={{
+                                            background: 'var(--bg-secondary)',
+                                            border: '1px solid var(--border-color)',
+                                            color: 'var(--text-primary)',
+                                            borderRadius: '8px',
+                                            padding: '4px 8px',
+                                            fontSize: '0.8rem',
+                                            outline: 'none',
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        {DELAY_OPTIONS.map(delay => (
+                                            <option key={delay} value={delay}>
+                                                {delay === 0 ? "None" : `${delay}s`}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {/* Range Loop Option */}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                                        <Repeat size={14} /> Range
+                                    </div>
+                                    <select
+                                        value={rangeLoopTarget}
+                                        onChange={(e) => {
+                                            setRangeLoopTarget(Number(e.target.value));
+                                            setRangeLoopCurrent(0);
+                                        }}
+                                        style={{
+                                            background: 'var(--bg-secondary)',
+                                            border: '1px solid var(--border-color)',
+                                            color: 'var(--text-primary)',
+                                            borderRadius: '8px',
+                                            padding: '4px 8px',
+                                            fontSize: '0.8rem',
+                                            outline: 'none',
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        {RANGE_LOOP_OPTIONS.map(opt => (
+                                            <option key={opt} value={opt}>
+                                                {opt === 1 ? "1x" : opt === -1 ? "Infinite" : `${opt}x`}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                 </div>
                 <button
                     className="btn-icon"

@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
-import { Moon, Sun, Settings, TrendingUp, Mic, LayoutDashboard, Bookmark, ArrowLeft, BookOpen } from 'lucide-react';
+import { Moon, Sun, Settings, TrendingUp, Mic, LayoutDashboard, Bookmark, ArrowLeft, BookOpen, ChevronsDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import GlobalAudioPlayer from './GlobalAudioPlayer';
 import SettingsDrawer from './SettingsDrawer';
 
 export default function Layout() {
-    const { theme, toggleTheme, navHeaderTitle, readingMode, setReadingMode } = useAppStore();
+    const { theme, toggleTheme, navHeaderTitle, readingMode, setReadingMode, autoScroll, setAutoScroll } = useAppStore();
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const location = useLocation();
     const navigate = useNavigate();
@@ -80,6 +80,17 @@ export default function Layout() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         {isSurahPage ? (
                             <>
+                                <button
+                                    className="btn-icon"
+                                    onClick={() => setAutoScroll(!autoScroll)}
+                                    title={autoScroll ? 'Stop Auto-scroll' : 'Auto-scroll'}
+                                    style={{
+                                        color: autoScroll ? 'var(--accent-primary)' : 'var(--text-muted)',
+                                        background: autoScroll ? 'var(--accent-light)' : 'transparent'
+                                    }}
+                                >
+                                    <ChevronsDown size={20} />
+                                </button>
                                 <button
                                     className="btn-icon"
                                     onClick={() => setReadingMode(!readingMode)}

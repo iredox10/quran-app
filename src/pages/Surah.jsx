@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { useParams, Link, useLocation } from 'react-router-dom';
 import { useInView } from 'react-intersection-observer';
 import { getChapter, getVerses, getChapterAudio, getChapterTafsirs, getTajweedVerses } from '../services/api/quranApi';
 import { useAppStore } from '../store/useAppStore';
-import { ArrowLeft, ArrowRight, Play, Pause, BookOpen, Bookmark, Info, X, Download, CloudCheck, RefreshCw } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Play, Pause, BookOpen, Bookmark, Info, X, Download, CloudCheck, RefreshCw, ChevronsDown, Minus, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Helmet } from 'react-helmet-async';
 import VerseRow from '../components/VerseRow';
@@ -22,7 +22,8 @@ export default function Surah() {
         arabicFont, tajweedEnabled,
         tafsirId,
         downloadedSurahs, addDownloadedSurah,
-        setNavHeaderTitle
+        setNavHeaderTitle,
+        autoScroll, setAutoScroll, autoScrollSpeed, setAutoScrollSpeed
     } = useAppStore();
 
     const { data: chapter, isLoading: isChapterLoading } = useQuery({
@@ -131,6 +132,40 @@ export default function Surah() {
             setIsDownloading(false);
         }
     };
+
+    // Auto-scroll logic
+    const scrollRafRef = useRef(null);
+
+    useEffect(() => {
+        if (!autoScroll) {
+            if (scrollRafRef.current) cancelAnimationFrame(scrollRafRef.current);
+            return;
+        }
+
+        const speedMap = { 1: 0.3, 2: 0.6, 3: 1.0, 4: 1.8, 5: 3.0 };
+        const pxPerFrame = speedMap[autoScrollSpeed] || 1.0;
+
+        const tick = () => {
+            window.scrollBy(0, pxPerFrame);
+            // Stop at bottom
+            if ((window.innerHeight + window.scrollY) >= document.body.scrollHeight - 10) {
+                setAutoScroll(false);
+                return;
+            }
+            scrollRafRef.current = requestAnimationFrame(tick);
+        };
+
+        scrollRafRef.current = requestAnimationFrame(tick);
+
+        return () => {
+            if (scrollRafRef.current) cancelAnimationFrame(scrollRafRef.current);
+        };
+    }, [autoScroll, autoScrollSpeed, setAutoScroll]);
+
+    // Stop auto-scroll when leaving the page
+    useEffect(() => {
+        return () => setAutoScroll(false);
+    }, [setAutoScroll]);
 
     const isCurrentAudio = currentAudioUrl === audioData?.audio_url;
 
@@ -368,6 +403,69 @@ export default function Surah() {
                     </div>
                 )}
             </div>
+
+            {/* Floating Auto-scroll Control */}
+            <AnimatePresence>
+                {autoScroll && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 40 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 40 }}
+                        transition={{ duration: 0.25 }}
+                        style={{
+                            position: 'fixed',
+                            bottom: '100px',
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            zIndex: 100,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.75rem',
+                            padding: '0.6rem 1.25rem',
+                            borderRadius: '9999px',
+                            background: 'var(--glass-bg)',
+                            backdropFilter: 'blur(16px)',
+                            WebkitBackdropFilter: 'blur(16px)',
+                            border: 'var(--glass-border)',
+                            boxShadow: 'var(--shadow-lg)'
+                        }}
+                    >
+                        <ChevronsDown size={16} color="var(--accent-primary)" />
+                        <button
+                            className="btn-icon"
+                            style={{ width: '28px', height: '28px', border: '1px solid var(--border-color)', borderRadius: '50%' }}
+                            onClick={() => setAutoScrollSpeed(Math.max(1, autoScrollSpeed - 1))}
+                        >
+                            <Minus size={14} />
+                        </button>
+                        <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-primary)', minWidth: '50px', textAlign: 'center' }}>
+                            {autoScrollSpeed}x
+                        </span>
+                        <button
+                            className="btn-icon"
+                            style={{ width: '28px', height: '28px', border: '1px solid var(--border-color)', borderRadius: '50%' }}
+                            onClick={() => setAutoScrollSpeed(Math.min(5, autoScrollSpeed + 1))}
+                        >
+                            <Plus size={14} />
+                        </button>
+                        <button
+                            onClick={() => setAutoScroll(false)}
+                            style={{
+                                padding: '0.3rem 0.75rem',
+                                borderRadius: '9999px',
+                                background: 'var(--accent-primary)',
+                                color: 'white',
+                                fontSize: '0.8rem',
+                                fontWeight: 600,
+                                border: 'none',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            Stop
+                        </button>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
