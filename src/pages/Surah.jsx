@@ -27,7 +27,9 @@ export default function Surah() {
         downloadedSurahs, addDownloadedSurah,
         setNavHeaderTitle,
         autoScroll, setAutoScroll, autoScrollSpeed, setAutoScrollSpeed,
-        isAutoScrollPaused, setIsAutoScrollPaused
+        isAutoScrollPaused, setIsAutoScrollPaused,
+        setIsPlayerVisible,
+        playTriggerCount
     } = useAppStore();
 
     const { data: chapter, isLoading: isChapterLoading } = useQuery({
@@ -117,6 +119,7 @@ export default function Surah() {
 
         if (isCurrentSurahPlaying) {
             setIsPlaying(!isPlaying);
+            setIsPlayerVisible(true); // re-open if hidden
         } else {
             const playlist = verses.map(v => ({
                 surahId: id,
@@ -128,12 +131,22 @@ export default function Surah() {
             if (playlist.length > 0) {
                 setAudioPlaylist(playlist, 0);
                 setIsPlaying(true);
+                setIsPlayerVisible(true);
             }
         }
     };
 
     const isDownloaded = (downloadedSurahs || []).includes(id);
     const [isDownloading, setIsDownloading] = useState(false);
+
+    // Listen for the navbar audio button — fire handlePlayClick whenever it increments
+    const skipMountRef = React.useRef(true);
+    useEffect(() => {
+        if (skipMountRef.current) { skipMountRef.current = false; return; }
+        handlePlayClick();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [playTriggerCount]);
+
 
     const handleDownloadSurah = async () => {
         if (!audioData?.audio_url || isDownloading) return;
@@ -182,31 +195,7 @@ export default function Surah() {
         };
     }, [autoScroll, autoScrollSpeed, setAutoScroll, isAutoScrollPaused]);
 
-    // Calculate Estimated Time Remaining for Auto Scroll
-    const [etaMinutes, setEtaMinutes] = useState(0);
 
-    useEffect(() => {
-        if (!autoScroll) return;
-
-        const updateEta = () => {
-            const speedMap = { 1: 0.3, 2: 0.6, 3: 1.0, 4: 1.8, 5: 3.0 };
-            const pixelsPerFrame = speedMap[autoScrollSpeed] || 1.0;
-            const pixelsPerSecond = pixelsPerFrame * 60; // Assuming ~60fps
-            const distanceRemaining = document.body.scrollHeight - (window.scrollY + window.innerHeight);
-
-            if (distanceRemaining > 0 && pixelsPerSecond > 0) {
-                const secondsRemaining = distanceRemaining / pixelsPerSecond;
-                setEtaMinutes(Math.ceil(secondsRemaining / 60));
-            } else {
-                setEtaMinutes(0);
-            }
-        };
-
-        const interval = setInterval(updateEta, 2000);
-        updateEta(); // Initial call
-
-        return () => clearInterval(interval);
-    }, [autoScroll, autoScrollSpeed]);
 
     // Stop auto-scroll when leaving the page
     useEffect(() => {
@@ -488,26 +477,8 @@ export default function Surah() {
                             left: '50%',
                             transform: 'translateX(-50%)',
                             zIndex: 100,
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            gap: '0.5rem',
                         }}
                     >
-                        {/* ETA Badge */}
-                        <div style={{
-                            background: 'var(--bg-surface)',
-                            color: 'var(--text-secondary)',
-                            fontSize: '0.75rem',
-                            fontWeight: 600,
-                            padding: '0.25rem 0.75rem',
-                            borderRadius: '9999px',
-                            border: '1px solid var(--border-color)',
-                            boxShadow: 'var(--shadow-sm)'
-                        }}>
-                            ETA: {etaMinutes > 0 ? `${etaMinutes} min` : '< 1 min'}
-                        </div>
-
                         {/* Controls Panel */}
                         <div style={{
                             display: 'flex',

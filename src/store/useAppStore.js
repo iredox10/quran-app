@@ -127,6 +127,14 @@ export const useAppStore = create(
             })),
             setIsPlaying: (playing) => set({ isPlaying: playing }),
             stopAudio: () => set({ isPlaying: false, currentAudioUrl: null, audioPlaylist: [] }),
+
+            // Player visibility
+            isPlayerVisible: false,
+            setIsPlayerVisible: (val) => set({ isPlayerVisible: val }),
+
+            // Trigger to tell Surah.jsx to start playing (cross-component signal)
+            playTriggerCount: 0,
+            incrementPlayTrigger: () => set((state) => ({ playTriggerCount: state.playTriggerCount + 1 })),
         }),
         {
             name: 'quran-app-storage',
