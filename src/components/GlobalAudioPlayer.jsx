@@ -36,9 +36,6 @@ export default function GlobalAudioPlayer() {
                 const el = document.getElementById(`verse-${currentVerse.verseKey}`);
                 if (el) {
                     el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    el.style.transition = 'background-color 0.5s';
-                    el.style.backgroundColor = 'var(--accent-light)';
-                    setTimeout(() => { if (el) el.style.backgroundColor = 'transparent'; }, 2000);
                 }
             }
         }

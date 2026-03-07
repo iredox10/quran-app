@@ -29,7 +29,7 @@ export default function Surah() {
         setNavHeaderTitle,
         autoScroll, setAutoScroll, autoScrollSpeed, setAutoScrollSpeed,
         isAutoScrollPaused, setIsAutoScrollPaused,
-        setIsPlayerVisible,
+        isPlayerVisible, setIsPlayerVisible,
         playTriggerCount
     } = useAppStore();
 
@@ -117,8 +117,8 @@ export default function Surah() {
     const verses = versesResponse?.pages.flatMap(page => page.verses) || [];
 
     // Check if the current playing playlist is from THIS surah
-    const isCurrentSurahPlaying = audioPlaylist.length > 0 && audioPlaylist[0]?.surahId === id;
-    const activeAudioVerseKey = isPlaying && isCurrentSurahPlaying && audioPlaylist[audioTrackIndex]
+    const isCurrentSurahPlaying = audioPlaylist.length > 0 && String(audioPlaylist[0]?.surahId) === String(id);
+    const activeAudioVerseKey = isPlayerVisible && isCurrentSurahPlaying && audioPlaylist[audioTrackIndex]
         ? audioPlaylist[audioTrackIndex].verseKey
         : null;
 
