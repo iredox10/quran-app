@@ -2,11 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { getVerses, getChapter } from '../services/api/quranApi';
+import { getVerses, getChapter, getTajweedVerses } from '../services/api/quranApi';
 import { useAppStore } from '../store/useAppStore';
 import { Mic, EyeOff, Eye, Repeat, ArrowLeft, ArrowRight, X, Play, Pause, ShieldAlert, Award, Languages, Layers, RefreshCw, Clock, Bookmark, FolderPlus, Plus, Folder, Settings2 } from 'lucide-react';
-import { getMushafById } from '../config/mushaf';
-import { getVerseArabicText } from '../utils/quranText';
+import { getMushafById, isTajweedEnabledForMushaf } from '../config/mushaf';
+import { getVerseArabicText, sanitizeTajweedHtml } from '../utils/quranText';
 
 const toArabicNumerals = (num) => {
     const arabicNumbers = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
@@ -22,9 +22,11 @@ export default function Memorization() {
     const navigate = useNavigate();
     const {
         setNavHeaderTitle, arabicFont, fontSize, translationFontSize, translationId, mushafId,
-        bookmarks, toggleBookmark, collections, addCollection, addToCollection
+        bookmarks, toggleBookmark, collections, addCollection, addToCollection,
+        tajweedEnabled
     } = useAppStore();
     const mushaf = getMushafById(mushafId);
+    const isTajweedActive = isTajweedEnabledForMushaf(mushafId, tajweedEnabled);
 
     const [currentVerseIndex, setCurrentVerseIndex] = useState(0);
     const [isBlurred, setIsBlurred] = useState(false);
@@ -130,6 +132,20 @@ export default function Memorization() {
         queryFn: () => getVerses(id, translationId, 7, 1, mushafId),
     });
 
+    const { data: tajweedData } = useQuery({
+        queryKey: ['memorizeTajweed', id, mushafId],
+        queryFn: () => getTajweedVerses(id),
+        enabled: isTajweedActive && mushaf.tajweedSource === 'uthmani_html',
+    });
+
+    const tajweedMap = React.useMemo(() => {
+        if (!tajweedData) return {};
+        return tajweedData.reduce((acc, v) => {
+            acc[v.verse_key] = sanitizeTajweedHtml(v.text_uthmani_tajweed.replace(/<span class=end>.*?<\/span>/g, ''));
+            return acc;
+        }, {});
+    }, [tajweedData]);
+
     useEffect(() => {
         if (chapter) {
             setNavHeaderTitle(`Hifdh Mode: ${chapter.name_simple}`);
@@ -222,34 +238,58 @@ export default function Memorization() {
 
     // Keyboard and Swipe Navigation
     useEffect(() => {
+        const surahId = Number(id);
+
         const handleKeyDown = (e) => {
-            if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
-                handleNext();
-            } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+            if (e.key === 'ArrowUp') {
+                e.preventDefault();
                 handlePrev();
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                handleNext();
+            } else if (e.key === 'ArrowLeft') {
+                // Previous Surah
+                if (surahId > 1) {
+                    navigate(`/memorize/${surahId - 1}`);
+                }
+            } else if (e.key === 'ArrowRight') {
+                // Next Surah
+                if (surahId < 114) {
+                    navigate(`/memorize/${surahId + 1}`);
+                }
             }
         };
 
         let touchStartX = 0;
-        let touchEndX = 0;
+        let touchStartY = 0;
 
         const handleTouchStart = (e) => {
             touchStartX = e.changedTouches[0].screenX;
+            touchStartY = e.changedTouches[0].screenY;
         };
 
         const handleTouchEnd = (e) => {
-            touchEndX = e.changedTouches[0].screenX;
-            handleSwipe();
-        };
-
-        const handleSwipe = () => {
+            const touchEndX = e.changedTouches[0].screenX;
+            const touchEndY = e.changedTouches[0].screenY;
+            const deltaX = touchEndX - touchStartX;
+            const deltaY = touchEndY - touchStartY;
             const SWIPE_THRESHOLD = 50;
-            if (touchStartX - touchEndX > SWIPE_THRESHOLD) {
-                // Swipe Left => Next 
-                handleNext();
-            } else if (touchEndX - touchStartX > SWIPE_THRESHOLD) {
-                // Swipe Right => Prev
-                handlePrev();
+
+            // Determine if swipe is more horizontal or vertical
+            if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > SWIPE_THRESHOLD) {
+                // Horizontal swipe → switch surah
+                if (deltaX < 0 && surahId < 114) {
+                    navigate(`/memorize/${surahId + 1}`);
+                } else if (deltaX > 0 && surahId > 1) {
+                    navigate(`/memorize/${surahId - 1}`);
+                }
+            } else if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > SWIPE_THRESHOLD) {
+                // Vertical swipe → scroll verses
+                if (deltaY < 0) {
+                    handleNext();
+                } else {
+                    handlePrev();
+                }
             }
         };
 
@@ -262,7 +302,7 @@ export default function Memorization() {
             window.removeEventListener('touchstart', handleTouchStart);
             window.removeEventListener('touchend', handleTouchEnd);
         };
-    }, [currentVerseIndex, verses.length, ayahsPerSwipe]);
+    }, [currentVerseIndex, verses.length, ayahsPerSwipe, id, navigate]);
 
     const handleMicToggle = () => {
         if (isRecording) {
@@ -612,10 +652,13 @@ export default function Memorization() {
                                         lineHeight: 2.2,
                                         color: (isPlayingAudio && audioVerseIndex === idx) ? 'var(--accent-primary)' : 'var(--text-primary)',
                                         transition: 'color 0.3s ease',
-                                        textAlign: 'center', // Fix center alignment
-                                        direction: 'rtl'   // Ensure proper RTL text flow
+                                        textAlign: 'center',
+                                        direction: 'rtl'
                                     }}>
-                                        {getVerseArabicText(verse, mushaf)}
+                                        {isTajweedActive && tajweedMap?.[verse.verse_key]
+                                            ? <span dangerouslySetInnerHTML={{ __html: tajweedMap[verse.verse_key] }} />
+                                            : getVerseArabicText(verse, mushaf)
+                                        }
                                     </div>
                                     <button
                                         onClick={(e) => {

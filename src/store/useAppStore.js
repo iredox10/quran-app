@@ -34,6 +34,7 @@ export const useAppStore = create(
             bookmarks: [], // Array of { verseKey, surahName, chapterId }
             collections: [], // Array of { id, name, items: [{ verseKey, surahName, chapterId }] }
             recentlyRead: [], // Array of { chapterId, chapterName, verseKey, timestamp }
+            readingSessions: [], // Array of { date (YYYY-MM-DD), duration (seconds), type: 'reading'|'memorizing'|'listening', chapterId }
 
             setIsSettingsOpen: (isOpen) => set({ isSettingsOpen: isOpen }),
             toggleTheme: () => set((state) => ({
@@ -121,6 +122,13 @@ export const useAppStore = create(
                 return { recentlyRead: newList };
             }),
 
+            logReadingSession: (duration, type = 'reading', chapterId = null) => set((state) => {
+                const today = new Date().toISOString().split('T')[0];
+                const session = { date: today, duration, type, chapterId, timestamp: Date.now() };
+                const sessions = [...(state.readingSessions || []), session].slice(-500); // Keep last 500
+                return { readingSessions: sessions };
+            }),
+
             // Advanced Audio State
             currentAudioUrl: null, // Legacy single file support
             audioPlaylist: [], // Array of { url, verseKey, verseNumber }
@@ -189,6 +197,7 @@ export const useAppStore = create(
                 bookmarks: state.bookmarks || [],
                 collections: state.collections || [],
                 recentlyRead: state.recentlyRead || [],
+                readingSessions: state.readingSessions || [],
                 offlineDataStatus: state.offlineDataStatus,
                 downloadedSurahs: state.downloadedSurahs || [],
                 audioSettings: state.audioSettings || {

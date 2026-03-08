@@ -104,7 +104,7 @@ export default function Layout() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
                         {isImmersivePage ? (
                             <>
-                                <button className="btn-icon" onClick={() => navigate(-1)} style={{ flexShrink: 0 }} aria-label="Go back">
+                                <button className="btn-icon" onClick={() => isMemorizePage ? navigate('/memorize') : navigate(-1)} style={{ flexShrink: 0 }} aria-label="Go back">
                                     <ArrowLeft size={20} />
                                 </button>
                                 <span style={{
@@ -164,37 +164,39 @@ export default function Layout() {
 
                         {/* Non-surah nav links removed since they are now in the bottom nav */}
 
-                        {/* === Audio Player Toggle — ALWAYS VISIBLE === */}
-                        <button
-                            id="audio-player-toggle"
-                            className="btn-icon"
-                            onClick={() => {
-                                if (isSurahPage) {
-                                    // On Surah page: trigger playback (Surah.jsx listens)
-                                    incrementPlayTrigger();
-                                } else {
-                                    // On other pages: just show/hide the player
-                                    setIsPlayerVisible(!isPlayerVisible);
-                                }
-                            }}
-                            title={isSurahPage ? 'Play / Pause' : isPlayerVisible ? 'Hide Player' : 'Show Player'}
-                            style={{
-                                color: hasAudio ? 'var(--accent-primary)' : 'var(--text-muted)',
-                                background: (isPlayerVisible || isPlaying) ? 'var(--accent-light)' : 'transparent',
-                                position: 'relative'
-                            }}
-                        >
-                            <Volume2 size={20} />
-                            {/* Pulsing dot when playing */}
-                            {isPlaying && (
-                                <span style={{
-                                    position: 'absolute', top: '4px', right: '4px',
-                                    width: '6px', height: '6px', borderRadius: '50%',
-                                    background: 'var(--accent-primary)',
-                                    animation: 'pulse 2s infinite'
-                                }} />
-                            )}
-                        </button>
+                        {/* === Audio Player Toggle — hidden on memorization page === */}
+                        {!isMemorizePage && (
+                            <button
+                                id="audio-player-toggle"
+                                className="btn-icon"
+                                onClick={() => {
+                                    if (isSurahPage) {
+                                        // On Surah page: trigger playback (Surah.jsx listens)
+                                        incrementPlayTrigger();
+                                    } else {
+                                        // On other pages: just show/hide the player
+                                        setIsPlayerVisible(!isPlayerVisible);
+                                    }
+                                }}
+                                title={isSurahPage ? 'Play / Pause' : isPlayerVisible ? 'Hide Player' : 'Show Player'}
+                                style={{
+                                    color: hasAudio ? 'var(--accent-primary)' : 'var(--text-muted)',
+                                    background: (isPlayerVisible || isPlaying) ? 'var(--accent-light)' : 'transparent',
+                                    position: 'relative'
+                                }}
+                            >
+                                <Volume2 size={20} />
+                                {/* Pulsing dot when playing */}
+                                {isPlaying && (
+                                    <span style={{
+                                        position: 'absolute', top: '4px', right: '4px',
+                                        width: '6px', height: '6px', borderRadius: '50%',
+                                        background: 'var(--accent-primary)',
+                                        animation: 'pulse 2s infinite'
+                                    }} />
+                                )}
+                            </button>
+                        )}
 
                         {/* Theme + Settings — always visible */}
                         <button className="btn-icon" onClick={toggleTheme} aria-label="Toggle Theme">
