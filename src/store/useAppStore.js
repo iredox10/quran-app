@@ -32,6 +32,8 @@ export const useAppStore = create(
 
             bookmark: null, // { verseKey, surahName }
             bookmarks: [], // Array of { verseKey, surahName, chapterId }
+            memorizedAyahs: [], // Array of verse keys '1:1'
+            memorizedSurahs: [], // Array of chapter IDs
             collections: [], // Array of { id, name, items: [{ verseKey, surahName, chapterId }] }
             recentlyRead: [], // Array of { chapterId, chapterName, verseKey, timestamp }
             readingSessions: [], // Array of { date (YYYY-MM-DD), duration (seconds), type: 'reading'|'memorizing'|'listening', chapterId }
@@ -84,6 +86,24 @@ export const useAppStore = create(
                     return { bookmarks: state.bookmarks.filter(b => b.verseKey !== verseKey) };
                 } else {
                     return { bookmarks: [...(state.bookmarks || []), { verseKey, surahName, chapterId }] };
+                }
+            }),
+
+            toggleMemorizedAyah: (verseKey) => set((state) => {
+                const isMemorized = (state.memorizedAyahs || []).includes(verseKey);
+                if (isMemorized) {
+                    return { memorizedAyahs: state.memorizedAyahs.filter(k => k !== verseKey) };
+                } else {
+                    return { memorizedAyahs: [...(state.memorizedAyahs || []), verseKey] };
+                }
+            }),
+
+            toggleMemorizedSurah: (chapterId) => set((state) => {
+                const isMemorized = (state.memorizedSurahs || []).includes(chapterId);
+                if (isMemorized) {
+                    return { memorizedSurahs: state.memorizedSurahs.filter(id => id !== chapterId) };
+                } else {
+                    return { memorizedSurahs: [...(state.memorizedSurahs || []), chapterId] };
                 }
             }),
 
@@ -195,6 +215,8 @@ export const useAppStore = create(
                 tafsirId: state.tafsirId,
                 bookmark: state.bookmark,
                 bookmarks: state.bookmarks || [],
+                memorizedAyahs: state.memorizedAyahs || [],
+                memorizedSurahs: state.memorizedSurahs || [],
                 collections: state.collections || [],
                 recentlyRead: state.recentlyRead || [],
                 readingSessions: state.readingSessions || [],

@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getVerses, getChapter, getTajweedVerses } from '../services/api/quranApi';
 import { useAppStore } from '../store/useAppStore';
-import { Mic, EyeOff, Eye, Repeat, ArrowLeft, ArrowRight, X, Play, Pause, ShieldAlert, Award, Languages, Layers, RefreshCw, Clock, Bookmark, FolderPlus, Plus, Folder, Settings2 } from 'lucide-react';
+import { Mic, EyeOff, Eye, Repeat, ArrowLeft, ArrowRight, X, Play, Pause, ShieldAlert, Award, Languages, Layers, RefreshCw, Clock, Bookmark, FolderPlus, Plus, Folder, Settings2, CheckCircle } from 'lucide-react';
 import { getMushafById, isTajweedEnabledForMushaf } from '../config/mushaf';
 import { getVerseArabicText, sanitizeTajweedHtml } from '../utils/quranText';
 
@@ -23,7 +23,8 @@ export default function Memorization() {
     const {
         setNavHeaderTitle, arabicFont, fontSize, translationFontSize, translationId, mushafId,
         bookmarks, toggleBookmark, collections, addCollection, addToCollection,
-        tajweedEnabled, logReadingSession
+        tajweedEnabled, logReadingSession,
+        memorizedAyahs, memorizedSurahs, toggleMemorizedAyah, toggleMemorizedSurah
     } = useAppStore();
     const mushaf = getMushafById(mushafId);
     const isTajweedActive = isTajweedEnabledForMushaf(mushafId, tajweedEnabled);
@@ -671,27 +672,49 @@ export default function Memorization() {
                                             : getVerseArabicText(verse, mushaf)
                                         }
                                     </div>
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            toggleBookmark(verse.verse_key, chapter?.name_simple, chapter?.id);
-                                        }}
-                                        style={{
-                                            position: 'absolute',
-                                            top: '0',
-                                            left: '0',
-                                            background: 'none',
-                                            border: 'none',
-                                            color: bookmarks?.find(b => b.verseKey === verse.verse_key) ? 'var(--accent-primary)' : 'var(--text-muted)',
-                                            cursor: 'pointer',
-                                            padding: '0.5rem',
-                                            opacity: isBlurred ? 0 : 1,
-                                            transition: 'all 0.3s'
-                                        }}
-                                        title="Bookmark Ayah"
-                                    >
-                                        <Bookmark size={24} fill={bookmarks?.find(b => b.verseKey === verse.verse_key) ? 'currentColor' : 'none'} />
-                                    </button>
+                                    <div style={{
+                                        position: 'absolute',
+                                        top: 0,
+                                        left: 0,
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: '0.5rem',
+                                        opacity: isBlurred ? 0 : 1,
+                                        transition: 'all 0.3s'
+                                    }}>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                toggleBookmark(verse.verse_key, chapter?.name_simple, chapter?.id);
+                                            }}
+                                            style={{
+                                                background: 'none',
+                                                border: 'none',
+                                                color: bookmarks?.find(b => b.verseKey === verse.verse_key) ? 'var(--accent-primary)' : 'var(--text-muted)',
+                                                cursor: 'pointer',
+                                                padding: '0.5rem',
+                                            }}
+                                            title="Bookmark Ayah"
+                                        >
+                                            <Bookmark size={24} fill={bookmarks?.find(b => b.verseKey === verse.verse_key) ? 'currentColor' : 'none'} />
+                                        </button>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                toggleMemorizedAyah(verse.verse_key);
+                                            }}
+                                            style={{
+                                                background: 'none',
+                                                border: 'none',
+                                                color: (memorizedAyahs || []).includes(verse.verse_key) ? 'var(--status-success, #10b981)' : 'var(--text-muted)',
+                                                cursor: 'pointer',
+                                                padding: '0.5rem',
+                                            }}
+                                            title="Mark Ayah as Memorized"
+                                        >
+                                            <CheckCircle size={24} fill={(memorizedAyahs || []).includes(verse.verse_key) ? 'currentColor' : 'none'} color={(memorizedAyahs || []).includes(verse.verse_key) ? 'white' : 'currentColor'} />
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <AnimatePresence>
@@ -751,7 +774,21 @@ export default function Memorization() {
                 pointerEvents: showUI ? 'auto' : 'none',
                 zIndex: 30
             }}>
-                <span style={{ color: 'var(--accent-primary)', fontWeight: 600 }}>Surah {chapter?.name_simple}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span style={{ color: 'var(--accent-primary)', fontWeight: 600 }}>Surah {chapter?.name_simple}</span>
+                    <button
+                        onClick={() => chapter?.id && toggleMemorizedSurah(chapter.id)}
+                        style={{
+                            background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                            color: (memorizedSurahs || []).includes(chapter?.id) ? 'var(--status-success, #10b981)' : 'var(--text-muted)',
+                            display: 'flex', alignItems: 'center',
+                            marginLeft: '4px'
+                        }}
+                        title={(memorizedSurahs || []).includes(chapter?.id) ? "Surah Memorized" : "Mark Surah as Memorized"}
+                    >
+                        <Award size={18} fill={(memorizedSurahs || []).includes(chapter?.id) ? 'currentColor' : 'none'} />
+                    </button>
+                </div>
                 <span>•</span>
                 <span>Page {currentVerses[0]?.page_number}</span>
                 <span>•</span>
