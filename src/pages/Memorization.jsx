@@ -23,10 +23,21 @@ export default function Memorization() {
     const {
         setNavHeaderTitle, arabicFont, fontSize, translationFontSize, translationId, mushafId,
         bookmarks, toggleBookmark, collections, addCollection, addToCollection,
-        tajweedEnabled
+        tajweedEnabled, logReadingSession
     } = useAppStore();
     const mushaf = getMushafById(mushafId);
     const isTajweedActive = isTajweedEnabledForMushaf(mushafId, tajweedEnabled);
+
+    // Track memorization session duration
+    useEffect(() => {
+        const startTime = Date.now();
+        return () => {
+            const duration = Math.round((Date.now() - startTime) / 1000);
+            if (duration >= 10) {
+                logReadingSession(duration, 'memorizing', Number(id));
+            }
+        };
+    }, [id, logReadingSession]);
 
     const [currentVerseIndex, setCurrentVerseIndex] = useState(0);
     const [isBlurred, setIsBlurred] = useState(false);

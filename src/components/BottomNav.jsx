@@ -20,7 +20,6 @@ export default function BottomNav() {
     const tabs = [
         { path: '/', icon: BookOpen, label: 'Quran' },
         { path: '/memorize', icon: Mic, label: 'Memorize' },
-        { path: '/dashboard', icon: Home, label: 'Dashboard' },
         { path: '/progress', icon: TrendingUp, label: 'Analytics' },
         { path: '/profile', icon: User, label: 'Profile' }
     ];

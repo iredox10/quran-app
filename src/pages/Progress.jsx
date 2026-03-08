@@ -278,6 +278,41 @@ export default function Progress() {
 
                 </div>
 
+                {/* 30-Day Activity Heatmap */}
+                <div style={{ marginTop: '2rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                        <h3 style={{ fontSize: '1.25rem', color: 'var(--text-primary)', fontWeight: 600 }}>Activity Heatmap</h3>
+                        <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Last 30 days</span>
+                    </div>
+                    <div style={{
+                        background: 'var(--bg-surface)',
+                        padding: '1.5rem',
+                        borderRadius: '16px',
+                        border: '1px solid var(--border-color)',
+                        boxShadow: 'var(--shadow-sm)'
+                    }}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                            {getLastNDays(30).map((date, i) => {
+                                const active = sessions.some(s => s.date === date);
+                                const d = new Date(date + 'T00:00:00');
+                                return (
+                                    <div
+                                        key={i}
+                                        title={d.toDateString()}
+                                        style={{
+                                            width: 'calc((100% / 10) - 8px)',
+                                            paddingBottom: 'calc((100% / 10) - 8px)',
+                                            background: active ? 'var(--accent-primary)' : 'var(--accent-light)',
+                                            opacity: active ? 1 : 0.4,
+                                            borderRadius: '4px'
+                                        }}
+                                    />
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+
                 {/* Bookmarks & Collections Summary */}
                 <div style={{ marginTop: '2rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
                     <div style={{

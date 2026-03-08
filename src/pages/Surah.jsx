@@ -33,7 +33,8 @@ export default function Surah() {
         autoScroll, setAutoScroll, autoScrollSpeed, setAutoScrollSpeed,
         isAutoScrollPaused, setIsAutoScrollPaused,
         isPlayerVisible, setIsPlayerVisible,
-        playTriggerCount
+        playTriggerCount,
+        logReadingSession
     } = useAppStore();
     const mushaf = getMushafById(mushafId);
     const isTajweedActive = isTajweedEnabledForMushaf(mushafId, tajweedEnabled);
@@ -60,6 +61,17 @@ export default function Surah() {
     useEffect(() => {
         return () => setNavHeaderTitle(null);
     }, [setNavHeaderTitle]);
+
+    // Track reading session duration
+    useEffect(() => {
+        const startTime = Date.now();
+        return () => {
+            const duration = Math.round((Date.now() - startTime) / 1000);
+            if (duration >= 10) { // Only log if spent at least 10 seconds
+                logReadingSession(duration, 'reading', Number(id));
+            }
+        };
+    }, [id, logReadingSession]);
 
     const {
         data: versesResponse,

@@ -5,7 +5,7 @@ import BottomNav from './components/BottomNav';
 import Home from './pages/Home';
 import Surah from './pages/Surah';
 import Page from './pages/Page';
-import Dashboard from './pages/Dashboard';
+
 import MemorizeIndex from './pages/MemorizeIndex';
 import Memorization from './pages/Memorization';
 import Library from './pages/Library';
@@ -30,7 +30,7 @@ function App() {
       <Routes>
         <Route element={<Layout />}>
           <Route path="/" element={<Home />} />
-          <Route path="/dashboard" element={<Dashboard />} />
+
           <Route path="/memorize" element={<MemorizeIndex />} />
           <Route path="/memorize/:id" element={<Memorization />} />
           <Route path="/library" element={<Library />} />
