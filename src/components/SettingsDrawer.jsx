@@ -62,11 +62,16 @@ export default function SettingsDrawer({ isOpen, onClose }) {
             // We do this surah by surah with a tiny break to avoid flooding
             for (let i = 0; i < chapters.length; i++) {
                 const chapterId = chapters[i].id;
+                // Calculate how many pages this Surah has (getVerses uses 50 per_page max)
+                const totalVerses = chapters[i].verses_count;
+                const totalPages = Math.ceil(totalVerses / 50);
 
-                // Fetch basic verses (Arabic + current Translation)
-                await getVerses(chapterId, translationId, reciterId, 1, mushafId);
+                // Fetch basic verses for ALL pages
+                for (let page = 1; page <= totalPages; page++) {
+                    await getVerses(chapterId, translationId, reciterId, page, mushafId);
+                }
 
-                // Fetch tajweed verses
+                // Fetch tajweed verses (returns all ayahs in one payload usually, but let's just trigger it)
                 if (mushaf.tajweedSource === 'uthmani_html' && isTajweedActive) {
                     await getTajweedVerses(chapterId);
                 }

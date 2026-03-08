@@ -48,7 +48,7 @@ export default defineConfig({
             options: {
               cacheName: 'quran-api-cache',
               expiration: {
-                maxEntries: 500, // Increase for more chapters
+                maxEntries: 2000, // Increased to support all paginated pages of all 114 Surahs
                 maxAgeSeconds: 60 * 60 * 24 * 60, // 60 Days
               },
               cacheableResponse: {
