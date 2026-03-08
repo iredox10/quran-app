@@ -16,14 +16,7 @@ import Profile from './pages/Profile';
 import { useAppStore } from './store/useAppStore';
 
 function App() {
-  const { translationId, setTranslation } = useAppStore();
-
-  useEffect(() => {
-    // Migrate 131 (Clear Quran, removed from API v4) to 85 (Abdul Haleem) silently
-    if (translationId === 131) {
-      setTranslation(85);
-    }
-  }, [translationId, setTranslation]);
+  const { translationId } = useAppStore();
 
   return (
     <BrowserRouter>

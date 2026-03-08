@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
+import { useQuery, useInfiniteQuery, keepPreviousData } from '@tanstack/react-query';
 import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useInView } from 'react-intersection-observer';
 import { getChapter, getVerses, getChapterAudio, getChapterTafsirs, getTajweedVerses } from '../services/api/quranApi';
@@ -17,6 +17,7 @@ export default function Surah() {
     const { id } = useParams();
     const location = useLocation();
     const navigate = useNavigate();
+    const didRegisterReadRef = React.useRef(null);
     const {
         translationId, reciterId, fontSize, translationFontSize,
         readingMode, setReadingMode,
@@ -50,12 +51,17 @@ export default function Surah() {
 
     useEffect(() => {
         if (chapter) {
-            const queryParams = new URLSearchParams(location.search);
-            const initialVerse = queryParams.get('verse');
-            addRecentlyRead(chapter.id, chapter.name_simple, initialVerse);
             setNavHeaderTitle(chapter.name_simple);
+            // Only register the read once per surah ID to avoid re-firing on every store update or re-render
+            if (didRegisterReadRef.current !== chapter.id) {
+                didRegisterReadRef.current = chapter.id;
+                const queryParams = new URLSearchParams(location.search);
+                const initialVerse = queryParams.get('verse');
+                addRecentlyRead(chapter.id, chapter.name_simple, initialVerse);
+            }
         }
-    }, [chapter, addRecentlyRead, location.search, setNavHeaderTitle]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [chapter?.id]);
 
     // Cleanup header on unmount
     useEffect(() => {
@@ -76,6 +82,7 @@ export default function Surah() {
     const {
         data: versesResponse,
         isLoading: isVersesLoading,
+        isFetching: isVersesFetching,
         fetchNextPage,
         hasNextPage,
         isFetchingNextPage
@@ -88,6 +95,7 @@ export default function Surah() {
             }
             return undefined;
         },
+        placeholderData: keepPreviousData,
     });
 
     const { data: audioData } = useQuery({
@@ -98,6 +106,7 @@ export default function Surah() {
     const { data: tafsirs, isFetching: isTafsirFetching } = useQuery({
         queryKey: ['tafsirs', id, tafsirId],
         queryFn: () => getChapterTafsirs(id, tafsirId),
+        placeholderData: keepPreviousData,
     });
 
     const [activeTafsir, setActiveTafsir] = useState(null); // stores { verse_key, text }
@@ -175,11 +184,14 @@ export default function Surah() {
     const isDownloaded = (downloadedSurahs || []).includes(id);
     const [isDownloading, setIsDownloading] = useState(false);
 
-    // Listen for the navbar audio button — fire handlePlayClick whenever it increments
-    const skipMountRef = React.useRef(true);
+    // Listen for the navbar audio button — fire handlePlayClick ONLY when count truly increments
+    // Store the initial value at mount time; any change after that is a real user press.
+    const mountPlayTriggerRef = React.useRef(playTriggerCount);
     useEffect(() => {
-        if (skipMountRef.current) { skipMountRef.current = false; return; }
+        // Ignore the initial render and any re-mount that happens with the same count
+        if (playTriggerCount === mountPlayTriggerRef.current) return;
         handlePlayClick();
+        mountPlayTriggerRef.current = playTriggerCount;
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [playTriggerCount]);
 
@@ -249,29 +261,69 @@ export default function Surah() {
 
         // Ensure we only jump to the verse once per unique verseKey, not continuously when scrolling
         if (verseKey && verses.length > 0 && hasScrolledRef.current !== verseKey) {
-            const element = document.getElementById(`verse - ${verseKey}`);
+            const element = document.getElementById(`verse-${verseKey}`);
             if (element) {
                 hasScrolledRef.current = verseKey; // Track that we've found and scrolled to it
                 element.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 // Briefly highlight it
+                element.style.transition = 'background-color 0.5s';
                 element.style.backgroundColor = 'var(--accent-light)';
                 setTimeout(() => {
                     element.style.backgroundColor = 'transparent';
                 }, 2000);
+            } else if (hasNextPage && !isFetchingNextPage) {
+                // If the element is not found, aggressively fetch the next page until it appears
+                fetchNextPage();
             }
         }
-    }, [location.search, verses, isVersesLoading]);
+    }, [location.search, verses, isVersesLoading, hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+    // Track swipe direction so animation knows which way to slide
+    const swipeDirectionRef = React.useRef(0); // -1 = going back (right swipe), 1 = going forward (left swipe)
 
     const swipeHandlers = useSwipeable({
         onSwipedLeft: () => {
-            if (parseInt(id) < 114) navigate(`/surah/${parseInt(id) + 1}`);
+            if (parseInt(id) < 114) {
+                swipeDirectionRef.current = 1; // forward
+                navigate(`/surah/${parseInt(id) + 1}`);
+            }
         },
         onSwipedRight: () => {
-            if (parseInt(id) > 1) navigate(`/surah/${parseInt(id) - 1}`);
+            if (parseInt(id) > 1) {
+                swipeDirectionRef.current = -1; // backward
+                navigate(`/surah/${parseInt(id) - 1}`);
+            }
         },
         preventScrollOnSwipe: false,
-        trackMouse: false
+        trackMouse: false,
+        delta: 50,
     });
+
+    // Direction-aware page variants
+    const pageVariants = {
+        enter: (direction) => ({
+            x: direction >= 0 ? '60%' : '-60%',
+            opacity: 0,
+            scale: 0.96,
+        }),
+        center: {
+            x: 0,
+            opacity: 1,
+            scale: 1,
+        },
+        exit: (direction) => ({
+            x: direction >= 0 ? '-60%' : '60%',
+            opacity: 0,
+            scale: 0.96,
+        }),
+    };
+
+    const pageTransition = {
+        type: 'spring',
+        stiffness: 280,
+        damping: 30,
+        mass: 0.8,
+    };
 
     if (isChapterLoading || isVersesLoading) return (
         <div className="container" style={{ textAlign: 'center', padding: '10vh 0', color: 'var(--text-muted)' }}>
@@ -290,18 +342,39 @@ export default function Surah() {
             {...swipeHandlers}
             style={{ overflow: 'hidden' }} // Prevent horizontal scrollbar during animation
         >
+            {/* Subtle refetch indicator — only shows when re-loading in background (not initial load) */}
+            {isVersesFetching && !isVersesLoading && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, height: '3px',
+                    zIndex: 2000, overflow: 'hidden', pointerEvents: 'none'
+                }}>
+                    <motion.div
+                        initial={{ x: '-100%' }}
+                        animate={{ x: '100%' }}
+                        transition={{ duration: 0.9, ease: 'easeInOut', repeat: Infinity }}
+                        style={{
+                            height: '100%', width: '40%',
+                            background: 'linear-gradient(90deg, transparent, var(--accent-primary), transparent)',
+                            borderRadius: '4px'
+                        }}
+                    />
+                </div>
+            )}
             <Helmet>
                 <title>{chapter ? `${chapter.name_simple} - The Noble Qur'an` : "Surah - The Noble Qur'an"}</title>
                 <meta name="description" content={`Read and listen to ${chapter?.name_simple} (${chapter?.translated_name.name}) online with translations and Tafsir.`} />
             </Helmet>
 
-            <AnimatePresence mode="wait" initial={false}>
+            <AnimatePresence mode="wait" initial={false} custom={swipeDirectionRef.current}>
                 <motion.div
                     key={id}
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
-                    transition={{ duration: 0.3, ease: 'easeInOut' }}
+                    custom={swipeDirectionRef.current}
+                    variants={pageVariants}
+                    initial="enter"
+                    animate="center"
+                    exit="exit"
+                    transition={pageTransition}
+                    style={{ willChange: 'transform, opacity' }}
                 >
                     <Link
                         to="/"
@@ -481,33 +554,35 @@ export default function Surah() {
                                 paddingBottom: '2rem'
                             }}>
                                 {parseInt(id) > 1 ? (
-                                    <Link
-                                        to={`/surah/${parseInt(id) - 1}`}
+                                    <button
+                                        onClick={() => { swipeDirectionRef.current = -1; navigate(`/surah/${parseInt(id) - 1}`); }}
                                         className="interactive-hover"
                                         style={{
                                             display: 'flex', alignItems: 'center', gap: '8px',
                                             padding: '1rem', background: 'var(--bg-secondary)', borderRadius: '12px',
                                             textDecoration: 'none', color: 'var(--text-primary)', fontWeight: 600,
-                                            border: '1px solid var(--border-color)', flex: 1, justifyContent: 'center'
+                                            border: '1px solid var(--border-color)', flex: 1, justifyContent: 'center',
+                                            cursor: 'pointer'
                                         }}
                                     >
                                         <ArrowLeft size={18} /> Previous Surah
-                                    </Link>
+                                    </button>
                                 ) : <div style={{ flex: 1 }} />}
 
                                 {parseInt(id) < 114 ? (
-                                    <Link
-                                        to={`/surah/${parseInt(id) + 1}`}
+                                    <button
+                                        onClick={() => { swipeDirectionRef.current = 1; navigate(`/surah/${parseInt(id) + 1}`); }}
                                         className="interactive-hover"
                                         style={{
                                             display: 'flex', alignItems: 'center', gap: '8px',
                                             padding: '1rem', background: 'var(--bg-secondary)', borderRadius: '12px',
                                             textDecoration: 'none', color: 'var(--text-primary)', fontWeight: 600,
-                                            border: '1px solid var(--border-color)', flex: 1, justifyContent: 'center'
+                                            border: '1px solid var(--border-color)', flex: 1, justifyContent: 'center',
+                                            cursor: 'pointer'
                                         }}
                                     >
                                         Next Surah <ArrowRight size={18} />
-                                    </Link>
+                                    </button>
                                 ) : <div style={{ flex: 1 }} />}
                             </div>
                         )}

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { getVersesByPage, getTajweedVersesByPage, getChapters } from '../services/api/quranApi';
 import { useAppStore } from '../store/useAppStore';
 import { ArrowLeft, Bookmark, Moon, Sun, Globe, Type, ChevronLeft, ChevronRight, X, Search } from 'lucide-react';
@@ -43,7 +43,7 @@ export default function Page() {
     const { data: pageData, isLoading: isPageLoading } = useQuery({
         queryKey: ['pageVerses', pageNumber, translationId, reciterId, mushafId],
         queryFn: () => getVersesByPage(pageNumber, translationId, reciterId, mushafId),
-        keepPreviousData: true,
+        placeholderData: keepPreviousData,
     });
 
     const { data: tajweedData } = useQuery({

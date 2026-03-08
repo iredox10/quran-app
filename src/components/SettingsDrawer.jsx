@@ -12,10 +12,12 @@ const RECITERS = [
 ];
 
 const TRANSLATIONS = [
-    { id: 131, name: 'English (Saheeh International)' },
-    { id: 85, name: 'English (Clear Quran)' },
-    { id: 39, name: 'English (Yusuf Ali)' },
-    { id: 234, name: 'Urdu (Abul A\'ala Maududi)' }
+    { id: 85, name: 'English — M.A.S. Abdel Haleem' },
+    { id: 20, name: 'English — Saheeh International' },
+    { id: 22, name: 'English — A. Yusuf Ali' },
+    { id: 84, name: 'English — Mufti Taqi Usmani' },
+    { id: 32, name: 'Hausa — Abubakar Mahmoud Gumi' },
+    { id: 234, name: 'Urdu — Fatah Muhammad Jalandhari' }
 ];
 
 const TAFSIRS = [
