@@ -34,6 +34,7 @@ export default function Memorization() {
     const [ayahsPerSwipe, setAyahsPerSwipe] = useState(1);
     const [isCollectionsOpen, setIsCollectionsOpen] = useState(false);
     const [newCollectionName, setNewCollectionName] = useState('');
+    const [showUI, setShowUI] = useState(true);
     const [isAudioSettingsOpen, setIsAudioSettingsOpen] = useState(false);
 
     const [isPlayingAudio, setIsPlayingAudio] = useState(false);
@@ -138,6 +139,27 @@ export default function Memorization() {
         return () => setNavHeaderTitle(null);
     }, [id, chapter, setNavHeaderTitle]);
 
+    useEffect(() => {
+        let hideTimer;
+        const handleActivity = () => {
+            setShowUI(true);
+            if (hideTimer) clearTimeout(hideTimer);
+            hideTimer = setTimeout(() => setShowUI(false), 3000);
+        };
+
+        window.addEventListener('mousemove', handleActivity);
+        window.addEventListener('touchstart', handleActivity);
+        window.addEventListener('click', handleActivity);
+        handleActivity(); // trigger immediately
+
+        return () => {
+            window.removeEventListener('mousemove', handleActivity);
+            window.removeEventListener('touchstart', handleActivity);
+            window.removeEventListener('click', handleActivity);
+            if (hideTimer) clearTimeout(hideTimer);
+        };
+    }, []);
+
     const verses = versesResponse?.verses || [];
 
     useEffect(() => {
@@ -229,7 +251,7 @@ export default function Memorization() {
             )}
 
             {/* Top Controls */}
-            <div className="container" style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
+            <div className="container" style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginBottom: '2rem', flexWrap: 'wrap', opacity: showUI ? 1 : 0, transition: 'opacity 0.4s', pointerEvents: showUI ? 'auto' : 'none' }}>
 
                 <div style={{ position: 'relative' }}>
                     <button
@@ -536,16 +558,32 @@ export default function Memorization() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
                         {currentVerses.map((verse, idx) => (
                             <div key={verse.id}>
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', position: 'relative' }}>
-                                    <div className="quran-text" style={{
+                                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', position: 'relative', width: '100%' }}>
+                                    <div className="quran-text tajweed-text" style={{
                                         fontSize: `clamp(${0.9 + fontSize * 0.15}rem, ${fontSize * 1.2}vw, ${fontSize * 0.4 + 1.5}rem)`,
                                         fontFamily: arabicFont,
                                         lineHeight: 2.2,
                                         color: (isPlayingAudio && audioVerseIndex === idx) ? 'var(--accent-primary)' : 'var(--text-primary)',
                                         transition: 'color 0.3s ease',
-                                        flex: 1
+                                        flex: 1,
+                                        textAlign: 'right', // Critical for proper Arabic alignment
+                                        direction: 'rtl'   // Ensure proper RTL text flow
                                     }}>
-                                        {getVerseArabicText(verse, mushaf)} <span style={{ fontSize: '0.5em', color: 'var(--accent-primary)', padding: '0 8px', verticalAlign: 'middle' }}>{toArabicNumerals(verse.verse_key.split(':')[1])}</span>
+                                        {getVerseArabicText(verse, mushaf)} <span style={{
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            width: '1.4em',
+                                            height: '1.4em',
+                                            borderRadius: '50%',
+                                            border: '1.5px solid var(--accent-primary)',
+                                            color: 'var(--accent-primary)',
+                                            fontSize: '0.45em',
+                                            margin: '0 0.5rem',
+                                            position: 'relative',
+                                            bottom: '0.2em',
+                                            fontFamily: "'Amiri Quran', serif"
+                                        }}>{toArabicNumerals(verse.verse_key.split(':')[1])}</span>
                                     </div>
                                     <button
                                         onClick={(e) => {
@@ -615,16 +653,16 @@ export default function Memorization() {
                 </motion.div>
 
                 {/* Left/Right Nav */}
-                <button onClick={handlePrev} disabled={currentVerseIndex === 0} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-primary)', cursor: currentVerseIndex === 0 ? 'default' : 'pointer', opacity: currentVerseIndex === 0 ? 0.2 : 0.6 }}>
+                <button onClick={handlePrev} disabled={currentVerseIndex === 0} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-primary)', cursor: currentVerseIndex === 0 ? 'default' : 'pointer', opacity: showUI ? (currentVerseIndex === 0 ? 0.2 : 0.6) : 0, transition: 'opacity 0.4s', pointerEvents: showUI ? 'auto' : 'none' }}>
                     <ArrowLeft size={32} />
                 </button>
-                <button onClick={handleNext} disabled={currentVerseIndex + currentVerses.length >= verses.length} style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-primary)', cursor: currentVerseIndex + currentVerses.length >= verses.length ? 'default' : 'pointer', opacity: currentVerseIndex + currentVerses.length >= verses.length ? 0.2 : 0.6 }}>
+                <button onClick={handleNext} disabled={currentVerseIndex + currentVerses.length >= verses.length} style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-primary)', cursor: currentVerseIndex + currentVerses.length >= verses.length ? 'default' : 'pointer', opacity: showUI ? (currentVerseIndex + currentVerses.length >= verses.length ? 0.2 : 0.6) : 0, transition: 'opacity 0.4s', pointerEvents: showUI ? 'auto' : 'none' }}>
                     <ArrowRight size={32} />
                 </button>
             </div>
 
             {/* Floating Play Control */}
-            <div style={{ position: 'fixed', bottom: '6rem', left: '50%', transform: 'translateX(-50%)', zIndex: 40 }}>
+            <div style={{ position: 'fixed', bottom: '6rem', left: '50%', transform: 'translateX(-50%)', zIndex: 40, opacity: showUI ? 1 : 0, transition: 'opacity 0.4s', pointerEvents: showUI ? 'auto' : 'none' }}>
                 <motion.button
                     whileTap={{ scale: 0.9 }}
                     onClick={toggleAudio}

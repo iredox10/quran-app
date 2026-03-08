@@ -22,6 +22,8 @@ export default function Layout() {
     const navigate = useNavigate();
 
     const isSurahPage = /^\/surah\/\d+/.test(location.pathname);
+    const isMemorizePage = /^\/memorize\/\d+/.test(location.pathname);
+    const isImmersivePage = isSurahPage || isMemorizePage;
     const hasAudio = audioPlaylist.length > 0 || !!currentAudioUrl;
 
     useEffect(() => {
@@ -29,23 +31,54 @@ export default function Layout() {
     }, [theme]);
 
     useEffect(() => {
+        let hideTimer;
+
+        const handleActivity = () => {
+            setShowHeader(true);
+            if (isMemorizePage) {
+                if (hideTimer) clearTimeout(hideTimer);
+                hideTimer = setTimeout(() => {
+                    setShowHeader(false);
+                }, 3000);
+            }
+        };
+
         const handleScroll = () => {
             const currentScrollY = window.scrollY;
 
-            // If scrolling down and past 100px, hide header
-            if (currentScrollY > lastScrollY && currentScrollY > 100) {
-                setShowHeader(false);
+            if (!isMemorizePage) {
+                // Normal Surah scroll behavior
+                if (currentScrollY > lastScrollY && currentScrollY > 100) {
+                    setShowHeader(false);
+                } else {
+                    setShowHeader(true);
+                }
             } else {
-                // If scrolling up, show header
-                setShowHeader(true);
+                // Memorization mode scroll just triggers activity
+                handleActivity();
             }
-
             setLastScrollY(currentScrollY);
         };
 
         window.addEventListener('scroll', handleScroll, { passive: true });
-        return () => window.removeEventListener('scroll', handleScroll);
-    }, [lastScrollY]);
+
+        if (isMemorizePage) {
+            window.addEventListener('mousemove', handleActivity);
+            window.addEventListener('touchstart', handleActivity);
+            window.addEventListener('click', handleActivity);
+            handleActivity(); // Initialize the timer immediately
+        }
+
+        return () => {
+            window.removeEventListener('scroll', handleScroll);
+            if (isMemorizePage) {
+                window.removeEventListener('mousemove', handleActivity);
+                window.removeEventListener('touchstart', handleActivity);
+                window.removeEventListener('click', handleActivity);
+                if (hideTimer) clearTimeout(hideTimer);
+            }
+        };
+    }, [lastScrollY, isMemorizePage]);
 
     // Ensure header is visible when location changes
     useEffect(() => {
@@ -69,7 +102,7 @@ export default function Layout() {
 
                     {/* Left: back/logo */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
-                        {isSurahPage ? (
+                        {isImmersivePage ? (
                             <>
                                 <button className="btn-icon" onClick={() => navigate(-1)} style={{ flexShrink: 0 }} aria-label="Go back">
                                     <ArrowLeft size={20} />
@@ -78,7 +111,7 @@ export default function Layout() {
                                     fontWeight: 600, fontSize: '1.1rem', color: 'var(--text-primary)',
                                     whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
                                 }}>
-                                    {navHeaderTitle || 'Surah'}
+                                    {navHeaderTitle || 'Page'}
                                 </span>
                             </>
                         ) : (
