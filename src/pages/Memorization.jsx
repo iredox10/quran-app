@@ -671,6 +671,23 @@ export default function Memorization() {
                                             ? <span dangerouslySetInnerHTML={{ __html: tajweedMap[verse.verse_key] }} />
                                             : getVerseArabicText(verse, mushaf)
                                         }
+                                        <span style={{
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            width: '1.4em',
+                                            height: '1.4em',
+                                            borderRadius: '50%',
+                                            border: '1.5px solid var(--accent-primary)',
+                                            color: 'var(--accent-primary)',
+                                            fontSize: '0.45em',
+                                            margin: '0 0.5rem',
+                                            position: 'relative',
+                                            bottom: '0.2em',
+                                            fontFamily: "'Amiri Quran', serif"
+                                        }}>
+                                            {toArabicNumerals(verse.verse_key.split(':')[1])}
+                                        </span>
                                     </div>
                                     <div style={{
                                         position: 'absolute',
