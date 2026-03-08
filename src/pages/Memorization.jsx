@@ -21,7 +21,7 @@ export default function Memorization() {
     const { id } = useParams(); // Surah ID
     const navigate = useNavigate();
     const {
-        setNavHeaderTitle, arabicFont, fontSize, translationId, mushafId,
+        setNavHeaderTitle, arabicFont, fontSize, translationFontSize, translationId, mushafId,
         bookmarks, toggleBookmark, collections, addCollection, addToCollection
     } = useAppStore();
     const mushaf = getMushafById(mushafId);
@@ -230,14 +230,7 @@ export default function Memorization() {
 
             {/* Top Controls */}
             <div className="container" style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
-                <button
-                    className="btn-icon"
-                    onClick={toggleAudio}
-                    style={{ background: isPlayingAudio ? 'var(--accent-light)' : 'var(--bg-surface)', border: '1px solid var(--border-color)', color: isPlayingAudio ? 'var(--accent-primary)' : 'inherit' }}
-                    title={isPlayingAudio ? "Pause Audio" : "Play selected Ayahs"}
-                >
-                    {isPlayingAudio ? <Pause size={20} /> : <Play size={20} />}
-                </button>
+
                 <div style={{ position: 'relative' }}>
                     <button
                         className="btn-icon"
@@ -545,7 +538,7 @@ export default function Memorization() {
                             <div key={verse.id}>
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', position: 'relative' }}>
                                     <div className="quran-text" style={{
-                                        fontSize: `${(fontSize * 0.4) + 2.5}rem`,
+                                        fontSize: `clamp(${0.9 + fontSize * 0.15}rem, ${fontSize * 1.2}vw, ${fontSize * 0.4 + 1.5}rem)`,
                                         fontFamily: arabicFont,
                                         lineHeight: 2.2,
                                         color: (isPlayingAudio && audioVerseIndex === idx) ? 'var(--accent-primary)' : 'var(--text-primary)',
@@ -588,7 +581,7 @@ export default function Memorization() {
                                                 borderRadius: '16px',
                                                 border: '1px solid var(--border-color)',
                                                 color: 'var(--text-secondary)',
-                                                fontSize: `${(fontSize * 0.1) + 1}rem`,
+                                                fontSize: `${(translationFontSize || 2) * 0.15 + 0.75}rem`,
                                                 lineHeight: 1.6,
                                                 boxShadow: 'var(--shadow-sm)',
                                                 overflow: 'hidden'
@@ -622,26 +615,26 @@ export default function Memorization() {
                 </motion.div>
 
                 {/* Left/Right Nav */}
-                <button onClick={handlePrev} disabled={currentVerseIndex === 0} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: currentVerseIndex === 0 ? 'default' : 'pointer', opacity: currentVerseIndex === 0 ? 0.2 : 0.6 }}>
+                <button onClick={handlePrev} disabled={currentVerseIndex === 0} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-primary)', cursor: currentVerseIndex === 0 ? 'default' : 'pointer', opacity: currentVerseIndex === 0 ? 0.2 : 0.6 }}>
                     <ArrowLeft size={32} />
                 </button>
-                <button onClick={handleNext} disabled={currentVerseIndex + currentVerses.length >= verses.length} style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: currentVerseIndex + currentVerses.length >= verses.length ? 'default' : 'pointer', opacity: currentVerseIndex + currentVerses.length >= verses.length ? 0.2 : 0.6 }}>
+                <button onClick={handleNext} disabled={currentVerseIndex + currentVerses.length >= verses.length} style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-primary)', cursor: currentVerseIndex + currentVerses.length >= verses.length ? 'default' : 'pointer', opacity: currentVerseIndex + currentVerses.length >= verses.length ? 0.2 : 0.6 }}>
                     <ArrowRight size={32} />
                 </button>
             </div>
 
-            {/* Floating Mic Control */}
-            <div style={{ position: 'fixed', bottom: '4rem', left: '50%', transform: 'translateX(-50%)', zIndex: 40 }}>
+            {/* Floating Play Control */}
+            <div style={{ position: 'fixed', bottom: '6rem', left: '50%', transform: 'translateX(-50%)', zIndex: 40 }}>
                 <motion.button
                     whileTap={{ scale: 0.9 }}
-                    onClick={handleMicToggle}
-                    animate={isRecording ? { scale: [1, 1.1, 1], boxShadow: ["0px 0px 0px rgba(198,168,124,0)", "0px 0px 30px rgba(198,168,124,0.6)", "0px 0px 0px rgba(198,168,124,0)"] } : {}}
-                    transition={{ repeat: isRecording ? Infinity : 0, duration: 1.5 }}
+                    onClick={toggleAudio}
+                    animate={isPlayingAudio ? { scale: [1, 1.1, 1], boxShadow: ["0px 0px 0px rgba(198,168,124,0)", "0px 0px 30px rgba(198,168,124,0.6)", "0px 0px 0px rgba(198,168,124,0)"] } : {}}
+                    transition={{ repeat: isPlayingAudio ? Infinity : 0, duration: 1.5 }}
                     style={{
                         width: '72px',
                         height: '72px',
                         borderRadius: '50%',
-                        backgroundColor: isRecording ? '#dc2626' : 'var(--accent-primary)',
+                        backgroundColor: isPlayingAudio ? 'var(--accent-hover)' : 'var(--accent-primary)',
                         color: 'white',
                         border: 'none',
                         display: 'flex',
@@ -651,9 +644,8 @@ export default function Memorization() {
                         cursor: 'pointer'
                     }}
                 >
-                    <Mic size={32} />
+                    {isPlayingAudio ? <Pause size={32} fill="currentColor" /> : <Play size={32} fill="currentColor" style={{ marginLeft: '4px' }} />}
                 </motion.button>
-                {isRecording && <div style={{ position: 'absolute', width: '100%', textAlign: 'center', bottom: '-30px', color: '#dc2626', fontWeight: 600, fontSize: '0.875rem' }}>Listening...</div>}
             </div>
 
             {/* AI Recitation Analysis Modal */}
