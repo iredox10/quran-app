@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { getMushafById } from '../../config/mushaf';
 
 const api = axios.create({
   baseURL: 'https://api.quran.com/api/v4',
@@ -6,6 +7,35 @@ const api = axios.create({
     Accept: 'application/json',
   },
 });
+
+const WORD_FIELD_BY_MUSHAF = {
+  text_uthmani: ['text_uthmani', 'page_number', 'line_number'],
+  text_indopak: ['text_indopak', 'text_uthmani', 'page_number', 'line_number'],
+  text_qpc_hafs: ['text_qpc_hafs', 'text_uthmani', 'page_number', 'line_number'],
+};
+
+const VERSE_FIELD_BY_MUSHAF = {
+  text_uthmani: ['text_uthmani', 'page_number'],
+  text_indopak: ['text_indopak', 'text_uthmani', 'page_number'],
+  text_qpc_hafs: ['text_qpc_hafs', 'text_uthmani', 'page_number'],
+};
+
+const buildFieldsForMushaf = (mushafId) => {
+  const mushaf = getMushafById(mushafId);
+  const verseFields = VERSE_FIELD_BY_MUSHAF[mushaf.verseField] || VERSE_FIELD_BY_MUSHAF.text_uthmani;
+  const wordFields = WORD_FIELD_BY_MUSHAF[mushaf.scriptField] || WORD_FIELD_BY_MUSHAF.text_uthmani;
+
+  return {
+    mushaf,
+    fields: verseFields.join(','),
+    wordFields: wordFields.join(','),
+  };
+};
+
+const decorateVerses = (verses = [], mushaf) => verses.map((verse) => ({
+  ...verse,
+  arabic_text: verse[mushaf.verseField] || verse.text_uthmani || verse.text_indopak || verse.text_qpc_hafs || '',
+}));
 
 export const getChapters = async () => {
   const { data } = await api.get('/chapters', {
@@ -21,33 +51,45 @@ export const getChapter = async (id) => {
   return data.chapter;
 };
 
-export const getVerses = async (chapterId, translationId = 85, reciterId = 7, page = 1) => {
+export const getVerses = async (chapterId, translationId = 85, reciterId = 7, page = 1, mushafId = 'madani-standard') => {
+  const { mushaf, fields, wordFields } = buildFieldsForMushaf(mushafId);
   const { data } = await api.get(`/verses/by_chapter/${chapterId}`, {
     params: {
       language: 'en',
       words: true,
       translations: translationId,
       audio: reciterId,
-      fields: 'text_uthmani,page_number',
+      fields,
+      word_fields: wordFields,
+      mushaf: mushaf.apiMushafId,
       page: page,
       per_page: 50,
     },
   });
-  return data;
+  return {
+    ...data,
+    verses: decorateVerses(data.verses, mushaf),
+  };
 };
 
-export const getVersesByPage = async (pageNumber, translationId = 85, reciterId = 7) => {
+export const getVersesByPage = async (pageNumber, translationId = 85, reciterId = 7, mushafId = 'madani-standard') => {
+  const { mushaf, fields, wordFields } = buildFieldsForMushaf(mushafId);
   const { data } = await api.get(`/verses/by_page/${pageNumber}`, {
     params: {
       language: 'en',
       words: true,
       translations: translationId,
       audio: reciterId,
-      fields: 'text_uthmani,page_number',
+      fields,
+      word_fields: wordFields,
+      mushaf: mushaf.apiMushafId,
       per_page: 50,
     },
   });
-  return data;
+  return {
+    ...data,
+    verses: decorateVerses(data.verses, mushaf),
+  };
 };
 
 

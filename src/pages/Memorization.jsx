@@ -5,6 +5,8 @@ import { useQuery } from '@tanstack/react-query';
 import { getVerses, getChapter } from '../services/api/quranApi';
 import { useAppStore } from '../store/useAppStore';
 import { Mic, EyeOff, Eye, Repeat, ArrowLeft, ArrowRight, X, Play, Pause, ShieldAlert, Award, Languages, Layers, RefreshCw, Clock, Bookmark, FolderPlus, Plus, Folder, Settings2 } from 'lucide-react';
+import { getMushafById } from '../config/mushaf';
+import { getVerseArabicText } from '../utils/quranText';
 
 const toArabicNumerals = (num) => {
     const arabicNumbers = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
@@ -19,9 +21,10 @@ export default function Memorization() {
     const { id } = useParams(); // Surah ID
     const navigate = useNavigate();
     const {
-        setNavHeaderTitle, arabicFont, fontSize, translationId,
+        setNavHeaderTitle, arabicFont, fontSize, translationId, mushafId,
         bookmarks, toggleBookmark, collections, addCollection, addToCollection
     } = useAppStore();
+    const mushaf = getMushafById(mushafId);
 
     const [currentVerseIndex, setCurrentVerseIndex] = useState(0);
     const [isBlurred, setIsBlurred] = useState(false);
@@ -122,8 +125,8 @@ export default function Memorization() {
     });
 
     const { data: versesResponse, isLoading: isVersesLoading } = useQuery({
-        queryKey: ['memorizeVerses', id, translationId],
-        queryFn: () => getVerses(id, translationId, 7, 1),
+        queryKey: ['memorizeVerses', id, translationId, mushafId],
+        queryFn: () => getVerses(id, translationId, 7, 1, mushafId),
     });
 
     useEffect(() => {
@@ -549,7 +552,7 @@ export default function Memorization() {
                                         transition: 'color 0.3s ease',
                                         flex: 1
                                     }}>
-                                        {verse.text_uthmani} <span style={{ fontSize: '0.5em', color: 'var(--accent-primary)', padding: '0 8px', verticalAlign: 'middle' }}>{toArabicNumerals(verse.verse_key.split(':')[1])}</span>
+                                        {getVerseArabicText(verse, mushaf)} <span style={{ fontSize: '0.5em', color: 'var(--accent-primary)', padding: '0 8px', verticalAlign: 'middle' }}>{toArabicNumerals(verse.verse_key.split(':')[1])}</span>
                                     </div>
                                     <button
                                         onClick={(e) => {

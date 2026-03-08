@@ -3,6 +3,7 @@ import { useInView } from 'react-intersection-observer';
 import { Bookmark, Info, X, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../store/useAppStore';
+import { getVerseArabicText } from '../utils/quranText';
 
 const toArabicNumerals = (num) => {
     const arabicNumbers = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
@@ -23,7 +24,8 @@ const VerseRow = ({
     verse, readingMode, chapter, bookmark, setBookmark, addRecentlyRead,
     fontSize, translationFontSize, arabicFont, tajweedEnabled, tajweedMap, activeTafsir,
     setActiveTafsir, isTafsirFetching, tafsirId, showPageDivider, tafsirs,
-    isAudioPlaying
+    isAudioPlaying,
+    mushaf
 }) => {
     const { ref, inView } = useInView({
         threshold: 0.5,
@@ -73,6 +75,8 @@ const VerseRow = ({
     ) : null;
 
     if (readingMode) {
+        const verseArabicText = getVerseArabicText(verse, mushaf);
+
         return (
             <React.Fragment key={`reading-${verse.verse_key}`}>
                 {pageDivider}
@@ -94,7 +98,7 @@ const VerseRow = ({
                 >
                     {tajweedEnabled && tajweedMap?.[verse.verse_key]
                         ? <span dangerouslySetInnerHTML={{ __html: tajweedMap[verse.verse_key] }} />
-                        : verse.text_uthmani
+                        : verseArabicText
                     }
                     <span style={{
                         display: 'inline-flex',
@@ -117,6 +121,8 @@ const VerseRow = ({
             </React.Fragment>
         );
     }
+
+    const verseArabicText = getVerseArabicText(verse, mushaf);
 
     return (
         <React.Fragment key={`translation-${verse.verse_key}`}>
@@ -218,7 +224,7 @@ const VerseRow = ({
                 >
                     {tajweedEnabled && tajweedMap?.[verse.verse_key]
                         ? <span dangerouslySetInnerHTML={{ __html: tajweedMap[verse.verse_key] }} />
-                        : verse.text_uthmani
+                        : verseArabicText
                     }
                     {/* AYAH SIGN MOVED TO THE END */}
                     <span style={{

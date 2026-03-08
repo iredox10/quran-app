@@ -1,5 +1,15 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import {
+    DEFAULT_MUSHAF,
+    getArabicFontByFamily,
+    getArabicFontFamily,
+    getCompatibleArabicFontId,
+    getMushafById,
+} from '../config/mushaf';
+
+const DEFAULT_ARABIC_FONT_ID = getCompatibleArabicFontId(DEFAULT_MUSHAF.id, DEFAULT_MUSHAF.defaultFontId);
+const DEFAULT_ARABIC_FONT_FAMILY = getArabicFontFamily(DEFAULT_ARABIC_FONT_ID);
 
 export const useAppStore = create(
     persist(
@@ -10,7 +20,9 @@ export const useAppStore = create(
             fontSize: 2, // 1, 2, 3, 4
             translationFontSize: 2, // 1, 2, 3, 4
             readingMode: false, // false = translation, true = arabic only
-            arabicFont: "'KFGQPC Hafs Uthmanic Script', 'Amiri Quran', serif", // Default font
+            mushafId: DEFAULT_MUSHAF.id,
+            arabicFontId: DEFAULT_ARABIC_FONT_ID,
+            arabicFont: DEFAULT_ARABIC_FONT_FAMILY,
             tajweedEnabled: false, // Show tajweed color rules
             tafsirId: 169, // Default: Ibn Kathir (Abridged) English
             offlineDataStatus: 'idle', // 'idle', 'syncing', 'completed', 'error'
@@ -30,8 +42,28 @@ export const useAppStore = create(
             setFontSize: (size) => set({ fontSize: size }),
             setTranslationFontSize: (size) => set({ translationFontSize: size }),
             setReadingMode: (mode) => set({ readingMode: mode }),
-            setArabicFont: (font) => set({ arabicFont: font }),
-            setTajweed: (enabled) => set({ tajweedEnabled: enabled }),
+            setSelectedMushaf: (mushafId) => set((state) => {
+                const mushaf = getMushafById(mushafId);
+                const nextFontId = getCompatibleArabicFontId(mushaf.id, state.arabicFontId || getArabicFontByFamily(state.arabicFont)?.id);
+
+                return {
+                    mushafId: mushaf.id,
+                    arabicFontId: nextFontId,
+                    arabicFont: getArabicFontFamily(nextFontId, mushaf.defaultFontId),
+                    tajweedEnabled: mushaf.supportsTajweedToggle ? state.tajweedEnabled : false,
+                };
+            }),
+            setArabicFont: (fontId) => set((state) => {
+                const nextFontId = getCompatibleArabicFontId(state.mushafId, fontId);
+                return {
+                    arabicFontId: nextFontId,
+                    arabicFont: getArabicFontFamily(nextFontId),
+                };
+            }),
+            setTajweed: (enabled) => set((state) => {
+                const mushaf = getMushafById(state.mushafId);
+                return { tajweedEnabled: mushaf.supportsTajweedToggle ? enabled : false };
+            }),
             setTafsirId: (id) => set({ tafsirId: id }),
             setOfflineStatus: (status) => set({ offlineDataStatus: status }),
             addDownloadedSurah: (id) => set((state) => ({
@@ -145,6 +177,8 @@ export const useAppStore = create(
                 fontSize: state.fontSize,
                 translationFontSize: state.translationFontSize || 2,
                 readingMode: state.readingMode,
+                mushafId: state.mushafId || DEFAULT_MUSHAF.id,
+                arabicFontId: state.arabicFontId || DEFAULT_ARABIC_FONT_ID,
                 arabicFont: state.arabicFont,
                 tajweedEnabled: state.tajweedEnabled,
                 tafsirId: state.tafsirId,

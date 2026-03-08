@@ -7,6 +7,9 @@ import { ArrowLeft, Bookmark, Moon, Sun, Globe, Type, ChevronLeft, ChevronRight,
 import { Helmet } from 'react-helmet-async';
 import { motion, AnimatePresence } from 'framer-motion';
 import VerseRow from '../components/VerseRow';
+import MushafPageView from '../components/MushafPageView';
+import { getMushafById, isTajweedEnabledForMushaf } from '../config/mushaf';
+import { sanitizeTajweedHtml } from '../utils/quranText';
 
 const EasingPage = [0.25, 1, 0.5, 1]; // Ethereal paper spring
 
@@ -22,8 +25,10 @@ export default function Page() {
         translationId, reciterId, fontSize, setFontSize,
         readingMode, setReadingMode,
         bookmark, setBookmark, addRecentlyRead,
-        arabicFont, tajweedEnabled, tafsirId
+        mushafId, arabicFont, tajweedEnabled, tafsirId
     } = useAppStore();
+    const mushaf = getMushafById(mushafId);
+    const isTajweedActive = isTajweedEnabledForMushaf(mushafId, tajweedEnabled);
 
     // Local UI State
     const [isHudVisible, setIsHudVisible] = useState(false);
@@ -36,15 +41,15 @@ export default function Page() {
 
     // Queries
     const { data: pageData, isLoading: isPageLoading } = useQuery({
-        queryKey: ['pageVerses', pageNumber, translationId, reciterId],
-        queryFn: () => getVersesByPage(pageNumber, translationId, reciterId),
+        queryKey: ['pageVerses', pageNumber, translationId, reciterId, mushafId],
+        queryFn: () => getVersesByPage(pageNumber, translationId, reciterId, mushafId),
         keepPreviousData: true,
     });
 
     const { data: tajweedData } = useQuery({
-        queryKey: ['tajweedPage', pageNumber],
+        queryKey: ['tajweedPage', pageNumber, mushafId],
         queryFn: () => getTajweedVersesByPage(pageNumber),
-        enabled: tajweedEnabled,
+        enabled: isTajweedActive && mushaf.tajweedSource === 'uthmani_html',
     });
 
     const { data: chapters } = useQuery({
@@ -57,12 +62,13 @@ export default function Page() {
         if (!tajweedData) return {};
         return tajweedData.reduce((acc, v) => {
             // Strip the embedded end-of-ayah marker as we provide our own styled one
-            acc[v.verse_key] = v.text_uthmani_tajweed.replace(/<span class=end>.*?<\/span>/g, '');
+            acc[v.verse_key] = sanitizeTajweedHtml(v.text_uthmani_tajweed.replace(/<span class=end>.*?<\/span>/g, ''));
             return acc;
         }, {});
     }, [tajweedData]);
 
     const verses = pageData?.verses || [];
+    const maxPageNumber = mushaf.pageCount || 604;
 
     // Ambient glow logic based on time
     const currentHour = new Date().getHours();
@@ -105,7 +111,7 @@ export default function Page() {
             const screenWidth = window.innerWidth;
             if (touchEndX < screenWidth * 0.25) {
                 // Tap Left edge -> Next Page (Arabic reads Right to Left)
-                if (pageNumber < 604) navigate(`/page/${pageNumber + 1}`);
+                if (pageNumber < maxPageNumber) navigate(`/page/${pageNumber + 1}`);
             } else if (touchEndX > screenWidth * 0.75) {
                 // Tap Right edge -> Prev Page
                 if (pageNumber > 1) navigate(`/page/${pageNumber - 1}`);
@@ -115,7 +121,7 @@ export default function Page() {
             }
         } else if (Math.abs(deltaX) > 50 && deltaY < 100) {
             // It's a swipe horizontal
-            if (deltaX > 0 && pageNumber < 604) {
+            if (deltaX > 0 && pageNumber < maxPageNumber) {
                 navigate(`/page/${pageNumber + 1}`); // Swipe Left -> Next Page
             } else if (deltaX < 0 && pageNumber > 1) {
                 navigate(`/page/${pageNumber - 1}`); // Swipe Right -> Prev Page
@@ -128,7 +134,7 @@ export default function Page() {
         const handleKeyDown = (e) => {
             if (e.key === 'ArrowRight' && pageNumber > 1) {
                 navigate(`/page/${pageNumber - 1}`);
-            } else if (e.key === 'ArrowLeft' && pageNumber < 604) {
+            } else if (e.key === 'ArrowLeft' && pageNumber < maxPageNumber) {
                 navigate(`/page/${pageNumber + 1}`);
             } else if (e.key === 'Escape') {
                 setIsHudVisible(false);
@@ -137,7 +143,7 @@ export default function Page() {
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [pageNumber, navigate]);
+    }, [maxPageNumber, pageNumber, navigate]);
 
     useEffect(() => {
         window.scrollTo(0, 0);
@@ -153,7 +159,7 @@ export default function Page() {
     return (
         <div style={{ position: 'relative', width: '100vw', minHeight: '100vh', overflowX: 'hidden', backgroundColor: 'var(--bg-primary)' }}>
             <Helmet>
-                <title>{`Page ${pageNumber} - Nur Qur'an`}</title>
+                <title>{`Page ${pageNumber} - ${mushaf.name}`}</title>
             </Helmet>
 
             <div className={glowClass} />
@@ -183,21 +189,14 @@ export default function Page() {
                 {/* Minimal Top Header (Juz / Surah Marker) */}
                 <div style={{ textAlign: 'center', marginBottom: '3vh', opacity: isHudVisible || isIndexVisible ? 0 : 1, transition: 'opacity 0.4s ease' }}>
                     <span className="ui-text" style={{ color: 'var(--accent-primary)', textTransform: 'uppercase', letterSpacing: '2px' }}>
-                        {activeSurah ? activeSurah.name_simple : 'Loading...'} • Page {pageNumber}
+                        {activeSurah ? activeSurah.name_simple : 'Loading...'} • Page {pageNumber} • {mushaf.name}
                     </span>
                 </div>
 
-                <div style={{
-                    display: readingMode ? 'inline-block' : 'block',
-                    textAlign: readingMode ? 'justify' : 'left',
-                    direction: readingMode ? 'rtl' : 'ltr',
-                    width: '100%',
-                    maxWidth: '800px',
-                    margin: '0 auto'
-                }}>
+                {mushaf.renderMode === 'qcf-page' && !readingMode ? (
                     <AnimatePresence mode="wait">
                         <motion.div
-                            key={pageNumber}
+                            key={`${pageNumber}-${mushaf.id}`}
                             initial={{ opacity: 0, rotateY: 5 }}
                             animate={{ opacity: 1, rotateY: 0 }}
                             exit={{ opacity: 0, rotateY: -5 }}
@@ -209,36 +208,70 @@ export default function Page() {
                                     <span className="ui-text">Loading...</span>
                                 </div>
                             ) : (
-                                verses.map((verse, index) => {
-                                    const chId = verse.verse_key.split(':')[0];
-                                    const chapter = { id: parseInt(chId), name_simple: `Surah ${chId}` };
-
-                                    return (
-                                        <VerseRow
-                                            key={verse.id}
-                                            verse={verse}
-                                            readingMode={readingMode}
-                                            chapter={chapter}
-                                            bookmark={bookmark}
-                                            setBookmark={setBookmark}
-                                            addRecentlyRead={addRecentlyRead}
-                                            fontSize={fontSize}
-                                            arabicFont={arabicFont}
-                                            tajweedEnabled={tajweedEnabled}
-                                            tajweedMap={tajweedMap}
-                                            activeTafsir={activeTafsir}
-                                            setActiveTafsir={setActiveTafsir}
-                                            isTafsirFetching={false}
-                                            tafsirs={[]}
-                                            tafsirId={tafsirId}
-                                            showPageDivider={false} // Hidden for minimal UI
-                                        />
-                                    );
-                                })
+                                <MushafPageView
+                                    verses={verses}
+                                    mushaf={mushaf}
+                                    arabicFont={arabicFont}
+                                    fontSize={fontSize}
+                                />
                             )}
                         </motion.div>
                     </AnimatePresence>
-                </div>
+                ) : (
+                    <div style={{
+                        display: readingMode ? 'inline-block' : 'block',
+                        textAlign: readingMode ? 'justify' : 'left',
+                        direction: readingMode ? 'rtl' : 'ltr',
+                        width: '100%',
+                        maxWidth: '800px',
+                        margin: '0 auto'
+                    }}>
+                        <AnimatePresence mode="wait">
+                            <motion.div
+                                key={pageNumber}
+                                initial={{ opacity: 0, rotateY: 5 }}
+                                animate={{ opacity: 1, rotateY: 0 }}
+                                exit={{ opacity: 0, rotateY: -5 }}
+                                transition={{ duration: 0.5, ease: EasingPage }}
+                                style={{ transformOrigin: 'left center', perspective: '1000px' }}
+                            >
+                                {isPageLoading && verses.length === 0 ? (
+                                    <div style={{ textAlign: 'center', padding: '20vh 0', color: 'var(--text-muted)' }}>
+                                        <span className="ui-text">Loading...</span>
+                                    </div>
+                                ) : (
+                                    verses.map((verse) => {
+                                        const chId = verse.verse_key.split(':')[0];
+                                        const chapter = { id: parseInt(chId), name_simple: `Surah ${chId}` };
+
+                                        return (
+                                            <VerseRow
+                                                key={verse.id}
+                                                verse={verse}
+                                                readingMode={readingMode}
+                                                chapter={chapter}
+                                                bookmark={bookmark}
+                                                setBookmark={setBookmark}
+                                                addRecentlyRead={addRecentlyRead}
+                                                fontSize={fontSize}
+                                                arabicFont={arabicFont}
+                                                tajweedEnabled={isTajweedActive}
+                                                tajweedMap={tajweedMap}
+                                                activeTafsir={activeTafsir}
+                                                setActiveTafsir={setActiveTafsir}
+                                                isTafsirFetching={false}
+                                                tafsirs={[]}
+                                                tafsirId={tafsirId}
+                                                showPageDivider={false}
+                                                mushaf={mushaf}
+                                            />
+                                        );
+                                    })
+                                )}
+                            </motion.div>
+                        </AnimatePresence>
+                    </div>
+                )}
             </motion.div>
 
             {/* The HUD */}
@@ -271,7 +304,7 @@ export default function Page() {
                                 <input
                                     type="range"
                                     min="1"
-                                    max="604"
+                                    max={maxPageNumber}
                                     value={scrubberValue}
                                     onChange={(e) => setScrubberValue(parseInt(e.target.value))}
                                     onMouseUp={(e) => {
@@ -286,11 +319,11 @@ export default function Page() {
                                         background: 'transparent'
                                     }}
                                 />
-                                <div style={{ position: 'absolute', top: '-25px', left: `${(scrubberValue / 604) * 100}%`, transform: 'translateX(-50%)', background: 'var(--text-primary)', color: 'var(--bg-primary)', padding: '2px 8px', borderRadius: '4px', fontSize: '10px' }}>
+                                <div style={{ position: 'absolute', top: '-25px', left: `${(scrubberValue / maxPageNumber) * 100}%`, transform: 'translateX(-50%)', background: 'var(--text-primary)', color: 'var(--bg-primary)', padding: '2px 8px', borderRadius: '4px', fontSize: '10px' }}>
                                     {scrubberValue}
                                 </div>
                             </div>
-                            <span className="ui-text" style={{ color: 'var(--text-muted)' }}>604</span>
+                            <span className="ui-text" style={{ color: 'var(--text-muted)' }}>{maxPageNumber}</span>
                         </div>
 
                         {/* Quick Toggles */}

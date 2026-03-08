@@ -9,6 +9,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Helmet } from 'react-helmet-async';
 import { useSwipeable } from 'react-swipeable';
 import VerseRow from '../components/VerseRow';
+import { getMushafById, isTajweedEnabledForMushaf } from '../config/mushaf';
+import { sanitizeTajweedHtml } from '../utils/quranText';
 
 // VerseRow is now imported from components
 export default function Surah() {
@@ -23,6 +25,7 @@ export default function Surah() {
         setAudio, setIsPlaying, currentAudioUrl, isPlaying,
         audioPlaylist, setAudioPlaylist, audioTrackIndex,
         audioSettings, updateAudioSettings,
+        mushafId,
         arabicFont, tajweedEnabled,
         tafsirId,
         downloadedSurahs, addDownloadedSurah,
@@ -32,6 +35,8 @@ export default function Surah() {
         isPlayerVisible, setIsPlayerVisible,
         playTriggerCount
     } = useAppStore();
+    const mushaf = getMushafById(mushafId);
+    const isTajweedActive = isTajweedEnabledForMushaf(mushafId, tajweedEnabled);
 
     // Audio setup modal state
     const [showAudioSetup, setShowAudioSetup] = useState(false);
@@ -63,8 +68,8 @@ export default function Surah() {
         hasNextPage,
         isFetchingNextPage
     } = useInfiniteQuery({
-        queryKey: ['verses', id, translationId, reciterId],
-        queryFn: ({ pageParam = 1 }) => getVerses(id, translationId, reciterId, pageParam),
+        queryKey: ['verses', id, translationId, reciterId, mushafId],
+        queryFn: ({ pageParam = 1 }) => getVerses(id, translationId, reciterId, pageParam, mushafId),
         getNextPageParam: (lastPage) => {
             if (lastPage.pagination.current_page < lastPage.pagination.total_pages) {
                 return lastPage.pagination.current_page + 1;
@@ -86,9 +91,9 @@ export default function Surah() {
     const [activeTafsir, setActiveTafsir] = useState(null); // stores { verse_key, text }
 
     const { data: tajweedData } = useQuery({
-        queryKey: ['tajweed', id],
+        queryKey: ['tajweed', id, mushafId],
         queryFn: () => getTajweedVerses(id),
-        enabled: tajweedEnabled,
+        enabled: isTajweedActive && mushaf.tajweedSource === 'uthmani_html',
     });
 
     // Build a lookup map: verse_key -> tajweed HTML
@@ -96,7 +101,7 @@ export default function Surah() {
         if (!tajweedData) return {};
         return tajweedData.reduce((acc, v) => {
             // Strip the embedded end-of-ayah marker as we provide our own styled one
-            acc[v.verse_key] = v.text_uthmani_tajweed.replace(/<span class=end>.*?<\/span>/g, '');
+            acc[v.verse_key] = sanitizeTajweedHtml(v.text_uthmani_tajweed.replace(/<span class=end>.*?<\/span>/g, ''));
             return acc;
         }, {});
     }, [tajweedData]);
@@ -430,7 +435,7 @@ export default function Surah() {
                                         fontSize={fontSize}
                                         translationFontSize={translationFontSize}
                                         arabicFont={arabicFont}
-                                        tajweedEnabled={tajweedEnabled}
+                                        tajweedEnabled={isTajweedActive}
                                         tajweedMap={tajweedMap}
                                         activeTafsir={activeTafsir}
                                         setActiveTafsir={setActiveTafsir}
@@ -438,6 +443,7 @@ export default function Surah() {
                                         tafsirId={tafsirId}
                                         showPageDivider={showPageDivider}
                                         tafsirs={tafsirs}
+                                        mushaf={mushaf}
                                         isAudioPlaying={activeAudioVerseKey === verse.verse_key}
                                     />
                                 );

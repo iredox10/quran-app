@@ -2,6 +2,7 @@ import { useAppStore } from '../store/useAppStore';
 import { X, Check, DownloadCloud, CheckCircle, RefreshCw, AlertCircle } from 'lucide-react';
 import { getChapters, getVerses, getTajweedVerses } from '../services/api/quranApi';
 import { useState } from 'react';
+import { getMushafById, getMushafFontOptions, isTajweedEnabledForMushaf, MUSHAFS } from '../config/mushaf';
 
 const RECITERS = [
     { id: 7, name: 'Mishary Rashid Alafasy' },
@@ -15,14 +16,6 @@ const TRANSLATIONS = [
     { id: 85, name: 'English (Clear Quran)' },
     { id: 39, name: 'English (Yusuf Ali)' },
     { id: 234, name: 'Urdu (Abul A\'ala Maududi)' }
-];
-
-const FONTS = [
-    { id: "'KFGQPC Hafs Uthmanic Script', 'Amiri Quran', serif", name: 'KFGQPC Hafs' },
-    { id: "'KFGQPC Uthman Taha Naskh', 'Amiri Quran', serif", name: 'Uthman Taha Naskh' },
-    { id: "'Amiri Quran', serif", name: 'Amiri Quran' },
-    { id: "'Noto Naskh Arabic', serif", name: 'Noto Naskh Arabic' },
-    { id: "'Scheherazade New', serif", name: 'Scheherazade New' }
 ];
 
 const TAFSIRS = [
@@ -42,11 +35,15 @@ export default function SettingsDrawer({ isOpen, onClose }) {
         translationFontSize, setTranslationFontSize,
         reciterId, setReciter,
         translationId, setTranslation,
-        arabicFont, setArabicFont,
+        mushafId, setSelectedMushaf,
+        arabicFontId, setArabicFont,
         tajweedEnabled, setTajweed,
         tafsirId, setTafsirId,
         offlineDataStatus, setOfflineStatus
     } = useAppStore();
+    const mushaf = getMushafById(mushafId);
+    const mushafFonts = getMushafFontOptions(mushafId);
+    const isTajweedActive = isTajweedEnabledForMushaf(mushafId, tajweedEnabled);
 
     const [syncProgress, setSyncProgress] = useState(0);
 
@@ -65,10 +62,10 @@ export default function SettingsDrawer({ isOpen, onClose }) {
                 const chapterId = chapters[i].id;
 
                 // Fetch basic verses (Arabic + current Translation)
-                await getVerses(chapterId, translationId, reciterId);
+                await getVerses(chapterId, translationId, reciterId, 1, mushafId);
 
                 // Fetch tajweed verses
-                if (tajweedEnabled) {
+                if (mushaf.tajweedSource === 'uthmani_html' && isTajweedActive) {
                     await getTajweedVerses(chapterId);
                 }
 
@@ -155,6 +152,36 @@ export default function SettingsDrawer({ isOpen, onClose }) {
                         </div>
                     </div>
 
+                    <div>
+                        <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '1rem', color: 'var(--text-muted)' }}>Quran Appearance</h3>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                            {MUSHAFS.map((item) => (
+                                <button
+                                    key={item.id}
+                                    onClick={() => setSelectedMushaf(item.id)}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'flex-start',
+                                        justifyContent: 'space-between',
+                                        gap: '1rem',
+                                        padding: '1rem',
+                                        borderRadius: '12px',
+                                        border: '1px solid var(--border-color)',
+                                        backgroundColor: mushafId === item.id ? 'var(--accent-light)' : 'transparent',
+                                        color: mushafId === item.id ? 'var(--accent-primary)' : 'var(--text-primary)',
+                                        textAlign: 'left'
+                                    }}
+                                >
+                                    <div>
+                                        <div style={{ fontWeight: 600 }}>{item.name}</div>
+                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>{item.description}</div>
+                                    </div>
+                                    {mushafId === item.id && <Check size={18} />}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
                     {/* Font Size (Arabic) */}
                     <div>
                         <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-muted)' }}>Arabic Font Size</h3>
@@ -199,7 +226,12 @@ export default function SettingsDrawer({ isOpen, onClose }) {
                     <div>
                         <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '1rem', color: 'var(--text-muted)' }}>Tajweed Rules</h3>
                         <button
-                            onClick={() => setTajweed(!tajweedEnabled)}
+                            disabled={!mushaf.supportsTajweedToggle}
+                            onClick={() => {
+                                if (mushaf.supportsTajweedToggle) {
+                                    setTajweed(!tajweedEnabled);
+                                }
+                            }}
                             style={{
                                 width: '100%',
                                 display: 'flex',
@@ -208,22 +240,26 @@ export default function SettingsDrawer({ isOpen, onClose }) {
                                 padding: '1rem',
                                 borderRadius: '8px',
                                 border: '1px solid var(--border-color)',
-                                backgroundColor: tajweedEnabled ? 'var(--accent-light)' : 'transparent',
-                                color: tajweedEnabled ? 'var(--accent-primary)' : 'var(--text-primary)',
-                                textAlign: 'left'
+                                backgroundColor: isTajweedActive ? 'var(--accent-light)' : 'transparent',
+                                color: isTajweedActive ? 'var(--accent-primary)' : 'var(--text-primary)',
+                                textAlign: 'left',
+                                opacity: mushaf.supportsTajweedToggle ? 1 : 0.6,
+                                cursor: mushaf.supportsTajweedToggle ? 'pointer' : 'default'
                             }}
                         >
                             <div>
-                                <span style={{ fontWeight: 500 }}>Color-coded Tajweed</span>
+                                <span style={{ fontWeight: 500 }}>{mushaf.forcesTajweed ? 'Included in this Mushaf' : 'Color-coded Tajweed'}</span>
                                 <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-                                    Highlight letters with tajweed color rules
+                                    {mushaf.supportsTajweedToggle
+                                        ? 'Highlight letters with tajweed color rules'
+                                        : 'This Mushaf does not expose the current tajweed overlay pipeline'}
                                 </p>
                             </div>
                             <div style={{
                                 width: '44px',
                                 height: '24px',
                                 borderRadius: '12px',
-                                backgroundColor: tajweedEnabled ? 'var(--accent-primary)' : 'var(--border-color)',
+                                backgroundColor: isTajweedActive ? 'var(--accent-primary)' : 'var(--border-color)',
                                 position: 'relative',
                                 transition: 'background-color 0.2s ease',
                                 flexShrink: 0
@@ -235,7 +271,7 @@ export default function SettingsDrawer({ isOpen, onClose }) {
                                     backgroundColor: '#fff',
                                     position: 'absolute',
                                     top: '2px',
-                                    left: tajweedEnabled ? '22px' : '2px',
+                                    left: isTajweedActive ? '22px' : '2px',
                                     transition: 'left 0.2s ease',
                                     boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
                                 }} />
@@ -246,8 +282,11 @@ export default function SettingsDrawer({ isOpen, onClose }) {
                     {/* Arabic Font */}
                     <div>
                         <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '1rem', color: 'var(--text-muted)' }}>Arabic Font</h3>
+                        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
+                            Compatible with {mushaf.name}. Fonts are filtered by the selected Mushaf profile.
+                        </p>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                            {FONTS.map((f) => (
+                            {mushafFonts.map((f) => (
                                 <button
                                     key={f.id}
                                     onClick={() => setArabicFont(f.id)}
@@ -258,14 +297,14 @@ export default function SettingsDrawer({ isOpen, onClose }) {
                                         padding: '1rem',
                                         borderRadius: '8px',
                                         border: '1px solid var(--border-color)',
-                                        backgroundColor: arabicFont === f.id ? 'var(--accent-light)' : 'transparent',
-                                        color: arabicFont === f.id ? 'var(--accent-primary)' : 'var(--text-primary)',
+                                        backgroundColor: arabicFontId === f.id ? 'var(--accent-light)' : 'transparent',
+                                        color: arabicFontId === f.id ? 'var(--accent-primary)' : 'var(--text-primary)',
                                         textAlign: 'left',
-                                        fontFamily: f.id
+                                        fontFamily: f.family
                                     }}
                                 >
                                     <span style={{ fontFamily: "'Outfit', sans-serif" }}>{f.name}</span>
-                                    {arabicFont === f.id && <Check size={18} />}
+                                    {arabicFontId === f.id && <Check size={18} />}
                                 </button>
                             ))}
                         </div>
