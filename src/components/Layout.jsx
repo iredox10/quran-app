@@ -219,7 +219,7 @@ export default function Layout() {
                 </div>
             </header>
 
-            <main style={{ flex: 1, padding: '2rem 0', paddingTop: '56px', paddingBottom: '90px' }}>
+            <main style={{ flex: 1, padding: '2rem 0', paddingTop: 'calc(56px + 2.5rem)', paddingBottom: '90px' }}>
                 <Outlet />
             </main>
 
