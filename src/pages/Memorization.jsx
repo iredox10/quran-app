@@ -220,6 +220,50 @@ export default function Memorization() {
         setIsBlurred(false);
     };
 
+    // Keyboard and Swipe Navigation
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+                handleNext();
+            } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+                handlePrev();
+            }
+        };
+
+        let touchStartX = 0;
+        let touchEndX = 0;
+
+        const handleTouchStart = (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        };
+
+        const handleTouchEnd = (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            handleSwipe();
+        };
+
+        const handleSwipe = () => {
+            const SWIPE_THRESHOLD = 50;
+            if (touchStartX - touchEndX > SWIPE_THRESHOLD) {
+                // Swipe Left => Next 
+                handleNext();
+            } else if (touchEndX - touchStartX > SWIPE_THRESHOLD) {
+                // Swipe Right => Prev
+                handlePrev();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        window.addEventListener('touchstart', handleTouchStart);
+        window.addEventListener('touchend', handleTouchEnd);
+
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('touchstart', handleTouchStart);
+            window.removeEventListener('touchend', handleTouchEnd);
+        };
+    }, [currentVerseIndex, verses.length, ayahsPerSwipe]);
+
     const handleMicToggle = () => {
         if (isRecording) {
             setIsRecording(false);
@@ -537,7 +581,7 @@ export default function Memorization() {
             </div>
 
             {/* Central Verse Display */}
-            <div className="container" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', margin: '2rem 0' }}>
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', margin: '2rem 0', width: '100%', padding: '0 1.5rem', boxSizing: 'border-box' }}>
                 <motion.div
                     key={`${currentVerseIndex}-${ayahsPerSwipe}`}
                     initial={{ opacity: 0, x: 20 }}
@@ -548,42 +592,30 @@ export default function Memorization() {
                         filter: isBlurred ? 'blur(8px)' : 'none',
                         transition: 'filter 0.3s ease',
                         cursor: isBlurred ? 'pointer' : 'default',
+                        width: '100%',
                         maxWidth: '800px',
+                        margin: '0 auto',
                         display: 'flex',
                         flexDirection: 'column',
+                        alignItems: 'center',
                         gap: '2rem'
                     }}
                     onClick={() => isBlurred && setIsBlurred(false)}
                 >
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem', width: '100%' }}>
                         {currentVerses.map((verse, idx) => (
                             <div key={verse.id}>
-                                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', position: 'relative', width: '100%' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', width: '100%', minHeight: '64px' }}>
                                     <div className="quran-text tajweed-text" style={{
                                         fontSize: `clamp(${0.9 + fontSize * 0.15}rem, ${fontSize * 1.2}vw, ${fontSize * 0.4 + 1.5}rem)`,
                                         fontFamily: arabicFont,
                                         lineHeight: 2.2,
                                         color: (isPlayingAudio && audioVerseIndex === idx) ? 'var(--accent-primary)' : 'var(--text-primary)',
                                         transition: 'color 0.3s ease',
-                                        flex: 1,
-                                        textAlign: 'right', // Critical for proper Arabic alignment
+                                        textAlign: 'center', // Fix center alignment
                                         direction: 'rtl'   // Ensure proper RTL text flow
                                     }}>
-                                        {getVerseArabicText(verse, mushaf)} <span style={{
-                                            display: 'inline-flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            width: '1.4em',
-                                            height: '1.4em',
-                                            borderRadius: '50%',
-                                            border: '1.5px solid var(--accent-primary)',
-                                            color: 'var(--accent-primary)',
-                                            fontSize: '0.45em',
-                                            margin: '0 0.5rem',
-                                            position: 'relative',
-                                            bottom: '0.2em',
-                                            fontFamily: "'Amiri Quran', serif"
-                                        }}>{toArabicNumerals(verse.verse_key.split(':')[1])}</span>
+                                        {getVerseArabicText(verse, mushaf)}
                                     </div>
                                     <button
                                         onClick={(e) => {
@@ -591,6 +623,9 @@ export default function Memorization() {
                                             toggleBookmark(verse.verse_key, chapter?.name_simple, chapter?.id);
                                         }}
                                         style={{
+                                            position: 'absolute',
+                                            top: '0',
+                                            left: '0',
                                             background: 'none',
                                             border: 'none',
                                             color: bookmarks?.find(b => b.verseKey === verse.verse_key) ? 'var(--accent-primary)' : 'var(--text-muted)',
@@ -632,33 +667,41 @@ export default function Memorization() {
                             </div>
                         ))}
                     </div>
-
-                    <div style={{
-                        marginTop: '1rem',
-                        display: 'flex',
-                        gap: '0.75rem',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        color: 'var(--text-muted)',
-                        fontFamily: 'var(--font-mono)',
-                        fontSize: '0.9rem',
-                        flexWrap: 'wrap'
-                    }}>
-                        <span style={{ color: 'var(--accent-primary)', fontWeight: 600 }}>Surah {chapter?.name_simple}</span>
-                        <span>•</span>
-                        <span>Page {currentVerses[0]?.page_number}</span>
-                        <span>•</span>
-                        <span>Verses {currentVerses[0]?.verse_key.split(':')[1]}{currentVerses.length > 1 ? ` - ${currentVerses[currentVerses.length - 1]?.verse_key.split(':')[1]}` : ''}</span>
-                    </div>
                 </motion.div>
+            </div>
 
-                {/* Left/Right Nav */}
-                <button onClick={handlePrev} disabled={currentVerseIndex === 0} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-primary)', cursor: currentVerseIndex === 0 ? 'default' : 'pointer', opacity: showUI ? (currentVerseIndex === 0 ? 0.2 : 0.6) : 0, transition: 'opacity 0.4s', pointerEvents: showUI ? 'auto' : 'none' }}>
-                    <ArrowLeft size={32} />
-                </button>
-                <button onClick={handleNext} disabled={currentVerseIndex + currentVerses.length >= verses.length} style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-primary)', cursor: currentVerseIndex + currentVerses.length >= verses.length ? 'default' : 'pointer', opacity: showUI ? (currentVerseIndex + currentVerses.length >= verses.length ? 0.2 : 0.6) : 0, transition: 'opacity 0.4s', pointerEvents: showUI ? 'auto' : 'none' }}>
-                    <ArrowRight size={32} />
-                </button>
+            {/* Left/Right Nav */}
+            <button onClick={handlePrev} disabled={currentVerseIndex === 0} style={{ position: 'fixed', left: '1rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-primary)', cursor: currentVerseIndex === 0 ? 'default' : 'pointer', opacity: showUI ? (currentVerseIndex === 0 ? 0.2 : 0.6) : 0, transition: 'opacity 0.4s', pointerEvents: showUI ? 'auto' : 'none', zIndex: 10 }}>
+                <ArrowLeft size={32} />
+            </button>
+            <button onClick={handleNext} disabled={currentVerseIndex + currentVerses.length >= verses.length} style={{ position: 'fixed', right: '1rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-primary)', cursor: currentVerseIndex + currentVerses.length >= verses.length ? 'default' : 'pointer', opacity: showUI ? (currentVerseIndex + currentVerses.length >= verses.length ? 0.2 : 0.6) : 0, transition: 'opacity 0.4s', pointerEvents: showUI ? 'auto' : 'none', zIndex: 10 }}>
+                <ArrowRight size={32} />
+            </button>
+
+            {/* Surah Info Bar - Positioned at bottom center, below play button */}
+            <div style={{
+                position: 'fixed',
+                bottom: '1.5rem',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                display: 'flex',
+                gap: '0.75rem',
+                justifyContent: 'center',
+                alignItems: 'center',
+                color: 'var(--text-muted)',
+                fontFamily: 'var(--font-mono)',
+                fontSize: '0.9rem',
+                flexWrap: 'wrap',
+                opacity: showUI ? 1 : 0,
+                transition: 'opacity 0.4s',
+                pointerEvents: showUI ? 'auto' : 'none',
+                zIndex: 30
+            }}>
+                <span style={{ color: 'var(--accent-primary)', fontWeight: 600 }}>Surah {chapter?.name_simple}</span>
+                <span>•</span>
+                <span>Page {currentVerses[0]?.page_number}</span>
+                <span>•</span>
+                <span>Verses {currentVerses[0]?.verse_key.split(':')[1]}{currentVerses.length > 1 ? ` - ${currentVerses[currentVerses.length - 1]?.verse_key.split(':')[1]}` : ''}</span>
             </div>
 
             {/* Floating Play Control */}
