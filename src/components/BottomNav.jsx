@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, BookOpen, Mic, TrendingUp, User } from 'lucide-react';
+import { Home, BookOpen, Brain, TrendingUp, User } from 'lucide-react';
 
 export default function BottomNav() {
     const location = useLocation();
@@ -19,7 +19,7 @@ export default function BottomNav() {
 
     const tabs = [
         { path: '/', icon: BookOpen, label: 'Quran' },
-        { path: '/memorize', icon: Mic, label: 'Memorize' },
+        { path: '/memorize', icon: Brain, label: 'Memorize' },
         { path: '/progress', icon: TrendingUp, label: 'Analytics' },
         { path: '/profile', icon: User, label: 'Profile' }
     ];
@@ -31,61 +31,43 @@ export default function BottomNav() {
     };
 
     return (
-        <div style={{
-            position: 'fixed',
-            bottom: '24px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            width: 'calc(100% - 32px)',
-            maxWidth: '500px',
-            height: '64px',
-            background: 'var(--bg-surface)',
-            borderRadius: '100px', // heavily rounded
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.08)',
-            zIndex: 1000,
-            border: '1px solid var(--border-color)',
-            backdropFilter: 'blur(20px)',
-            WebkitBackdropFilter: 'blur(20px)',
-            padding: '0 8px',
-        }}>
+        <div
+            className="glass-panel"
+            style={{
+                position: 'fixed',
+                bottom: '12px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                width: 'calc(100% - 32px)',
+                maxWidth: '500px',
+                height: '64px',
+                borderRadius: '100px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                zIndex: 1000,
+                padding: '0 8px',
+                gap: '4px'
+            }}
+        >
             {tabs.map((tab) => {
                 const active = isActive(tab.path);
                 const Icon = tab.icon;
 
                 if (active) {
                     return (
-                        <div key={tab.path} style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+                        <div key={tab.path} style={{ flex: '1.5', display: 'flex', justifyContent: 'center' }}>
                             <div style={{
-                                position: 'relative',
-                                top: '-24px',
-                                width: '68px',
-                                height: '68px',
-                                borderRadius: '50%',
-                                background: 'var(--bg-surface)',
+                                background: 'var(--accent-light)',
+                                borderRadius: '999px',
                                 display: 'flex',
                                 alignItems: 'center',
-                                justifyContent: 'center',
-                                boxShadow: '0 -4px 12px rgba(0,0,0,0.04)',
+                                gap: '8px',
+                                padding: '10px 16px',
+                                color: 'var(--accent-primary)'
                             }}>
-                                <div style={{
-                                    width: '54px',
-                                    height: '54px',
-                                    borderRadius: '50%',
-                                    background: 'var(--accent-primary)',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    color: 'white',
-                                    transition: 'transform 0.2s',
-                                    boxShadow: '0 8px 20px rgba(var(--accent-primary-rgb, 14, 165, 233), 0.3)'
-                                }}
-                                    className="interactive-hover"
-                                >
-                                    <Icon size={24} color="white" />
-                                </div>
+                                <Icon size={22} color="currentColor" />
+                                <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>{tab.label}</span>
                             </div>
                         </div>
                     );
@@ -97,14 +79,14 @@ export default function BottomNav() {
                         flexDirection: 'column',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        gap: '4px',
+                        gap: '6px',
                         textDecoration: 'none',
                         color: 'var(--text-muted)',
-                        flex: 1,
+                        flex: '1',
                         transition: 'color 0.2s',
                     }}>
                         <Icon size={22} />
-                        <span style={labelStyle}>{tab.label}</span>
+                        <span style={{ fontSize: '0.65rem', fontWeight: 600, opacity: 0.9 }}>{tab.label}</span>
                     </Link>
                 );
             })}
