@@ -4,7 +4,7 @@ import { getChapters } from '../services/api/quranApi';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../store/useAppStore';
-import { BookOpen, Search, Bookmark, Mic, LayoutDashboard, TrendingUp } from 'lucide-react';
+import { BookOpen, Search, Bookmark, Mic, LayoutDashboard, TrendingUp, DownloadCloud, X } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
 
 export default function Home() {
@@ -24,6 +24,56 @@ export default function Home() {
             window.removeEventListener('offline', handleOffline);
         };
     }, []);
+
+    const [deferredPrompt, setDeferredPrompt] = useState(null);
+    const [isInstallable, setIsInstallable] = useState(false);
+
+    useEffect(() => {
+        // Only show if NOT standalone and NOT dismissed
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+        const dismissed = localStorage.getItem('hideInstallCard');
+
+        if (!isStandalone && !dismissed) {
+            setIsInstallable(true);
+        }
+
+        const handleBeforeInstallPrompt = (e) => {
+            e.preventDefault();
+            setDeferredPrompt(e);
+            setIsInstallable(true);
+        };
+
+        window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+        return () => {
+            window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+        };
+    }, []);
+
+    const dismissInstall = (e) => {
+        e.stopPropagation();
+        localStorage.setItem('hideInstallCard', 'true');
+        setIsInstallable(false);
+    };
+
+    const handleInstallClick = async () => {
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            if (outcome === 'accepted') {
+                setDeferredPrompt(null);
+                setIsInstallable(false);
+            }
+        } else {
+            // Fallback for iOS or unsupported browsers
+            const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+            if (isIos) {
+                alert("To install on iOS: Tap the Share icon below, then select 'Add to Home Screen'.");
+            } else {
+                alert("You can install this app from your browser menu. Look for 'Install App' or 'Add to Home Screen'.");
+            }
+        }
+    };
 
     const { data: chapters, isLoading, error } = useQuery({
         queryKey: ['chapters'],
@@ -85,9 +135,58 @@ export default function Home() {
                     </motion.div>
                 )}
             </AnimatePresence>
+            <AnimatePresence>
+                {isInstallable && (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        className="interactive-hover install-card-banner"
+                        onClick={handleInstallClick}
+                        style={{
+                            position: 'relative',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '1.25rem',
+                            background: 'var(--accent-primary)',
+                            backgroundImage: 'linear-gradient(135deg, var(--accent-primary), #4ade80)',
+                            borderRadius: '16px',
+                            color: '#000',
+                            marginBottom: '2rem',
+                            cursor: 'pointer',
+                            boxShadow: 'var(--shadow-md)',
+                        }}
+                    >
+                        <button
+                            onClick={dismissInstall}
+                            style={{
+                                position: 'absolute', top: '8px', right: '8px',
+                                background: 'transparent', border: 'none', color: 'rgba(0,0,0,0.5)',
+                                cursor: 'pointer', padding: '4px',
+                            }}
+                            aria-label="Dismiss banner"
+                        >
+                            <X size={16} />
+                        </button>
 
-
-
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1 }}>
+                            <div style={{ background: 'rgba(255,255,255,0.2)', padding: '10px', borderRadius: '12px' }}>
+                                <DownloadCloud size={24} color="#000" />
+                            </div>
+                            <div style={{ paddingRight: '20px' }}>
+                                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>Install App</h3>
+                                <p style={{ margin: '2px 0 0', fontSize: '0.85rem', fontWeight: 500, opacity: 0.85 }}>
+                                    Read offline, faster load times, and native feel.
+                                </p>
+                            </div>
+                        </div>
+                        <span style={{ fontWeight: 700, padding: '6px 12px', background: '#000', color: '#fff', borderRadius: '999px', fontSize: '0.8rem' }}>
+                            Install
+                        </span>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '2rem', marginBottom: '3rem' }}>
                 {/* Recently Read */}
