@@ -2,15 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getChapters } from '../services/api/quranApi';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../store/useAppStore';
-import { Search, Mic, Bookmark, Folder, ArrowRight, CheckCircle, Award } from 'lucide-react';
+import { Search, Mic, Bookmark, Folder, ArrowRight, CheckCircle, Award, X } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
 
 export default function MemorizeIndex() {
     const { setNavHeaderTitle, bookmarks, collections, memorizedSurahs, memorizedAyahs } = useAppStore();
     const [searchQuery, setSearchQuery] = useState('');
     const [showOnlyMemorized, setShowOnlyMemorized] = useState(false);
+    const [showSurahsModal, setShowSurahsModal] = useState(false);
+    const [showAyahsModal, setShowAyahsModal] = useState(false);
 
     useEffect(() => {
         setNavHeaderTitle('Select Surah for Hifdh');
@@ -48,6 +50,18 @@ export default function MemorizeIndex() {
         filteredChapters = filteredChapters?.filter(c => (memorizedSurahs || []).includes(c.id));
     }
 
+    // Group Ayahs By Surah for the Modal
+    const memorizedAyahsGrouped = (memorizedAyahs || []).reduce((acc, key) => {
+        const [surahId, ayahNum] = key.split(':');
+        if (!acc[surahId]) acc[surahId] = [];
+        acc[surahId].push(Number(ayahNum));
+        return acc;
+    }, {});
+    // Sort Ayahs within each Surah
+    Object.keys(memorizedAyahsGrouped).forEach(surahId => {
+        memorizedAyahsGrouped[surahId].sort((a, b) => a - b);
+    });
+
     return (
         <div className="container" style={{ paddingBottom: '4rem' }}>
             <Helmet>
@@ -75,7 +89,11 @@ export default function MemorizeIndex() {
                     </h1>
 
                     <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', justifyContent: 'center', width: '100%' }}>
-                        <div style={{ flex: 1, minWidth: '150px', padding: '1.5rem', background: 'var(--bg-secondary)', borderRadius: '16px', border: '1px solid var(--accent-light)' }}>
+                        <div
+                            className="interactive-hover"
+                            onClick={() => setShowSurahsModal(true)}
+                            style={{ flex: 1, minWidth: '150px', padding: '1.5rem', background: 'var(--bg-secondary)', borderRadius: '16px', border: '1px solid var(--accent-light)', cursor: 'pointer' }}
+                        >
                             <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '0.25rem' }}>
                                 {(memorizedSurahs || []).length} <span style={{ fontSize: '1rem', color: 'var(--text-muted)' }}>/ 114</span>
                             </div>
@@ -83,7 +101,11 @@ export default function MemorizeIndex() {
                                 Surahs Memorized
                             </div>
                         </div>
-                        <div style={{ flex: 1, minWidth: '150px', padding: '1.5rem', background: 'var(--bg-secondary)', borderRadius: '16px', border: '1px solid var(--accent-light)' }}>
+                        <div
+                            className="interactive-hover"
+                            onClick={() => setShowAyahsModal(true)}
+                            style={{ flex: 1, minWidth: '150px', padding: '1.5rem', background: 'var(--bg-secondary)', borderRadius: '16px', border: '1px solid var(--accent-light)', cursor: 'pointer' }}
+                        >
                             <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '0.25rem' }}>
                                 {(memorizedAyahs || []).length} <span style={{ fontSize: '1rem', color: 'var(--text-muted)' }}>/ 6236</span>
                             </div>
@@ -290,6 +312,122 @@ export default function MemorizeIndex() {
                     })}
                 </div>
             </motion.div>
+
+            {/* Modals for viewing memorized content */}
+            <AnimatePresence>
+                {/* Surahs Modal */}
+                {showSurahsModal && (
+                    <div style={{
+                        position: 'fixed', inset: 0, zIndex: 1000,
+                        backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem'
+                    }}>
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                            style={{
+                                background: 'var(--bg-surface)', width: '100%', maxWidth: '500px',
+                                maxHeight: '80vh', borderRadius: '24px', overflow: 'hidden',
+                                display: 'flex', flexDirection: 'column', boxShadow: 'var(--shadow-lg)'
+                            }}
+                        >
+                            <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <Award size={24} color="var(--status-success, #10b981)" /> Fully Memorized Surahs
+                                </h3>
+                                <button className="btn-icon" onClick={() => setShowSurahsModal(false)}><X size={20} /></button>
+                            </div>
+                            <div style={{ padding: '1rem', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                {!(memorizedSurahs?.length > 0) ? (
+                                    <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>No Surahs memorized yet. Keep going!</div>
+                                ) : (
+                                    memorizedSurahs.map(id => {
+                                        const chapter = chapters?.find(c => c.id === id);
+                                        return chapter ? (
+                                            <Link
+                                                to={`/memorize/${chapter.id}`}
+                                                key={`surah-${id}`}
+                                                className="interactive-hover"
+                                                style={{ display: 'flex', alignItems: 'center', padding: '1rem', borderRadius: '12px', textDecoration: 'none', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', color: 'inherit' }}
+                                            >
+                                                <div style={{ width: '36px', height: '36px', background: 'rgba(16, 185, 129, 0.1)', color: 'var(--status-success, #10b981)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, marginRight: '1rem' }}>{chapter.id}</div>
+                                                <div style={{ flex: 1 }}>
+                                                    <div style={{ fontWeight: 600, fontSize: '1.05rem', color: 'var(--text-primary)' }}>{chapter.name_simple}</div>
+                                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{chapter.verses_count} Ayahs</div>
+                                                </div>
+                                                <ArrowRight size={16} color="var(--accent-primary)" />
+                                            </Link>
+                                        ) : null;
+                                    })
+                                )}
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+
+                {/* Ayahs Modal */}
+                {showAyahsModal && (
+                    <div style={{
+                        position: 'fixed', inset: 0, zIndex: 1000,
+                        backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem'
+                    }}>
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                            style={{
+                                background: 'var(--bg-surface)', width: '100%', maxWidth: '500px',
+                                maxHeight: '80vh', borderRadius: '24px', overflow: 'hidden',
+                                display: 'flex', flexDirection: 'column', boxShadow: 'var(--shadow-lg)'
+                            }}
+                        >
+                            <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <CheckCircle size={24} color="var(--status-success, #10b981)" /> Memorized Ayahs
+                                </h3>
+                                <button className="btn-icon" onClick={() => setShowAyahsModal(false)}><X size={20} /></button>
+                            </div>
+                            <div style={{ padding: '1.5rem', overflowY: 'auto', flex: 1 }}>
+                                {!(memorizedAyahs?.length > 0) ? (
+                                    <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>No Ayahs memorized yet. Keep going!</div>
+                                ) : (
+                                    Object.keys(memorizedAyahsGrouped)
+                                        .sort((a, b) => Number(a) - Number(b))
+                                        .map(surahId => {
+                                            const chapter = chapters?.find(c => String(c.id) === surahId);
+                                            const ayahs = memorizedAyahsGrouped[surahId];
+                                            return (
+                                                <div key={`ayah-group-${surahId}`} style={{ marginBottom: '1.5rem' }}>
+                                                    <h4 style={{ margin: '0 0 0.75rem 0', color: 'var(--accent-primary)', fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                        <Folder size={16} /> Surah {chapter?.name_simple || surahId}
+                                                    </h4>
+                                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                                        {ayahs.map(ayahNum => (
+                                                            <Link
+                                                                to={`/memorize/${surahId}?verse=${surahId}:${ayahNum}`}
+                                                                onClick={() => setShowAyahsModal(false)}
+                                                                key={`${surahId}:${ayahNum}`}
+                                                                style={{
+                                                                    padding: '0.4rem 0.8rem', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)',
+                                                                    borderRadius: '8px', fontSize: '0.85rem', color: 'var(--text-primary)', textDecoration: 'none',
+                                                                    fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px'
+                                                                }}
+                                                            >
+                                                                Ayah {ayahNum}
+                                                            </Link>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })
+                                )}
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }

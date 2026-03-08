@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useInView } from 'react-intersection-observer';
-import { Bookmark, Info, X, Plus } from 'lucide-react';
+import { Bookmark, Info, X, Plus, CheckCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../store/useAppStore';
 import { getVerseArabicText } from '../utils/quranText';
@@ -32,7 +32,7 @@ const VerseRow = ({
         triggerOnce: false,
     });
 
-    const { collections, addCollection, addToCollection } = useAppStore();
+    const { collections, addCollection, addToCollection, memorizedAyahs, toggleMemorizedAyah } = useAppStore();
     const [showCollectionModal, setShowCollectionModal] = useState(false);
     const [newCollectionName, setNewCollectionName] = useState('');
 
@@ -184,6 +184,14 @@ const VerseRow = ({
                         title="Bookmark Verse"
                     >
                         <Bookmark size={18} fill={bookmark?.verseKey === verse.verse_key ? 'currentColor' : 'none'} />
+                    </button>
+                    <button
+                        className="btn-icon"
+                        style={{ color: (memorizedAyahs || []).includes(verse.verse_key) ? 'var(--status-success, #10b981)' : 'var(--text-muted)', width: '32px', height: '32px' }}
+                        title={(memorizedAyahs || []).includes(verse.verse_key) ? "Marked as Memorized" : "Mark as Memorized"}
+                        onClick={() => toggleMemorizedAyah(verse.verse_key)}
+                    >
+                        <CheckCircle size={18} fill={(memorizedAyahs || []).includes(verse.verse_key) ? 'currentColor' : 'none'} color={(memorizedAyahs || []).includes(verse.verse_key) ? 'white' : 'currentColor'} />
                     </button>
                     <button
                         className="btn-icon"
