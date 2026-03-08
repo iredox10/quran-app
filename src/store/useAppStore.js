@@ -28,11 +28,14 @@ export const useAppStore = create(
             offlineDataStatus: 'idle', // 'idle', 'syncing', 'completed', 'error'
             downloadedSurahs: [], // Array of chapter IDs with offline audio
 
+            isSettingsOpen: false, // Global settings state
+
             bookmark: null, // { verseKey, surahName }
             bookmarks: [], // Array of { verseKey, surahName, chapterId }
             collections: [], // Array of { id, name, items: [{ verseKey, surahName, chapterId }] }
             recentlyRead: [], // Array of { chapterId, chapterName, verseKey, timestamp }
 
+            setIsSettingsOpen: (isOpen) => set({ isSettingsOpen: isOpen }),
             toggleTheme: () => set((state) => ({
                 theme: state.theme === 'light' ? 'dark' : 'light'
             })),

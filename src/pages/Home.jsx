@@ -86,87 +86,8 @@ export default function Home() {
                 )}
             </AnimatePresence>
 
-            <div style={{
-                padding: '3rem',
-                background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-hover))',
-                borderRadius: '24px',
-                color: 'white',
-                textAlign: 'center',
-                marginBottom: '3rem',
-                boxShadow: 'var(--shadow-lg)'
-            }}>
-                <h1 style={{ fontSize: '3rem', fontWeight: 800, marginBottom: '1rem', letterSpacing: '-1px' }}>
-                    The Noble Qur'an
-                </h1>
-                <p style={{ fontSize: '1.25rem', opacity: 0.9 }}>
-                    Read, study, and learn the word of Allah.
-                </p>
-            </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
-                <Link to="/dashboard" className="interactive-hover" style={{
-                    padding: '2rem',
-                    background: 'var(--bg-secondary)',
-                    borderRadius: '20px',
-                    border: '1px solid var(--border-color)',
-                    textDecoration: 'none',
-                    color: 'inherit',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '1rem',
-                    boxShadow: 'var(--shadow-sm)'
-                }}>
-                    <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'var(--accent-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent-primary)' }}>
-                        <LayoutDashboard size={24} />
-                    </div>
-                    <div>
-                        <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.25rem', color: 'var(--text-primary)' }}>Smart Dashboard</h3>
-                        <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Daily routines & streak tracking</p>
-                    </div>
-                </Link>
 
-                <Link to="/memorize" className="interactive-hover" style={{
-                    padding: '2rem',
-                    background: 'var(--bg-secondary)',
-                    borderRadius: '20px',
-                    border: '1px solid var(--border-color)',
-                    textDecoration: 'none',
-                    color: 'inherit',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '1rem',
-                    boxShadow: 'var(--shadow-sm)'
-                }}>
-                    <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'var(--accent-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent-primary)' }}>
-                        <Mic size={24} />
-                    </div>
-                    <div>
-                        <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.25rem', color: 'var(--text-primary)' }}>Active Hifdh</h3>
-                        <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Distraction-free memorization mode</p>
-                    </div>
-                </Link>
-
-                <Link to="/progress" className="interactive-hover" style={{
-                    padding: '2rem',
-                    background: 'var(--bg-secondary)',
-                    borderRadius: '20px',
-                    border: '1px solid var(--border-color)',
-                    textDecoration: 'none',
-                    color: 'inherit',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '1rem',
-                    boxShadow: 'var(--shadow-sm)'
-                }}>
-                    <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'var(--accent-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent-primary)' }}>
-                        <TrendingUp size={24} />
-                    </div>
-                    <div>
-                        <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.25rem', color: 'var(--text-primary)' }}>Progress Analytics</h3>
-                        <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Visualize your memory retention</p>
-                    </div>
-                </Link>
-            </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '2rem', marginBottom: '3rem' }}>
                 {/* Recently Read */}

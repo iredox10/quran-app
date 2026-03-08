@@ -12,9 +12,9 @@ export default function Layout() {
         autoScroll, setAutoScroll,
         isPlayerVisible, setIsPlayerVisible,
         audioPlaylist, currentAudioUrl, isPlaying,
-        incrementPlayTrigger
+        incrementPlayTrigger,
+        isSettingsOpen, setIsSettingsOpen
     } = useAppStore();
-    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [showHeader, setShowHeader] = useState(true);
     const [lastScrollY, setLastScrollY] = useState(0);
 
@@ -129,24 +129,7 @@ export default function Layout() {
                             </>
                         )}
 
-                        {/* Non-surah nav links */}
-                        {!isSurahPage && (
-                            <>
-                                <Link to="/dashboard" className="btn-icon" title="Smart Dashboard" style={{ color: 'var(--text-muted)' }}>
-                                    <LayoutDashboard size={20} />
-                                </Link>
-                                <Link to="/library" className="btn-icon" title="My Library" style={{ color: 'var(--text-muted)' }}>
-                                    <Bookmark size={20} />
-                                </Link>
-                                <Link to="/memorize" className="btn-icon" title="Hifdh Mode" style={{ color: 'var(--text-muted)' }}>
-                                    <Mic size={20} />
-                                </Link>
-                                <Link to="/progress" className="btn-icon" title="Progress Analytics" style={{ color: 'var(--text-muted)' }}>
-                                    <TrendingUp size={20} />
-                                </Link>
-                                <div style={{ width: '1px', height: '24px', backgroundColor: 'var(--border-color)', margin: '0 4px' }} />
-                            </>
-                        )}
+                        {/* Non-surah nav links removed since they are now in the bottom nav */}
 
                         {/* === Audio Player Toggle — ALWAYS VISIBLE === */}
                         <button
@@ -204,16 +187,6 @@ export default function Layout() {
             <main style={{ flex: 1, padding: '2rem 0', paddingTop: '56px', paddingBottom: '90px' }}>
                 <Outlet />
             </main>
-
-            <footer style={{
-                borderTop: '1px solid var(--border-color)',
-                padding: '2rem 0', paddingBottom: '100px',
-                textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.875rem'
-            }}>
-                <div className="container">
-                    <p>Read, Study, and Learn The Noble Quran.</p>
-                </div>
-            </footer>
 
             <GlobalAudioPlayer />
             <SettingsDrawer isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
