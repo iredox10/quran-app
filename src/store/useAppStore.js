@@ -198,6 +198,14 @@ export const useAppStore = create(
             // Trigger to tell Surah.jsx to start playing (cross-component signal)
             playTriggerCount: 0,
             incrementPlayTrigger: () => set((state) => ({ playTriggerCount: state.playTriggerCount + 1 })),
+
+            // Custom Offline Audio Base URL
+            customAudioBaseUrl: '',
+            setCustomAudioBaseUrl: (val) => set({ customAudioBaseUrl: val }),
+
+            // Native File System Handle for Offline Audio
+            localAudioDirHandle: null,
+            setLocalAudioDirHandle: (handle) => set({ localAudioDirHandle: handle }),
         }),
         {
             name: 'quran-app-storage',
@@ -222,6 +230,7 @@ export const useAppStore = create(
                 readingSessions: state.readingSessions || [],
                 offlineDataStatus: state.offlineDataStatus,
                 downloadedSurahs: state.downloadedSurahs || [],
+                customAudioBaseUrl: state.customAudioBaseUrl || '',
                 audioSettings: state.audioSettings || {
                     startRange: null, endRange: null, reciterId: 7,
                     repeatSelection: 1, repeatAya: 1, delayBetweenAyas: 0,

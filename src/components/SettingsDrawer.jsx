@@ -3,6 +3,7 @@ import { X, Check, DownloadCloud, CheckCircle, RefreshCw, AlertCircle } from 'lu
 import { getChapters, getVerses, getTajweedVerses } from '../services/api/quranApi';
 import { useState } from 'react';
 import { getMushafById, getMushafFontOptions, isTajweedEnabledForMushaf, MUSHAFS } from '../config/mushaf';
+import { saveLocalAudioDirHandle } from '../utils/localAudio';
 
 const RECITERS = [
     { id: 7, name: 'Mishary Rashid Alafasy' },
@@ -41,7 +42,8 @@ export default function SettingsDrawer({ isOpen, onClose }) {
         arabicFontId, setArabicFont,
         tajweedEnabled, setTajweed,
         tafsirId, setTafsirId,
-        offlineDataStatus, setOfflineStatus
+        offlineDataStatus, setOfflineStatus,
+        localAudioDirHandle, setLocalAudioDirHandle
     } = useAppStore();
     const mushaf = getMushafById(mushafId);
     const mushafFonts = getMushafFontOptions(mushafId);
@@ -89,6 +91,19 @@ export default function SettingsDrawer({ isOpen, onClose }) {
         } catch (error) {
             console.error("Sync failed", error);
             setOfflineStatus('error');
+        }
+    };
+    const handleSelectAudioFolder = async () => {
+        try {
+            if (!('showDirectoryPicker' in window)) {
+                alert('Your browser does not support local folder selection.');
+                return;
+            }
+            const handle = await window.showDirectoryPicker({ mode: 'read' });
+            await saveLocalAudioDirHandle(handle);
+            setLocalAudioDirHandle(handle);
+        } catch (error) {
+            console.error('Failed to get directory', error);
         }
     };
 
@@ -481,6 +496,45 @@ export default function SettingsDrawer({ isOpen, onClose }) {
                             <AlertCircle size={14} /> Something went wrong. Try again.
                         </p>
                     )}
+
+                    <div style={{ marginTop: '1.5rem', borderTop: '1px solid rgba(0,0,0,0.05)', paddingTop: '1.5rem' }}>
+                        <h4 style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-primary)' }}>
+                            Local Offline Audio
+                        </h4>
+                        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
+                            Select a folder containing MP3 files named by Surah and Ayah (e.g. 001001.mp3) to play offline audio natively from your device.
+                        </p>
+
+                        <button
+                            onClick={handleSelectAudioFolder}
+                            style={{
+                                width: '100%',
+                                padding: '1rem',
+                                borderRadius: '12px',
+                                background: localAudioDirHandle ? 'rgba(34, 197, 94, 0.1)' : 'var(--bg-secondary)',
+                                color: localAudioDirHandle ? '#22c55e' : 'var(--text-primary)',
+                                border: localAudioDirHandle ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid var(--border-color)',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '0.75rem',
+                            }}
+                        >
+                            {localAudioDirHandle ? (
+                                <>
+                                    <CheckCircle size={18} />
+                                    Folder Connected
+                                </>
+                            ) : (
+                                <>
+                                    <DownloadCloud size={18} />
+                                    Select Audio Folder...
+                                </>
+                            )}
+                        </button>
+                    </div>
                 </div>
             </div>
         </>

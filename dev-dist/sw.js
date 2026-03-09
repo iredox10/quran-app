@@ -79,7 +79,7 @@ define(['./workbox-fec5aa16'], (function (workbox) { 'use strict';
    */
   workbox.precacheAndRoute([{
     "url": "index.html",
-    "revision": "0.nhdpn3ije58"
+    "revision": "0.jgdpahbjsao"
   }], {});
   workbox.cleanupOutdatedCaches();
   workbox.registerRoute(new workbox.NavigationRoute(workbox.createHandlerBoundToURL("index.html"), {
@@ -90,7 +90,7 @@ define(['./workbox-fec5aa16'], (function (workbox) { 'use strict';
   }) => url.origin === "https://api.quran.com", new workbox.CacheFirst({
     "cacheName": "quran-api-cache",
     plugins: [new workbox.ExpirationPlugin({
-      maxEntries: 500,
+      maxEntries: 2000,
       maxAgeSeconds: 5184000
     }), new workbox.CacheableResponsePlugin({
       statuses: [0, 200]

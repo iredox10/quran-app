@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
+import { getLocalAudioDirHandle } from '../utils/localAudio';
 import { Moon, Sun, Settings, TrendingUp, Mic, LayoutDashboard, Bookmark, ArrowLeft, BookOpen, ChevronsDown, Volume2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import GlobalAudioPlayer from './GlobalAudioPlayer';
@@ -10,6 +11,7 @@ export default function Layout() {
     const {
         theme, toggleTheme, navHeaderTitle, readingMode, setReadingMode,
         autoScroll, setAutoScroll,
+        setLocalAudioDirHandle,
         isPlayerVisible, setIsPlayerVisible,
         audioPlaylist, currentAudioUrl, isPlaying,
         incrementPlayTrigger,
@@ -29,6 +31,13 @@ export default function Layout() {
     useEffect(() => {
         document.documentElement.setAttribute('data-theme', theme);
     }, [theme]);
+
+    useEffect(() => {
+        // Load the local audio directory handle from IndexedDB if it exists
+        getLocalAudioDirHandle().then(handle => {
+            if (handle) setLocalAudioDirHandle(handle);
+        }).catch(err => console.warn('Could not load local directory handle', err));
+    }, [setLocalAudioDirHandle]);
 
     useEffect(() => {
         let hideTimer;

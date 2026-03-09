@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { useAppStore } from '../store/useAppStore';
+import { getLocalAudioUrl } from '../utils/localAudio';
 import { Play, Pause, X, Music, SkipBack, SkipForward, Square, Settings2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -11,7 +12,8 @@ export default function GlobalAudioPlayer() {
     const {
         currentAudioUrl, audioPlaylist, audioTrackIndex, isPlaying, audioSettings,
         setAudioTrackIndex, updateAudioSettings, setIsPlaying, stopAudio,
-        isPlayerVisible, setIsPlayerVisible
+        isPlayerVisible, setIsPlayerVisible,
+        localAudioDirHandle
     } = useAppStore();
 
     const audioRef = useRef(null);
@@ -50,17 +52,43 @@ export default function GlobalAudioPlayer() {
         }
     }, [isPlaying, hasAudio, setIsPlayerVisible]);
 
+    const [resolvedAudioUrl, setResolvedAudioUrl] = useState(null);
+
+    // Resolve local-audio:// to object URL if needed
+    useEffect(() => {
+        if (!activeUrl) {
+            setResolvedAudioUrl(null);
+            return;
+        }
+
+        if (activeUrl.startsWith('local-audio://') && localAudioDirHandle) {
+            const fileName = activeUrl.replace('local-audio://', '');
+            getLocalAudioUrl(localAudioDirHandle, fileName).then(url => {
+                setResolvedAudioUrl(url || activeUrl); // Fallback to activeUrl if fail (will probably break but keeps ref alive)
+            });
+        } else {
+            setResolvedAudioUrl(activeUrl);
+        }
+
+        // Cleanup blob URLs to prevent memory leaks cross-renders
+        return () => {
+            // We can't cleanup in return easily without keeping track if it is a blob, but getLocalAudioUrl returns a blob.
+            // Revoking it immediately ruins the play if we aren't careful, so we rely on garbage collection or explicit cleanup if possible.
+        };
+    }, [activeUrl, localAudioDirHandle]);
+
     // Sync with audio element
     useEffect(() => {
         if (!audioRef.current) return;
         audioRef.current.playbackRate = audioSettings.playbackSpeed;
-        if (isPlaying && activeUrl) {
+        if (isPlaying && resolvedAudioUrl) {
             if (delayTimeoutRef.current) clearTimeout(delayTimeoutRef.current);
+            // Must pause first before resetting src effectively if src changes, though React handles src under the hood.
             audioRef.current.play().catch(e => { console.error('Audio failed', e); setIsPlaying(false); });
         } else {
             audioRef.current.pause();
         }
-    }, [isPlaying, activeUrl, audioSettings.playbackSpeed]);
+    }, [isPlaying, resolvedAudioUrl, audioSettings.playbackSpeed]);
 
     const handleStop = () => { stopAudio(); setIsPlayerVisible(false); setIsSettingsOpen(false); };
 
@@ -308,6 +336,19 @@ export default function GlobalAudioPlayer() {
                     </>
                 )}
             </AnimatePresence>
+            {resolvedAudioUrl && (
+                <audio
+                    ref={audioRef}
+                    src={resolvedAudioUrl}
+                    onEnded={handleEnded}
+                    onError={(e) => {
+                        console.error("Audio playback error", e);
+                        setIsPlaying(false);
+                        // Automatically skip to the next track if a local audio error happens
+                        handleEnded();
+                    }}
+                />
+            )}
         </>
     );
 }

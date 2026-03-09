@@ -7,6 +7,7 @@ import { useAppStore } from '../store/useAppStore';
 import { Mic, EyeOff, Eye, Repeat, ArrowLeft, ArrowRight, X, Play, Pause, ShieldAlert, Award, Languages, Layers, RefreshCw, Clock, Bookmark, FolderPlus, Plus, Folder, Settings2, CheckCircle } from 'lucide-react';
 import { getMushafById, isTajweedEnabledForMushaf } from '../config/mushaf';
 import { getVerseArabicText, sanitizeTajweedHtml } from '../utils/quranText';
+import { getLocalAudioUrl } from '../utils/localAudio';
 
 const toArabicNumerals = (num) => {
     const arabicNumbers = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
@@ -24,7 +25,8 @@ export default function Memorization() {
         setNavHeaderTitle, arabicFont, fontSize, translationFontSize, translationId, mushafId,
         bookmarks, toggleBookmark, collections, addCollection, addToCollection,
         tajweedEnabled, logReadingSession,
-        memorizedAyahs, memorizedSurahs, toggleMemorizedAyah, toggleMemorizedSurah
+        memorizedAyahs, memorizedSurahs, toggleMemorizedAyah, toggleMemorizedSurah,
+        customAudioBaseUrl, localAudioDirHandle
     } = useAppStore();
     const mushaf = getMushafById(mushafId);
     const isTajweedActive = isTajweedEnabledForMushaf(mushafId, tajweedEnabled);
@@ -58,6 +60,8 @@ export default function Memorization() {
     const [ayahRepeatTarget, setAyahRepeatTarget] = useState(1); // 1 = play once, -1 = Infinite
     const [currentAyahPlayCount, setCurrentAyahPlayCount] = useState(0);
     const [ayahDelay, setAyahDelay] = useState(0); // Uses DELAY_OPTIONS values in seconds
+
+    const [resolvedAudioUrl, setResolvedAudioUrl] = useState(null);
     const delayTimeoutRef = React.useRef(null);
     const audioRef = React.useRef(null);
 
@@ -328,6 +332,39 @@ export default function Memorization() {
         }
     };
 
+    // Build the audio URL depending on custom settings
+    const activeAudioVerse = currentVerses[audioVerseIndex];
+    let audioUrl = activeAudioVerse?.audio?.url ? `https://verses.quran.com/${activeAudioVerse.audio.url}` : null;
+
+    if (activeAudioVerse) {
+        const [surahNum, ayahNum] = activeAudioVerse.verse_key.split(':');
+        const fileName = `${String(surahNum).padStart(3, '0')}${String(ayahNum).padStart(3, '0')}.mp3`;
+
+        if (localAudioDirHandle) {
+            audioUrl = `local-audio://${fileName}`;
+        } else if (customAudioBaseUrl) {
+            audioUrl = `${customAudioBaseUrl.replace(/\/$/, '')}/${fileName}`;
+        }
+    }
+
+    // Resolve local-audio:// to object URL if needed
+    useEffect(() => {
+        if (!audioUrl) {
+            setResolvedAudioUrl(null);
+            return;
+        }
+
+        if (audioUrl.startsWith('local-audio://') && localAudioDirHandle) {
+            const fileName = audioUrl.replace('local-audio://', '');
+            getLocalAudioUrl(localAudioDirHandle, fileName).then(url => {
+                setResolvedAudioUrl(url || audioUrl); // fallback
+            });
+        } else {
+            setResolvedAudioUrl(audioUrl);
+        }
+    }, [audioUrl, localAudioDirHandle]);
+
+
     if (isVersesLoading || isChapterLoading) {
         return <div className="container" style={{ textAlign: 'center', paddingTop: '10vh' }}>Loading Hifdh Mode...</div>;
     }
@@ -338,11 +375,15 @@ export default function Memorization() {
         <div style={{ position: 'relative', minHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
 
             {/* Hidden Audio Player for Memorization Sequence */}
-            {currentVerses[audioVerseIndex]?.audio?.url && (
+            {resolvedAudioUrl && (
                 <audio
                     ref={audioRef}
-                    src={`https://verses.quran.com/${currentVerses[audioVerseIndex].audio.url}`}
+                    src={resolvedAudioUrl}
                     onEnded={handleAudioEnded}
+                    onError={(e) => {
+                        console.error('Audio playback error', e);
+                        setIsPlayingAudio(false);
+                    }}
                 />
             )}
 

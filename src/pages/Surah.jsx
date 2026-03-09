@@ -35,6 +35,8 @@ export default function Surah() {
         isAutoScrollPaused, setIsAutoScrollPaused,
         isPlayerVisible, setIsPlayerVisible,
         playTriggerCount,
+        customAudioBaseUrl,
+        localAudioDirHandle,
         logReadingSession
     } = useAppStore();
     const mushaf = getMushafById(mushafId);
@@ -157,12 +159,24 @@ export default function Surah() {
             setIsPlayerVisible(true);
         } else {
             // Build the playlist and show the setup modal
-            const playlist = verses.map(v => ({
-                surahId: id,
-                verseKey: v.verse_key,
-                verseNumber: v.verse_number,
-                url: v.audio?.url ? `https://verses.quran.com/${v.audio.url}` : null
-            })).filter(v => v.url);
+            const playlist = verses.map(v => {
+                let url = v.audio?.url ? `https://verses.quran.com/${v.audio.url}` : null;
+                const [surahNum, ayahNum] = v.verse_key.split(':');
+                const fileName = `${String(surahNum).padStart(3, '0')}${String(ayahNum).padStart(3, '0')}.mp3`;
+
+                if (localAudioDirHandle) {
+                    url = `local-audio://${fileName}`;
+                } else if (customAudioBaseUrl) {
+                    url = `${customAudioBaseUrl.replace(/\/$/, '')}/${fileName}`;
+                }
+
+                return {
+                    surahId: id,
+                    verseKey: v.verse_key,
+                    verseNumber: v.verse_number,
+                    url
+                };
+            }).filter(v => v.url);
 
             if (playlist.length > 0) {
                 setPendingPlaylist(playlist);
