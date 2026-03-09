@@ -156,8 +156,8 @@ export default function Layout() {
                     {/* Right: controls */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
 
-                        {/* Surah-only controls */}
-                        {isSurahPage && (
+                        {/* Content controls */}
+                        {(isSurahPage || isPagePage) && (
                             <>
                                 <button
                                     className="btn-icon"
@@ -193,15 +193,15 @@ export default function Layout() {
                                     id="audio-player-toggle"
                                     className="btn-icon"
                                     onClick={() => {
-                                        if (isSurahPage) {
-                                            // On Surah page: trigger playback (Surah.jsx listens)
+                                        if (isSurahPage || isPagePage) {
+                                            // Trigger playback (Surah.jsx or Page.jsx listens)
                                             incrementPlayTrigger();
                                         } else {
                                             // On other pages: just show/hide the player
                                             setIsPlayerVisible(!isPlayerVisible);
                                         }
                                     }}
-                                    title={isSurahPage ? 'Play / Pause' : isPlayerVisible ? 'Hide Player' : 'Show Player'}
+                                    title={(isSurahPage || isPagePage) ? 'Play / Pause' : isPlayerVisible ? 'Hide Player' : 'Show Player'}
                                     style={{
                                         color: hasAudio ? 'var(--accent-primary)' : 'var(--text-muted)',
                                         background: (isPlayerVisible || isPlaying) ? 'var(--accent-light)' : 'transparent',

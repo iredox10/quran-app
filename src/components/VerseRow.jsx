@@ -5,10 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../store/useAppStore';
 import { getVerseArabicText } from '../utils/quranText';
 
-const toArabicNumerals = (num) => {
-    const arabicNumbers = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
-    return String(num).split('').map(char => arabicNumbers[parseInt(char)]).join('');
-};
+
 
 const TAFSIR_NAMES = {
     169: 'Ibn Kathir (Abridged)',
@@ -100,23 +97,7 @@ const VerseRow = ({
                         ? <span dangerouslySetInnerHTML={{ __html: tajweedMap[verse.verse_key] }} />
                         : verseArabicText
                     }
-                    <span style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: '1.4em',
-                        height: '1.4em',
-                        borderRadius: '50%',
-                        border: '1.5px solid var(--accent-primary)',
-                        color: 'var(--accent-primary)',
-                        fontSize: '0.45em',
-                        margin: '0 0.5rem',
-                        position: 'relative',
-                        bottom: '0.2em',
-                        fontFamily: "'Amiri Quran', serif"
-                    }}>
-                        {toArabicNumerals(verse.verse_key.split(':')[1])}
-                    </span>
+
                 </span>
             </React.Fragment>
         );
@@ -234,24 +215,7 @@ const VerseRow = ({
                         ? <span dangerouslySetInnerHTML={{ __html: tajweedMap[verse.verse_key] }} />
                         : verseArabicText
                     }
-                    {/* AYAH SIGN MOVED TO THE END */}
-                    <span style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: '1.4em',
-                        height: '1.4em',
-                        borderRadius: '50%',
-                        border: '1.5px solid var(--accent-primary)',
-                        color: 'var(--accent-primary)',
-                        fontSize: '0.45em',
-                        margin: '0 0.5rem',
-                        position: 'relative',
-                        bottom: '0.2em',
-                        fontFamily: "'Amiri Quran', serif"
-                    }}>
-                        {toArabicNumerals(verse.verse_key.split(':')[1])}
-                    </span>
+
                 </div>
 
                 <div className="text-english" style={{

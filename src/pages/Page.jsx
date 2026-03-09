@@ -13,6 +13,7 @@ import { sanitizeTajweedHtml } from '../utils/quranText';
 
 import VerseRow from '../components/VerseRow';
 import MushafPageView from '../components/MushafPageView';
+import AudioSetupModal from '../components/AudioSetupModal';
 
 const pageTransition = {
     type: 'spring',
@@ -53,7 +54,11 @@ export default function Page() {
         readingMode,
         bookmark, setBookmark, addRecentlyRead,
         mushafId, arabicFont, tajweedEnabled, tafsirId,
-        setNavHeaderTitle
+        setNavHeaderTitle,
+        setIsPlaying, isPlaying, audioPlaylist, setAudioPlaylist,
+        audioTrackIndex, audioSettings, updateAudioSettings,
+        isPlayerVisible, setIsPlayerVisible, playTriggerCount,
+        customAudioBaseUrl, localAudioDirHandle
     } = useAppStore();
     const mushaf = getMushafById(mushafId);
     const isTajweedActive = isTajweedEnabledForMushaf(mushafId, tajweedEnabled);
@@ -98,6 +103,67 @@ export default function Page() {
             setNavHeaderTitle(`Page ${pageNumber}`);
         }
     }, [activeSurah, pageNumber, setNavHeaderTitle]);
+
+    // Audio Playback State Let's setup modal
+    const [showAudioSetup, setShowAudioSetup] = useState(false);
+    const [pendingPlaylist, setPendingPlaylist] = useState([]);
+
+    const isCurrentPagePlaying = audioPlaylist.length > 0 && String(audioPlaylist[0]?.pageNumber) === String(pageNumber);
+    const activeAudioVerseKey = isPlayerVisible && isCurrentPagePlaying && audioPlaylist[audioTrackIndex]
+        ? audioPlaylist[audioTrackIndex].verseKey
+        : null;
+
+    const handlePlayClick = useCallback(() => {
+        if (!verses || verses.length === 0) return;
+
+        if (isCurrentPagePlaying) {
+            // Already playing this page— toggle play/pause and show player
+            setIsPlaying(!isPlaying);
+            setIsPlayerVisible(true);
+        } else {
+            // Setup the playlist for this page's verses
+            const playlist = verses.map(v => {
+                let url = v.audio?.url ? `https://verses.quran.com/${v.audio.url}` : null;
+                const [surahNum, ayahNum] = v.verse_key.split(':');
+                const fileName = `${String(surahNum).padStart(3, '0')}${String(ayahNum).padStart(3, '0')}.mp3`;
+
+                if (localAudioDirHandle) {
+                    url = `local-audio://${fileName}`;
+                } else if (customAudioBaseUrl) {
+                    url = `${customAudioBaseUrl.replace(/\/$/, '')}/${fileName}`;
+                }
+
+                return {
+                    pageNumber: pageNumber,
+                    surahId: parseInt(surahNum),
+                    verseKey: v.verse_key,
+                    verseNumber: v.verse_number,
+                    url
+                };
+            }).filter(v => v.url);
+
+            if (playlist.length > 0) {
+                setPendingPlaylist(playlist);
+                updateAudioSettings({ startRange: 0, endRange: playlist.length - 1 });
+                setShowAudioSetup(true);
+            }
+        }
+    }, [verses, isCurrentPagePlaying, isPlaying, pageNumber, localAudioDirHandle, customAudioBaseUrl, setIsPlaying, setIsPlayerVisible, updateAudioSettings]);
+
+    const handleStartPlaying = () => {
+        if (pendingPlaylist.length === 0) return;
+        setAudioPlaylist(pendingPlaylist, audioSettings.startRange ?? 0);
+        setIsPlaying(true);
+        setIsPlayerVisible(true);
+        setShowAudioSetup(false);
+    };
+
+    const mountPlayTriggerRef = useRef(playTriggerCount);
+    useEffect(() => {
+        if (playTriggerCount === mountPlayTriggerRef.current) return;
+        handlePlayClick();
+        mountPlayTriggerRef.current = playTriggerCount;
+    }, [playTriggerCount, handlePlayClick]);
 
     // Handle Top Level Keyboard
     useEffect(() => {
@@ -227,6 +293,7 @@ export default function Page() {
                                     mushaf={mushaf}
                                     arabicFont={arabicFont}
                                     fontSize={fontSize}
+                                    activeAudioVerseKey={activeAudioVerseKey}
                                 />
                             )
                         ) : (
@@ -265,6 +332,7 @@ export default function Page() {
                                                 tafsirId={tafsirId}
                                                 showPageDivider={false} // since it's exactly 1 page
                                                 mushaf={mushaf}
+                                                isAudioPlaying={activeAudioVerseKey === verse.verse_key}
                                             />
                                         );
                                     })
@@ -331,6 +399,15 @@ export default function Page() {
                     <ChevronRight size={20} />
                 </button>
             </div>
+
+            <AudioSetupModal
+                isOpen={showAudioSetup}
+                onClose={() => setShowAudioSetup(false)}
+                pendingPlaylist={pendingPlaylist}
+                audioSettings={audioSettings}
+                updateAudioSettings={updateAudioSettings}
+                handleStartPlaying={handleStartPlaying}
+            />
         </div>
     );
 }

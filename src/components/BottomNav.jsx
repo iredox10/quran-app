@@ -8,6 +8,7 @@ export default function BottomNav() {
     // Hide BottomNav if we are actively reading a Surah to maximize screen real estate
     const isSurahPage = /^\/surah\/\d+/.test(location.pathname);
     const isMemorizePage = /^\/memorize\/\d+/.test(location.pathname);
+    const isPagePage = /^\/page\/\d+/.test(location.pathname);
 
     // Check if a path is active
     const isActive = (path) => {
@@ -15,7 +16,7 @@ export default function BottomNav() {
         return location.pathname.startsWith(path);
     };
 
-    if (isSurahPage || isMemorizePage) return null; // Hide on Surah reading view
+    if (isSurahPage || isMemorizePage || isPagePage) return null; // Hide on immersive views
 
     const tabs = [
         { path: '/', icon: BookOpen, label: 'Quran' },

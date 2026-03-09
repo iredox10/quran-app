@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { getWordArabicText } from '../utils/quranText';
 
-export default function MushafPageView({ verses, mushaf, arabicFont, fontSize }) {
+export default function MushafPageView({ verses, mushaf, arabicFont, fontSize, activeAudioVerseKey }) {
   const lines = useMemo(() => {
     const lineMap = new Map();
 
@@ -72,8 +72,13 @@ export default function MushafPageView({ verses, mushaf, arabicFont, fontSize })
                   fontFamily: arabicFont,
                   fontSize: `${fontSize * 0.4 + 1.35}rem`,
                   lineHeight: 1.95,
-                  color: word.charType === 'end' ? 'var(--accent-primary)' : 'var(--text-primary)',
+                  color: word.verseKey === activeAudioVerseKey
+                    ? 'var(--accent-primary)'
+                    : word.charType === 'end'
+                      ? 'var(--accent-primary)'
+                      : 'var(--text-primary)',
                   whiteSpace: 'nowrap',
+                  transition: 'color 0.3s ease'
                 }}
               >
                 {word.text}
