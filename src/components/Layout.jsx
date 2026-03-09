@@ -113,7 +113,7 @@ export default function Layout() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
                         {isImmersivePage ? (
                             <>
-                                <button className="btn-icon" onClick={() => isMemorizePage ? navigate('/memorize') : navigate(-1)} style={{ flexShrink: 0 }} aria-label="Go back">
+                                <button className="btn-icon" onClick={() => isMemorizePage ? navigate('/memorize') : navigate('/')} style={{ flexShrink: 0 }} aria-label="Go back">
                                     <ArrowLeft size={20} />
                                 </button>
                                 <span style={{

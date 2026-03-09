@@ -413,21 +413,7 @@ export default function Surah() {
                     transition={pageTransition}
                     style={{ willChange: 'transform, opacity' }}
                 >
-                    <Link
-                        to="/"
-                        className="interactive-hover"
-                        style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                            color: 'var(--text-muted)',
-                            textDecoration: 'none',
-                            marginBottom: '2rem',
-                            fontWeight: 600
-                        }}
-                    >
-                        <ArrowLeft size={18} /> Back to Surahs
-                    </Link>
+
 
 
                     <div className="surah-hero-card" style={{ padding: 'clamp(2rem, 5vw, 4rem) 1.5rem' }}>
