@@ -11,6 +11,36 @@ import {
 const DEFAULT_ARABIC_FONT_ID = getCompatibleArabicFontId(DEFAULT_MUSHAF.id, DEFAULT_MUSHAF.defaultFontId);
 const DEFAULT_ARABIC_FONT_FAMILY = getArabicFontFamily(DEFAULT_ARABIC_FONT_ID);
 
+function updatePlannerCollection(state, updater) {
+    const planners = state.planners || [];
+    const activePlannerId = state.activePlannerId || planners[0]?.id || null;
+    const activePlanner = planners.find((planner) => planner.id === activePlannerId) || null;
+    return updater({ planners, activePlannerId, activePlanner });
+}
+
+function buildPlannerState(planners, activePlannerId) {
+    const nextActivePlannerId = activePlannerId || planners[0]?.id || null;
+    const activePlanner = planners.find((planner) => planner.id === nextActivePlannerId) || null;
+
+    return {
+        planners,
+        activePlannerId: nextActivePlannerId,
+        planner: activePlanner,
+    };
+}
+
+function replaceActivePlanner(state, plannerUpdater) {
+    return updatePlannerCollection(state, ({ planners, activePlannerId, activePlanner }) => {
+        if (!activePlanner) {
+            return {};
+        }
+
+        const nextPlanner = plannerUpdater(activePlanner);
+        const nextPlanners = planners.map((planner) => planner.id === activePlannerId ? nextPlanner : planner);
+        return buildPlannerState(nextPlanners, activePlannerId);
+    });
+}
+
 export const useAppStore = create(
     persist(
         (set) => ({
@@ -37,6 +67,8 @@ export const useAppStore = create(
             collections: [], // Array of { id, name, items: [{ verseKey, surahName, chapterId }] }
             recentlyRead: [], // Array of { chapterId, chapterName, verseKey, timestamp }
             readingSessions: [], // Array of { date (YYYY-MM-DD), duration (seconds), type: 'reading'|'memorizing'|'listening', chapterId }
+            planners: [],
+            activePlannerId: null,
             planner: null,
 
             setIsSettingsOpen: (isOpen) => set({ isSettingsOpen: isOpen }),
@@ -150,23 +182,39 @@ export const useAppStore = create(
                 return { readingSessions: sessions };
             }),
 
-            setPlanner: (planner) => set({ planner }),
-            clearPlanner: () => set({ planner: null }),
-            togglePlannerDayComplete: (dayNumber) => set((state) => {
-                if (!state.planner) {
+            setPlanner: (planner) => set((state) => {
+                const planners = state.planners || [];
+                const existingIndex = planners.findIndex((item) => item.id === planner.id);
+                const nextPlanners = existingIndex >= 0
+                    ? planners.map((item, index) => index === existingIndex ? planner : item)
+                    : [planner, ...planners];
+                return buildPlannerState(nextPlanners, planner.id);
+            }),
+            setActivePlanner: (plannerId) => set((state) => buildPlannerState(state.planners || [], plannerId)),
+            deletePlanner: (plannerId) => set((state) => {
+                const nextPlanners = (state.planners || []).filter((planner) => planner.id !== plannerId);
+                const nextActivePlannerId = state.activePlannerId === plannerId ? nextPlanners[0]?.id || null : state.activePlannerId;
+                return buildPlannerState(nextPlanners, nextActivePlannerId);
+            }),
+            clearPlanner: () => set((state) => {
+                if (!state.activePlannerId) {
                     return {};
                 }
 
-                const assignment = state.planner.assignments.find((item) => item.dayNumber === dayNumber);
+                const nextPlanners = (state.planners || []).filter((planner) => planner.id !== state.activePlannerId);
+                return buildPlannerState(nextPlanners, nextPlanners[0]?.id || null);
+            }),
+            togglePlannerDayComplete: (dayNumber) => set((state) => replaceActivePlanner(state, (activePlanner) => {
+                const assignment = activePlanner.assignments.find((item) => item.dayNumber === dayNumber);
                 if (!assignment) {
-                    return {};
+                    return activePlanner;
                 }
 
                 const totalItems = assignment.items.length;
-                const assignmentProgress = { ...(state.planner.assignmentProgress || {}) };
-                const assignmentCompletedItems = { ...(state.planner.assignmentCompletedItems || {}) };
-                const assignmentCompletedAt = { ...(state.planner.assignmentCompletedAt || {}) };
-                const isComplete = state.planner.completedDays.includes(dayNumber);
+                const assignmentProgress = { ...(activePlanner.assignmentProgress || {}) };
+                const assignmentCompletedItems = { ...(activePlanner.assignmentCompletedItems || {}) };
+                const assignmentCompletedAt = { ...(activePlanner.assignmentCompletedAt || {}) };
+                const isComplete = activePlanner.completedDays.includes(dayNumber);
                 assignmentProgress[dayNumber] = isComplete ? 0 : totalItems;
                 assignmentCompletedItems[dayNumber] = isComplete ? [] : assignment.items.map((item) => item.rangeValue);
                 if (isComplete) {
@@ -175,40 +223,34 @@ export const useAppStore = create(
                     assignmentCompletedAt[dayNumber] = new Date().toISOString().split('T')[0];
                 }
 
-                const completedDays = state.planner.assignments
+                const completedDays = activePlanner.assignments
                     .filter((item) => (assignmentProgress[item.dayNumber] || 0) >= item.items.length)
                     .map((item) => item.dayNumber)
                     .sort((a, b) => a - b);
 
                 return {
-                    planner: {
-                        ...state.planner,
-                        assignmentProgress,
-                        assignmentCompletedItems,
-                        assignmentCompletedAt,
-                        completedDays,
-                    },
+                    ...activePlanner,
+                    assignmentProgress,
+                    assignmentCompletedItems,
+                    assignmentCompletedAt,
+                    completedDays,
                 };
-            }),
-            setPlannerAssignmentProgress: (dayNumber, completedCount) => set((state) => {
-                if (!state.planner) {
-                    return {};
-                }
-
-                const assignment = state.planner.assignments.find((item) => item.dayNumber === dayNumber);
+            })),
+            setPlannerAssignmentProgress: (dayNumber, completedCount) => set((state) => replaceActivePlanner(state, (activePlanner) => {
+                const assignment = activePlanner.assignments.find((item) => item.dayNumber === dayNumber);
                 if (!assignment) {
-                    return {};
+                    return activePlanner;
                 }
 
                 const totalItems = assignment.items.length;
                 const safeCompletedCount = Math.max(0, Math.min(Number(completedCount) || 0, totalItems));
                 const assignmentProgress = {
-                    ...(state.planner.assignmentProgress || {}),
+                    ...(activePlanner.assignmentProgress || {}),
                     [dayNumber]: safeCompletedCount,
                 };
-                const assignmentCompletedItems = { ...(state.planner.assignmentCompletedItems || {}) };
+                const assignmentCompletedItems = { ...(activePlanner.assignmentCompletedItems || {}) };
                 assignmentCompletedItems[dayNumber] = assignment.items.slice(0, safeCompletedCount).map((item) => item.rangeValue);
-                const assignmentCompletedAt = { ...(state.planner.assignmentCompletedAt || {}) };
+                const assignmentCompletedAt = { ...(activePlanner.assignmentCompletedAt || {}) };
 
                 if (safeCompletedCount >= totalItems) {
                     assignmentCompletedAt[dayNumber] = assignmentCompletedAt[dayNumber] || new Date().toISOString().split('T')[0];
@@ -216,32 +258,26 @@ export const useAppStore = create(
                     delete assignmentCompletedAt[dayNumber];
                 }
 
-                const completedDays = state.planner.assignments
+                const completedDays = activePlanner.assignments
                     .filter((item) => (assignmentProgress[item.dayNumber] || 0) >= item.items.length)
                     .map((item) => item.dayNumber)
                     .sort((a, b) => a - b);
 
                 return {
-                    planner: {
-                        ...state.planner,
-                        assignmentProgress,
-                        assignmentCompletedItems,
-                        assignmentCompletedAt,
-                        completedDays,
-                    },
+                    ...activePlanner,
+                    assignmentProgress,
+                    assignmentCompletedItems,
+                    assignmentCompletedAt,
+                    completedDays,
                 };
-            }),
-            markPlannerItemComplete: (dayNumber, rangeValue) => set((state) => {
-                if (!state.planner) {
-                    return {};
-                }
-
-                const assignment = state.planner.assignments.find((item) => item.dayNumber === dayNumber);
+            })),
+            markPlannerItemComplete: (dayNumber, rangeValue) => set((state) => replaceActivePlanner(state, (activePlanner) => {
+                const assignment = activePlanner.assignments.find((item) => item.dayNumber === dayNumber);
                 if (!assignment) {
-                    return {};
+                    return activePlanner;
                 }
 
-                const assignmentCompletedItems = { ...(state.planner.assignmentCompletedItems || {}) };
+                const assignmentCompletedItems = { ...(activePlanner.assignmentCompletedItems || {}) };
                 const existing = Array.isArray(assignmentCompletedItems[dayNumber]) ? assignmentCompletedItems[dayNumber] : [];
                 const nextCompletedItems = Array.from(new Set([...existing, rangeValue])).filter((value) =>
                     assignment.items.some((item) => item.rangeValue === value)
@@ -250,16 +286,16 @@ export const useAppStore = create(
                 assignmentCompletedItems[dayNumber] = nextCompletedItems;
 
                 const assignmentProgress = {
-                    ...(state.planner.assignmentProgress || {}),
+                    ...(activePlanner.assignmentProgress || {}),
                     [dayNumber]: nextCompletedItems.length,
                 };
 
-                const assignmentCompletedAt = { ...(state.planner.assignmentCompletedAt || {}) };
+                const assignmentCompletedAt = { ...(activePlanner.assignmentCompletedAt || {}) };
                 if (nextCompletedItems.length >= assignment.items.length) {
                     assignmentCompletedAt[dayNumber] = assignmentCompletedAt[dayNumber] || new Date().toISOString().split('T')[0];
                 }
 
-                const completedDays = state.planner.assignments
+                const completedDays = activePlanner.assignments
                     .filter((item) => {
                         const completedItems = assignmentCompletedItems[item.dayNumber] || [];
                         return completedItems.length >= item.items.length;
@@ -268,15 +304,13 @@ export const useAppStore = create(
                     .sort((a, b) => a - b);
 
                 return {
-                    planner: {
-                        ...state.planner,
-                        assignmentProgress,
-                        assignmentCompletedItems,
-                        assignmentCompletedAt,
-                        completedDays,
-                    },
+                    ...activePlanner,
+                    assignmentProgress,
+                    assignmentCompletedItems,
+                    assignmentCompletedAt,
+                    completedDays,
                 };
-            }),
+            })),
 
             // Advanced Audio State
             currentAudioUrl: null, // Legacy single file support
@@ -338,6 +372,23 @@ export const useAppStore = create(
         }),
         {
             name: 'quran-app-storage',
+            merge: (persistedState, currentState) => {
+                const merged = {
+                    ...currentState,
+                    ...(persistedState || {}),
+                };
+
+                const planners = merged.planners || (merged.planner ? [merged.planner] : []);
+                const activePlannerId = merged.activePlannerId || planners[0]?.id || null;
+                const planner = planners.find((item) => item.id === activePlannerId) || planners[0] || null;
+
+                return {
+                    ...merged,
+                    planners,
+                    activePlannerId: planner?.id || null,
+                    planner,
+                };
+            },
             partialize: (state) => ({
                 theme: state.theme,
                 translationId: state.translationId,
@@ -357,6 +408,8 @@ export const useAppStore = create(
                 collections: state.collections || [],
                 recentlyRead: state.recentlyRead || [],
                 readingSessions: state.readingSessions || [],
+                planners: state.planners || (state.planner ? [state.planner] : []),
+                activePlannerId: state.activePlannerId || state.planner?.id || state.planners?.[0]?.id || null,
                 planner: state.planner || null,
                 offlineDataStatus: state.offlineDataStatus,
                 downloadedSurahs: state.downloadedSurahs || [],
