@@ -9,10 +9,7 @@ import { getMushafById, isTajweedEnabledForMushaf } from '../config/mushaf';
 import { getVerseArabicText, sanitizeTajweedHtml } from '../utils/quranText';
 import { getLocalAudioUrl } from '../utils/localAudio';
 
-const toArabicNumerals = (num) => {
-    const arabicNumbers = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
-    return String(num).split('').map(char => arabicNumbers[parseInt(char)]).join('');
-};
+
 
 const DELAY_OPTIONS = [0, 1, 2, 3, 5, 10];
 const RANGE_LOOP_OPTIONS = [1, 2, 3, 5, 10, -1];
@@ -696,23 +693,6 @@ export default function Memorization() {
                                             ? <span dangerouslySetInnerHTML={{ __html: tajweedMap[verse.verse_key] }} />
                                             : getVerseArabicText(verse, mushaf)
                                         }
-                                        <span style={{
-                                            display: 'inline-flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            width: '1.4em',
-                                            height: '1.4em',
-                                            borderRadius: '50%',
-                                            border: '1.5px solid var(--accent-primary)',
-                                            color: 'var(--accent-primary)',
-                                            fontSize: '0.45em',
-                                            margin: '0 0.5rem',
-                                            position: 'relative',
-                                            bottom: '0.2em',
-                                            fontFamily: "'Amiri Quran', serif"
-                                        }}>
-                                            {toArabicNumerals(verse.verse_key.split(':')[1])}
-                                        </span>
                                     </div>
                                     <div style={{
                                         position: 'absolute',
