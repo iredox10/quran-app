@@ -231,19 +231,37 @@ export default function Surah() {
 
     // Auto-scroll logic
     const scrollRafRef = useRef(null);
+    const lastScrollTimestampRef = useRef(null);
+    const scrollRemainderRef = useRef(0);
 
     useEffect(() => {
         if (!autoScroll) {
             if (scrollRafRef.current) cancelAnimationFrame(scrollRafRef.current);
+            lastScrollTimestampRef.current = null;
+            scrollRemainderRef.current = 0;
             return;
         }
 
-        const speedMap = { 1: 0.3, 2: 0.6, 3: 1.0, 4: 1.8, 5: 3.0 };
-        const pxPerFrame = speedMap[autoScrollSpeed] || 1.0;
+        const speedMap = { 1: 5, 2: 10, 3: 18, 4: 36, 5: 60, 6: 108, 7: 180 };
+        const pxPerSecond = speedMap[autoScrollSpeed] || 60;
 
-        const tick = () => {
+        const tick = (timestamp) => {
+            if (lastScrollTimestampRef.current == null) {
+                lastScrollTimestampRef.current = timestamp;
+            }
+
+            const deltaMs = timestamp - lastScrollTimestampRef.current;
+            lastScrollTimestampRef.current = timestamp;
+
             if (!isAutoScrollPaused) {
-                window.scrollBy(0, pxPerFrame);
+                const nextDistance = scrollRemainderRef.current + (pxPerSecond * deltaMs) / 1000;
+                const wholePixels = Math.trunc(nextDistance);
+
+                scrollRemainderRef.current = nextDistance - wholePixels;
+
+                if (wholePixels !== 0) {
+                    window.scrollBy(0, wholePixels);
+                }
             }
             // Stop at bottom
             if ((window.innerHeight + window.scrollY) >= document.body.scrollHeight - 10) {
@@ -257,6 +275,8 @@ export default function Surah() {
 
         return () => {
             if (scrollRafRef.current) cancelAnimationFrame(scrollRafRef.current);
+            lastScrollTimestampRef.current = null;
+            scrollRemainderRef.current = 0;
         };
     }, [autoScroll, autoScrollSpeed, setAutoScroll, isAutoScrollPaused]);
 
@@ -686,7 +706,7 @@ export default function Surah() {
                             <button
                                 className="btn-icon"
                                 style={{ width: '28px', height: '28px', border: '1px solid var(--border-color)', borderRadius: '50%' }}
-                                onClick={() => setAutoScrollSpeed(Math.min(5, autoScrollSpeed + 1))}
+                                onClick={() => setAutoScrollSpeed(Math.min(7, autoScrollSpeed + 1))}
                             >
                                 <Plus size={14} />
                             </button>

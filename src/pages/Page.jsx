@@ -4,7 +4,7 @@ import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { useSwipeable } from 'react-swipeable';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Helmet } from 'react-helmet-async';
-import { ChevronRight, ChevronLeft } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ChevronRight, ChevronLeft, Minus, Pause, Play, Plus, X } from 'lucide-react';
 
 import { getVersesByPage, getTajweedVersesByPage, getChapters } from '../services/api/quranApi';
 import { useAppStore } from '../store/useAppStore';
@@ -55,6 +55,8 @@ export default function Page() {
         bookmark, setBookmark, addRecentlyRead,
         mushafId, arabicFont, tajweedEnabled, tafsirId,
         setNavHeaderTitle,
+        autoScroll, setAutoScroll, autoScrollSpeed, setAutoScrollSpeed,
+        isAutoScrollPaused, setIsAutoScrollPaused,
         setIsPlaying, isPlaying, audioPlaylist, setAudioPlaylist,
         audioTrackIndex, audioSettings, updateAudioSettings,
         isPlayerVisible, setIsPlayerVisible, playTriggerCount,
@@ -174,6 +176,61 @@ export default function Page() {
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [pageNumber, maxPageNumber, navigate]);
+
+    const scrollRafRef = useRef(null);
+    const lastScrollTimestampRef = useRef(null);
+    const scrollRemainderRef = useRef(0);
+
+    useEffect(() => {
+        if (!autoScroll) {
+            if (scrollRafRef.current) cancelAnimationFrame(scrollRafRef.current);
+            lastScrollTimestampRef.current = null;
+            scrollRemainderRef.current = 0;
+            return;
+        }
+
+        const speedMap = { 1: 5, 2: 10, 3: 18, 4: 36, 5: 60, 6: 108, 7: 180 };
+        const pxPerSecond = speedMap[autoScrollSpeed] || 60;
+
+        const tick = (timestamp) => {
+            if (lastScrollTimestampRef.current == null) {
+                lastScrollTimestampRef.current = timestamp;
+            }
+
+            const deltaMs = timestamp - lastScrollTimestampRef.current;
+            lastScrollTimestampRef.current = timestamp;
+
+            if (!isAutoScrollPaused) {
+                const nextDistance = scrollRemainderRef.current + (pxPerSecond * deltaMs) / 1000;
+                const wholePixels = Math.trunc(nextDistance);
+
+                scrollRemainderRef.current = nextDistance - wholePixels;
+
+                if (wholePixels !== 0) {
+                    window.scrollBy(0, wholePixels);
+                }
+            }
+
+            if ((window.innerHeight + window.scrollY) >= document.body.scrollHeight - 10) {
+                setAutoScroll(false);
+                return;
+            }
+
+            scrollRafRef.current = requestAnimationFrame(tick);
+        };
+
+        scrollRafRef.current = requestAnimationFrame(tick);
+
+        return () => {
+            if (scrollRafRef.current) cancelAnimationFrame(scrollRafRef.current);
+            lastScrollTimestampRef.current = null;
+            scrollRemainderRef.current = 0;
+        };
+    }, [autoScroll, autoScrollSpeed, isAutoScrollPaused, setAutoScroll]);
+
+    useEffect(() => {
+        return () => setAutoScroll(false);
+    }, [setAutoScroll]);
 
     // Swipe gestures
     const swipeDirectionRef = useRef(0);
@@ -408,7 +465,114 @@ export default function Page() {
                 updateAudioSettings={updateAudioSettings}
                 handleStartPlaying={handleStartPlaying}
             />
+
+            <AnimatePresence>
+                {autoScroll && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 40, x: '-50%' }}
+                        animate={{ opacity: 1, y: 0, x: '-50%' }}
+                        exit={{ opacity: 0, y: 40, x: '-50%' }}
+                        transition={{ duration: 0.25 }}
+                        style={{
+                            position: 'fixed',
+                            bottom: '100px',
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            zIndex: 100,
+                        }}
+                    >
+                        <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.75rem',
+                            padding: '0.6rem 1rem',
+                            borderRadius: '9999px',
+                            background: 'var(--glass-bg)',
+                            backdropFilter: 'blur(16px)',
+                            WebkitBackdropFilter: 'blur(16px)',
+                            border: 'var(--glass-border)',
+                            boxShadow: 'var(--shadow-lg)'
+                        }}>
+                            <div style={{ display: 'flex', gap: '0.25rem' }}>
+                                <button
+                                    className="btn-icon"
+                                    style={{ width: '28px', height: '28px', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                                    onClick={() => window.scrollBy({ top: -200, behavior: 'smooth' })}
+                                    aria-label="Scroll up"
+                                >
+                                    <ArrowLeft size={14} style={{ transform: 'rotate(90deg)' }} />
+                                </button>
+                                <button
+                                    className="btn-icon"
+                                    style={{ width: '28px', height: '28px', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                                    onClick={() => window.scrollBy({ top: 200, behavior: 'smooth' })}
+                                    aria-label="Scroll down"
+                                >
+                                    <ArrowRight size={14} style={{ transform: 'rotate(90deg)' }} />
+                                </button>
+                            </div>
+
+                            <div style={{ width: '1px', height: '24px', background: 'var(--border-color)' }} />
+
+                            <button
+                                className="btn-icon"
+                                style={{ width: '28px', height: '28px', border: '1px solid var(--border-color)', borderRadius: '50%' }}
+                                onClick={() => setAutoScrollSpeed(Math.max(1, autoScrollSpeed - 1))}
+                                aria-label="Decrease auto-scroll speed"
+                            >
+                                <Minus size={14} />
+                            </button>
+                            <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-primary)', minWidth: '40px', textAlign: 'center' }}>
+                                {autoScrollSpeed}x
+                            </span>
+                            <button
+                                className="btn-icon"
+                                style={{ width: '28px', height: '28px', border: '1px solid var(--border-color)', borderRadius: '50%' }}
+                                onClick={() => setAutoScrollSpeed(Math.min(7, autoScrollSpeed + 1))}
+                                aria-label="Increase auto-scroll speed"
+                            >
+                                <Plus size={14} />
+                            </button>
+
+                            <button
+                                className="btn-icon"
+                                style={{
+                                    width: '32px',
+                                    height: '32px',
+                                    background: isAutoScrollPaused ? 'var(--accent-light)' : 'transparent',
+                                    color: 'var(--accent-primary)'
+                                }}
+                                onClick={() => setIsAutoScrollPaused(!isAutoScrollPaused)}
+                                aria-label={isAutoScrollPaused ? 'Resume auto-scroll' : 'Pause auto-scroll'}
+                            >
+                                {isAutoScrollPaused ? <Play size={16} fill="currentColor" /> : <Pause size={16} fill="currentColor" />}
+                            </button>
+
+                            <div style={{ width: '1px', height: '24px', background: 'var(--border-color)' }} />
+
+                            <button
+                                onClick={() => setAutoScroll(false)}
+                                style={{
+                                    width: '32px',
+                                    height: '32px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    borderRadius: '50%',
+                                    background: 'rgba(239, 68, 68, 0.1)',
+                                    color: 'rgb(239, 68, 68)',
+                                    border: 'none',
+                                    cursor: 'pointer'
+                                }}
+                                aria-label="Stop auto-scroll"
+                                title="Stop auto-scroll"
+                            >
+                                <X size={16} />
+                            </button>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
-
