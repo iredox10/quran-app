@@ -475,7 +475,7 @@ export default function Page() {
                         transition={{ duration: 0.25 }}
                         style={{
                             position: 'fixed',
-                            bottom: '100px',
+                            bottom: 'calc(env(safe-area-inset-bottom, 0px) + 20px)',
                             left: '50%',
                             transform: 'translateX(-50%)',
                             zIndex: 100,

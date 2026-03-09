@@ -1,16 +1,70 @@
-import { useState, useEffect } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getChapters } from '../services/api/quranApi';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../store/useAppStore';
-import { BookOpen, Search, Bookmark, Mic, LayoutDashboard, TrendingUp, DownloadCloud, X } from 'lucide-react';
+import { BookOpen, Search, Bookmark, DownloadCloud, X, Hash, Layers3, LibraryBig, Rows3 } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
+import { HIZB_STARTS, JUZ_STARTS, PAGE_GROUPS } from '../data/quranNavigation';
+
+const BROWSE_MODES = [
+    { id: 'surah', label: 'Surah', icon: BookOpen },
+    { id: 'page', label: 'Page', icon: Rows3 },
+    { id: 'juz', label: 'Juz', icon: LibraryBig },
+    { id: 'hizb', label: 'Hizb', icon: Layers3 },
+];
+
+function getBrowseItems(mode, chapters) {
+    if (mode === 'page') {
+        return PAGE_GROUPS.map((item) => ({
+            key: `page-${item.id}`,
+            title: `Page ${item.pageNumber}`,
+            subtitle: 'Open Mushaf page view',
+            meta: `Page ${String(item.pageNumber).padStart(3, '0')}`,
+            to: `/page/${item.pageNumber}`,
+            arabic: null,
+        }));
+    }
+
+    if (mode === 'juz') {
+        return JUZ_STARTS.map((item) => ({
+            key: `juz-${item.id}`,
+            title: `Juz ${item.id}`,
+            subtitle: `Starts at ${item.verseKey}`,
+            meta: `Page ${item.pageNumber}`,
+            to: `/page/${item.pageNumber}`,
+            arabic: `الجزء ${item.id}`,
+        }));
+    }
+
+    if (mode === 'hizb') {
+        return HIZB_STARTS.map((item) => ({
+            key: `hizb-${item.id}`,
+            title: `Hizb ${item.id}`,
+            subtitle: `Starts at ${item.verseKey}`,
+            meta: `Page ${item.pageNumber}`,
+            to: `/page/${item.pageNumber}`,
+            arabic: `حزب ${item.id}`,
+        }));
+    }
+
+    return (chapters || []).map((chapter) => ({
+        key: `surah-${chapter.id}`,
+        title: chapter.name_simple,
+        subtitle: `${chapter.translated_name.name} · ${chapter.verses_count} Ayahs`,
+        meta: String(chapter.id).padStart(3, '0'),
+        to: `/surah/${chapter.id}`,
+        arabic: chapter.name_arabic,
+        chapterId: chapter.id,
+    }));
+}
 
 export default function Home() {
     const { recentlyRead, bookmark } = useAppStore();
     const [searchQuery, setSearchQuery] = useState('');
     const [isOnline, setIsOnline] = useState(navigator.onLine);
+    const [browseMode, setBrowseMode] = useState('surah');
 
     useEffect(() => {
         const handleOnline = () => setIsOnline(true);
@@ -97,10 +151,20 @@ export default function Home() {
         </div>
     );
 
-    const filteredChapters = chapters?.filter(c =>
-        c.name_simple.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        c.translated_name.name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const browseItems = useMemo(() => getBrowseItems(browseMode, chapters), [browseMode, chapters]);
+
+    const filteredItems = useMemo(() => {
+        const query = searchQuery.trim().toLowerCase();
+        if (!query) {
+            return browseItems;
+        }
+
+        return browseItems.filter((item) => {
+            return [item.title, item.subtitle, item.meta, item.arabic]
+                .filter(Boolean)
+                .some((value) => value.toLowerCase().includes(query));
+        });
+    }, [browseItems, searchQuery]);
 
     return (
         <div className="container">
@@ -252,9 +316,47 @@ export default function Home() {
                 )}
             </div>
 
-            <h2 style={{ fontSize: '1.5rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '1rem' }}>
-                Surahs (Chapters)
-            </h2>
+            <section style={{ marginBottom: '2rem' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+                    <div>
+                        <h2 style={{ fontSize: '1.5rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
+                            Browse the Quran
+                        </h2>
+                        <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>
+                            Start by Surah, Mushaf page, Juz, or Hizb - similar to how major Quran readers structure entry points.
+                        </p>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        {BROWSE_MODES.map((mode) => {
+                            const Icon = mode.icon;
+                            const active = browseMode === mode.id;
+                            return (
+                                <button
+                                    key={mode.id}
+                                    type="button"
+                                    onClick={() => setBrowseMode(mode.id)}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.5rem',
+                                        minHeight: '42px',
+                                        padding: '0.65rem 0.95rem',
+                                        borderRadius: '999px',
+                                        border: `1px solid ${active ? 'rgba(198, 168, 124, 0.35)' : 'rgba(0,0,0,0.06)'}`,
+                                        background: active ? 'var(--accent-light)' : 'var(--bg-secondary)',
+                                        color: active ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                                        fontWeight: 600,
+                                    }}
+                                >
+                                    <Icon size={16} aria-hidden="true" />
+                                    <span>{mode.label}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+            </section>
 
             <div style={{
                 marginBottom: '2rem',
@@ -269,9 +371,10 @@ export default function Home() {
                 <Search size={20} color="var(--text-muted)" style={{ marginRight: '1rem' }} />
                 <input
                     type="text"
-                    placeholder="Search Surahs..."
+                    placeholder={`Search ${browseMode}...`}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
+                    aria-label={`Search ${browseMode}`}
                     style={{ border: 'none', background: 'transparent', outline: 'none', color: 'var(--text-primary)', width: '100%', fontSize: '1.1rem', fontFamily: 'inherit' }}
                 />
             </div>
@@ -281,15 +384,15 @@ export default function Home() {
                 gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
                 gap: '1.5rem'
             }}>
-                {filteredChapters?.map((chapter, index) => (
+                {filteredItems?.map((item) => (
                     <motion.div
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ duration: 0.2 }}
-                        key={chapter.id}
+                        key={item.key}
                     >
                         <Link
-                            to={`/surah/${chapter.id}`}
+                            to={item.to}
                             className="glass-panel interactive-hover"
                             style={{
                                 display: 'flex',
@@ -314,24 +417,29 @@ export default function Home() {
                                 marginRight: '1rem',
                                 fontSize: '0.9rem'
                             }}>
-                                {chapter.id}
+                                {browseMode === 'surah' ? item.chapterId : <Hash size={16} aria-hidden="true" />}
                             </div>
 
                             <div style={{ flex: 1 }}>
-                                <h3 style={{ fontSize: '1.1rem', fontWeight: 600 }}>{chapter.name_simple}</h3>
+                                <h3 style={{ fontSize: '1.1rem', fontWeight: 600 }}>{item.title}</h3>
                                 <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                                    {chapter.translated_name.name} • {chapter.verses_count} Ayahs
+                                    {item.subtitle}
+                                </p>
+                                <p style={{ fontSize: '0.75rem', color: 'var(--accent-primary)', marginTop: '0.35rem', fontWeight: 600 }}>
+                                    {item.meta}
                                 </p>
                             </div>
 
-                            <div style={{
-                                fontFamily: "'Amiri Quran', serif",
-                                fontSize: '1.5rem',
-                                color: 'var(--accent-primary)',
-                                direction: 'rtl'
-                            }}>
-                                {chapter.name_arabic}
-                            </div>
+                            {item.arabic && (
+                                <div style={{
+                                    fontFamily: "'Amiri Quran', serif",
+                                    fontSize: '1.5rem',
+                                    color: 'var(--accent-primary)',
+                                    direction: 'rtl'
+                                }}>
+                                    {item.arabic}
+                                </div>
+                            )}
                         </Link>
                     </motion.div>
                 ))}
