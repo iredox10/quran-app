@@ -1,7 +1,20 @@
+import { useEffect, useMemo, useState } from 'react';
 import { useAppStore } from '../store/useAppStore';
-import { X, Check, DownloadCloud, CheckCircle, RefreshCw, AlertCircle } from 'lucide-react';
-import { getChapters, getVerses, getTajweedVerses } from '../services/api/quranApi';
-import { useState } from 'react';
+import {
+    AlertCircle,
+    ArrowLeft,
+    Check,
+    CheckCircle,
+    ChevronDown,
+    ChevronRight,
+    DownloadCloud,
+    FolderOpen,
+    Moon,
+    RefreshCw,
+    Sun,
+    Type,
+} from 'lucide-react';
+import { getChapters, getTajweedVerses, getVerses } from '../services/api/quranApi';
 import { getMushafById, getMushafFontOptions, isTajweedEnabledForMushaf, MUSHAFS } from '../config/mushaf';
 import { saveLocalAudioDirHandle } from '../utils/localAudio';
 
@@ -13,12 +26,12 @@ const RECITERS = [
 ];
 
 const TRANSLATIONS = [
-    { id: 85, name: 'English — M.A.S. Abdel Haleem' },
-    { id: 20, name: 'English — Saheeh International' },
-    { id: 22, name: 'English — A. Yusuf Ali' },
-    { id: 84, name: 'English — Mufti Taqi Usmani' },
-    { id: 32, name: 'Hausa — Abubakar Mahmoud Gumi' },
-    { id: 234, name: 'Urdu — Fatah Muhammad Jalandhari' }
+    { id: 85, name: 'English - M.A.S. Abdel Haleem' },
+    { id: 20, name: 'English - Saheeh International' },
+    { id: 22, name: 'English - A. Yusuf Ali' },
+    { id: 84, name: 'English - Mufti Taqi Usmani' },
+    { id: 32, name: 'Hausa - Abubakar Mahmoud Gumi' },
+    { id: 234, name: 'Urdu - Fatah Muhammad Jalandhari' }
 ];
 
 const TAFSIRS = [
@@ -30,6 +43,169 @@ const TAFSIRS = [
     { id: 15, name: 'Tafsir al-Tabari', lang: 'Arabic' },
     { id: 93, name: 'Al-Tafsir al-Wasit', lang: 'Arabic' }
 ];
+
+const DRAWER_VIEWS = {
+    root: 'root',
+    mushaf: 'mushaf',
+    translation: 'translation',
+    reciter: 'reciter',
+    arabicFont: 'arabicFont',
+    tafsir: 'tafsir',
+};
+
+function sectionTitleStyle() {
+    return {
+        fontSize: '0.78rem',
+        fontWeight: 700,
+        letterSpacing: '0.08em',
+        textTransform: 'uppercase',
+        color: 'var(--text-muted)',
+        marginBottom: '0.85rem'
+    };
+}
+
+function cardStyle() {
+    return {
+        border: '1px solid rgba(0,0,0,0.06)',
+        background: 'var(--bg-primary)',
+        borderRadius: '18px',
+        boxShadow: 'var(--shadow-sm)'
+    };
+}
+
+function rowButtonStyle() {
+    return {
+        width: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: '1rem',
+        padding: '1rem 1.05rem',
+        textAlign: 'left',
+        color: 'var(--text-primary)',
+    };
+}
+
+function SelectionRow({ label, value, hint, onClick, borderless = false }) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            style={{
+                ...rowButtonStyle(),
+                borderBottom: borderless ? 'none' : '1px solid rgba(0,0,0,0.06)',
+            }}
+        >
+            <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ fontWeight: 600, marginBottom: value || hint ? '0.2rem' : 0 }}>{label}</div>
+                {value && <div style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{value}</div>}
+                {!value && hint && <div style={{ color: 'var(--text-muted)', fontSize: '0.84rem' }}>{hint}</div>}
+            </div>
+            <ChevronRight size={18} color="var(--text-muted)" aria-hidden="true" />
+        </button>
+    );
+}
+
+function SegmentedOption({ active, icon, label, onClick }) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            style={{
+                flex: 1,
+                minHeight: '44px',
+                padding: '0.8rem',
+                borderRadius: '14px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.55rem',
+                background: active ? 'var(--accent-light)' : 'var(--bg-primary)',
+                color: active ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                border: `1px solid ${active ? 'rgba(198, 168, 124, 0.35)' : 'rgba(0,0,0,0.06)'}`,
+                fontWeight: 600,
+            }}
+        >
+            {icon}
+            <span>{label}</span>
+        </button>
+    );
+}
+
+function ToggleRow({ label, hint, checked, onToggle, disabled = false }) {
+    return (
+        <button
+            type="button"
+            disabled={disabled}
+            onClick={() => !disabled && onToggle()}
+            style={{
+                ...rowButtonStyle(),
+                padding: '0.95rem 1.05rem',
+                opacity: disabled ? 0.6 : 1,
+                cursor: disabled ? 'default' : 'pointer',
+            }}
+        >
+            <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ fontWeight: 600, marginBottom: '0.2rem' }}>{label}</div>
+                <div style={{ color: 'var(--text-secondary)', fontSize: '0.84rem' }}>{hint}</div>
+            </div>
+            <div
+                aria-hidden="true"
+                style={{
+                    width: '44px',
+                    height: '24px',
+                    borderRadius: '999px',
+                    backgroundColor: checked ? 'var(--accent-primary)' : 'rgba(0,0,0,0.12)',
+                    position: 'relative',
+                    flexShrink: 0,
+                    transition: 'background-color 0.2s ease'
+                }}
+            >
+                <div
+                    style={{
+                        width: '20px',
+                        height: '20px',
+                        borderRadius: '50%',
+                        backgroundColor: '#fff',
+                        position: 'absolute',
+                        top: '2px',
+                        left: checked ? '22px' : '2px',
+                        transition: 'left 0.2s ease',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+                    }}
+                />
+            </div>
+        </button>
+    );
+}
+
+function PickerOption({ title, subtitle, active, onClick, sampleStyle }) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            style={{
+                width: '100%',
+                padding: '1rem 1.05rem',
+                borderRadius: '16px',
+                border: `1px solid ${active ? 'rgba(198, 168, 124, 0.35)' : 'rgba(0,0,0,0.06)'}`,
+                background: active ? 'var(--accent-light)' : 'var(--bg-primary)',
+                color: active ? 'var(--accent-primary)' : 'var(--text-primary)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '1rem',
+                textAlign: 'left'
+            }}
+        >
+            <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ fontWeight: 600, ...(sampleStyle || {}) }}>{title}</div>
+                {subtitle && <div style={{ marginTop: '0.25rem', color: 'var(--text-secondary)', fontSize: '0.84rem' }}>{subtitle}</div>}
+            </div>
+            {active && <Check size={18} aria-hidden="true" />}
+        </button>
+    );
+}
 
 export default function SettingsDrawer({ isOpen, onClose }) {
     const {
@@ -45,60 +221,80 @@ export default function SettingsDrawer({ isOpen, onClose }) {
         offlineDataStatus, setOfflineStatus,
         localAudioDirHandle, setLocalAudioDirHandle
     } = useAppStore();
+
     const mushaf = getMushafById(mushafId);
     const mushafFonts = getMushafFontOptions(mushafId);
     const isTajweedActive = isTajweedEnabledForMushaf(mushafId, tajweedEnabled);
 
     const [syncProgress, setSyncProgress] = useState(0);
+    const [activeView, setActiveView] = useState(DRAWER_VIEWS.root);
+    const [showAdvanced, setShowAdvanced] = useState(false);
+
+    useEffect(() => {
+        if (isOpen) {
+            setActiveView(DRAWER_VIEWS.root);
+        }
+    }, [isOpen]);
+
+    const selectedTranslation = useMemo(
+        () => TRANSLATIONS.find((item) => item.id === translationId),
+        [translationId]
+    );
+    const selectedReciter = useMemo(
+        () => RECITERS.find((item) => item.id === reciterId),
+        [reciterId]
+    );
+    const selectedTafsir = useMemo(
+        () => TAFSIRS.find((item) => item.id === tafsirId),
+        [tafsirId]
+    );
+    const selectedFont = useMemo(
+        () => mushafFonts.find((item) => item.id === arabicFontId),
+        [arabicFontId, mushafFonts]
+    );
 
     const handleSyncQuran = async () => {
         try {
             setOfflineStatus('syncing');
             setSyncProgress(0);
 
-            // 1. Chapters
             const chapters = await getChapters();
             setSyncProgress(5);
 
-            // 2. Loop through all 114 chapters
-            // We do this surah by surah with a tiny break to avoid flooding
             for (let i = 0; i < chapters.length; i++) {
                 const chapterId = chapters[i].id;
-                // Calculate how many pages this Surah has (getVerses uses 50 per_page max)
-                const totalVerses = chapters[i].verses_count;
-                const totalPages = Math.ceil(totalVerses / 50);
+                const totalPages = Math.ceil(chapters[i].verses_count / 50);
 
-                // Fetch basic verses for ALL pages
                 for (let page = 1; page <= totalPages; page++) {
                     await getVerses(chapterId, translationId, reciterId, page, mushafId);
                 }
 
-                // Fetch tajweed verses (returns all ayahs in one payload usually, but let's just trigger it)
                 if (mushaf.tajweedSource === 'uthmani_html' && isTajweedActive) {
                     await getTajweedVerses(chapterId);
                 }
 
                 setSyncProgress(5 + Math.floor((i / chapters.length) * 95));
 
-                // Tiny break every 5 chapters to keep UI thread happy
                 if (i % 5 === 0) {
-                    await new Promise(r => setTimeout(r, 50));
+                    await new Promise((resolve) => setTimeout(resolve, 50));
                 }
             }
 
             setOfflineStatus('completed');
             setSyncProgress(100);
         } catch (error) {
-            console.error("Sync failed", error);
+            console.error('Sync failed', error);
             setOfflineStatus('error');
         }
     };
+
     const handleSelectAudioFolder = async () => {
         try {
             if (!('showDirectoryPicker' in window)) {
                 alert('Your browser does not support local folder selection.');
                 return;
             }
+
             const handle = await window.showDirectoryPicker({ mode: 'read' });
             await saveLocalAudioDirHandle(handle);
             setLocalAudioDirHandle(handle);
@@ -107,436 +303,429 @@ export default function SettingsDrawer({ isOpen, onClose }) {
         }
     };
 
+    const closeLabel = activeView === DRAWER_VIEWS.root ? 'Close settings' : 'Back to settings';
+
+    const renderPickerView = () => {
+        if (activeView === DRAWER_VIEWS.mushaf) {
+            return {
+                title: 'Choose Mushaf',
+                content: (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        {MUSHAFS.map((item) => (
+                            <PickerOption
+                                key={item.id}
+                                title={item.name}
+                                subtitle={item.description}
+                                active={item.id === mushafId}
+                                onClick={() => {
+                                    setSelectedMushaf(item.id);
+                                    setActiveView(DRAWER_VIEWS.root);
+                                }}
+                            />
+                        ))}
+                    </div>
+                )
+            };
+        }
+
+        if (activeView === DRAWER_VIEWS.translation) {
+            return {
+                title: 'Choose Translation',
+                content: (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        {TRANSLATIONS.map((item) => (
+                            <PickerOption
+                                key={item.id}
+                                title={item.name}
+                                active={item.id === translationId}
+                                onClick={() => {
+                                    setTranslation(item.id);
+                                    setActiveView(DRAWER_VIEWS.root);
+                                }}
+                            />
+                        ))}
+                    </div>
+                )
+            };
+        }
+
+        if (activeView === DRAWER_VIEWS.reciter) {
+            return {
+                title: 'Choose Reciter',
+                content: (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        {RECITERS.map((item) => (
+                            <PickerOption
+                                key={item.id}
+                                title={item.name}
+                                active={item.id === reciterId}
+                                onClick={() => {
+                                    setReciter(item.id);
+                                    setActiveView(DRAWER_VIEWS.root);
+                                }}
+                            />
+                        ))}
+                    </div>
+                )
+            };
+        }
+
+        if (activeView === DRAWER_VIEWS.arabicFont) {
+            return {
+                title: 'Choose Arabic Font',
+                content: (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        {mushafFonts.map((item) => (
+                            <PickerOption
+                                key={item.id}
+                                title={item.name}
+                                subtitle={`Compatible with ${mushaf.name}`}
+                                active={item.id === arabicFontId}
+                                sampleStyle={{ fontFamily: item.family }}
+                                onClick={() => {
+                                    setArabicFont(item.id);
+                                    setActiveView(DRAWER_VIEWS.root);
+                                }}
+                            />
+                        ))}
+                    </div>
+                )
+            };
+        }
+
+        if (activeView === DRAWER_VIEWS.tafsir) {
+            return {
+                title: 'Choose Tafsir',
+                content: (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        {TAFSIRS.map((item) => (
+                            <PickerOption
+                                key={item.id}
+                                title={item.name}
+                                subtitle={item.lang}
+                                active={item.id === tafsirId}
+                                onClick={() => {
+                                    setTafsirId(item.id);
+                                    setActiveView(DRAWER_VIEWS.root);
+                                }}
+                            />
+                        ))}
+                    </div>
+                )
+            };
+        }
+
+        return null;
+    };
+
     if (!isOpen) return null;
+
+    const pickerView = renderPickerView();
 
     return (
         <>
             <div
+                onClick={onClose}
                 style={{
                     position: 'fixed',
                     inset: 0,
-                    backgroundColor: 'rgba(0,0,0,0.5)',
-                    backdropFilter: 'blur(4px)',
-                    zIndex: 999
+                    backgroundColor: 'rgba(0,0,0,0.46)',
+                    backdropFilter: 'blur(6px)',
+                    zIndex: 999,
                 }}
-                onClick={onClose}
             />
-            <div style={{
-                position: 'fixed',
-                top: 0,
-                right: 0,
-                bottom: 0,
-                width: 'min(400px, 85vw)',
-                backgroundColor: 'var(--bg-secondary)',
-                borderLeft: '1px solid var(--border-color)',
-                zIndex: 1000,
-                display: 'flex',
-                flexDirection: 'column',
-                boxShadow: 'var(--shadow-lg)'
-            }}>
-                <div style={{
-                    padding: '1.5rem',
-                    borderBottom: '1px solid var(--border-color)',
+
+            <aside
+                aria-label="Reading settings"
+                style={{
+                    position: 'fixed',
+                    top: 0,
+                    right: 0,
+                    bottom: 0,
+                    width: 'min(420px, 92vw)',
+                    backgroundColor: 'var(--bg-secondary)',
+                    borderLeft: '1px solid rgba(0,0,0,0.06)',
+                    zIndex: 1000,
                     display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center'
-                }}>
-                    <h2 style={{ fontSize: '1.25rem', fontWeight: 600 }}>Preferences</h2>
-                    <button className="btn-icon" onClick={onClose}>
-                        <X size={20} />
+                    flexDirection: 'column',
+                    boxShadow: 'var(--shadow-lg)',
+                    overscrollBehavior: 'contain',
+                }}
+            >
+                <div
+                    style={{
+                        padding: '1rem 1rem 0.9rem 1rem',
+                        borderBottom: '1px solid rgba(0,0,0,0.06)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '0.75rem',
+                        background: 'var(--bg-secondary)'
+                    }}
+                >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', minWidth: 0 }}>
+                        {activeView !== DRAWER_VIEWS.root && (
+                            <button
+                                type="button"
+                                className="btn-icon"
+                                onClick={() => setActiveView(DRAWER_VIEWS.root)}
+                                aria-label={closeLabel}
+                            >
+                                <ArrowLeft size={18} />
+                            </button>
+                        )}
+                        <div>
+                            <h2 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                                {pickerView?.title || 'Reading Settings'}
+                            </h2>
+                            {activeView === DRAWER_VIEWS.root && (
+                                <p style={{ marginTop: '0.15rem', color: 'var(--text-secondary)', fontSize: '0.84rem' }}>
+                                    Keep the essentials close. Move deeper only when needed.
+                                </p>
+                            )}
+                        </div>
+                    </div>
+
+                    <button type="button" className="btn-icon" onClick={onClose} aria-label="Close settings">
+                        <span aria-hidden="true" style={{ fontSize: '1.25rem', lineHeight: 1 }}>x</span>
                     </button>
                 </div>
 
-                <div style={{ padding: '1.5rem', flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-
-                    {/* Theme */}
-                    <div>
-                        <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '1rem', color: 'var(--text-muted)' }}>Theme</h3>
-                        <div style={{ display: 'flex', gap: '0.5rem' }}>
-                            {['light', 'dark'].map((t) => (
-                                <button
-                                    key={t}
-                                    onClick={() => { if (theme !== t) toggleTheme(); }}
-                                    style={{
-                                        flex: 1,
-                                        padding: '0.75rem',
-                                        borderRadius: '8px',
-                                        border: `1px solid ${theme === t ? 'var(--accent-primary)' : 'var(--border-color)'}`,
-                                        backgroundColor: theme === t ? 'var(--accent-light)' : 'var(--bg-primary)',
-                                        color: theme === t ? 'var(--accent-primary)' : 'var(--text-primary)',
-                                        fontWeight: 500,
-                                        textTransform: 'capitalize'
-                                    }}
-                                >
-                                    {t}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div>
-                        <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '1rem', color: 'var(--text-muted)' }}>Quran Appearance</h3>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                            {MUSHAFS.map((item) => (
-                                <button
-                                    key={item.id}
-                                    onClick={() => setSelectedMushaf(item.id)}
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'flex-start',
-                                        justifyContent: 'space-between',
-                                        gap: '1rem',
-                                        padding: '1rem',
-                                        borderRadius: '12px',
-                                        border: '1px solid var(--border-color)',
-                                        backgroundColor: mushafId === item.id ? 'var(--accent-light)' : 'transparent',
-                                        color: mushafId === item.id ? 'var(--accent-primary)' : 'var(--text-primary)',
-                                        textAlign: 'left'
-                                    }}
-                                >
-                                    <div>
-                                        <div style={{ fontWeight: 600 }}>{item.name}</div>
-                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>{item.description}</div>
-                                    </div>
-                                    {mushafId === item.id && <Check size={18} />}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Font Size (Arabic) */}
-                    <div>
-                        <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-muted)' }}>Arabic Font Size</h3>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500, minWidth: '18px' }}>A</span>
-                            <input
-                                type="range"
-                                min="1"
-                                max="8"
-                                step="1"
-                                value={fontSize}
-                                onChange={(e) => setFontSize(Number(e.target.value))}
-                                className="settings-slider"
-                                style={{ flex: 1 }}
-                            />
-                            <span style={{ fontSize: '1.2rem', color: 'var(--text-muted)', fontWeight: 600, minWidth: '18px' }}>A</span>
-                            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--accent-primary)', minWidth: '20px', textAlign: 'center' }}>{fontSize}</span>
-                        </div>
-                    </div>
-
-                    {/* Font Size (Translation) */}
-                    <div>
-                        <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-muted)' }}>Translation Font Size</h3>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500, minWidth: '18px' }}>A</span>
-                            <input
-                                type="range"
-                                min="1"
-                                max="8"
-                                step="1"
-                                value={translationFontSize || 2}
-                                onChange={(e) => setTranslationFontSize(Number(e.target.value))}
-                                className="settings-slider"
-                                style={{ flex: 1 }}
-                            />
-                            <span style={{ fontSize: '1.2rem', color: 'var(--text-muted)', fontWeight: 600, minWidth: '18px' }}>A</span>
-                            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--accent-primary)', minWidth: '20px', textAlign: 'center' }}>{translationFontSize || 2}</span>
-                        </div>
-                    </div>
-
-                    {/* Tajweed Rules */}
-                    <div>
-                        <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '1rem', color: 'var(--text-muted)' }}>Tajweed Rules</h3>
-                        <button
-                            disabled={!mushaf.supportsTajweedToggle}
-                            onClick={() => {
-                                if (mushaf.supportsTajweedToggle) {
-                                    setTajweed(!tajweedEnabled);
-                                }
-                            }}
-                            style={{
-                                width: '100%',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                padding: '1rem',
-                                borderRadius: '8px',
-                                border: '1px solid var(--border-color)',
-                                backgroundColor: isTajweedActive ? 'var(--accent-light)' : 'transparent',
-                                color: isTajweedActive ? 'var(--accent-primary)' : 'var(--text-primary)',
-                                textAlign: 'left',
-                                opacity: mushaf.supportsTajweedToggle ? 1 : 0.6,
-                                cursor: mushaf.supportsTajweedToggle ? 'pointer' : 'default'
-                            }}
-                        >
-                            <div>
-                                <span style={{ fontWeight: 500 }}>{mushaf.forcesTajweed ? 'Included in this Mushaf' : 'Color-coded Tajweed'}</span>
-                                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-                                    {mushaf.supportsTajweedToggle
-                                        ? 'Highlight letters with tajweed color rules'
-                                        : 'This Mushaf does not expose the current tajweed overlay pipeline'}
-                                </p>
-                            </div>
-                            <div style={{
-                                width: '44px',
-                                height: '24px',
-                                borderRadius: '12px',
-                                backgroundColor: isTajweedActive ? 'var(--accent-primary)' : 'var(--border-color)',
-                                position: 'relative',
-                                transition: 'background-color 0.2s ease',
-                                flexShrink: 0
-                            }}>
-                                <div style={{
-                                    width: '20px',
-                                    height: '20px',
-                                    borderRadius: '50%',
-                                    backgroundColor: '#fff',
-                                    position: 'absolute',
-                                    top: '2px',
-                                    left: isTajweedActive ? '22px' : '2px',
-                                    transition: 'left 0.2s ease',
-                                    boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
-                                }} />
-                            </div>
-                        </button>
-                    </div>
-
-                    {/* Arabic Font */}
-                    <div>
-                        <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '1rem', color: 'var(--text-muted)' }}>Arabic Font</h3>
-                        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
-                            Compatible with {mushaf.name}. Fonts are filtered by the selected Mushaf profile.
-                        </p>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                            {mushafFonts.map((f) => (
-                                <button
-                                    key={f.id}
-                                    onClick={() => setArabicFont(f.id)}
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'space-between',
-                                        padding: '1rem',
-                                        borderRadius: '8px',
-                                        border: '1px solid var(--border-color)',
-                                        backgroundColor: arabicFontId === f.id ? 'var(--accent-light)' : 'transparent',
-                                        color: arabicFontId === f.id ? 'var(--accent-primary)' : 'var(--text-primary)',
-                                        textAlign: 'left',
-                                        fontFamily: f.family
-                                    }}
-                                >
-                                    <span style={{ fontFamily: "'Outfit', sans-serif" }}>{f.name}</span>
-                                    {arabicFontId === f.id && <Check size={18} />}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Reciter */}
-                    <div>
-                        <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '1rem', color: 'var(--text-muted)' }}>Reciter</h3>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                            {RECITERS.map((r) => (
-                                <button
-                                    key={r.id}
-                                    onClick={() => setReciter(r.id)}
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'space-between',
-                                        padding: '1rem',
-                                        borderRadius: '8px',
-                                        border: '1px solid var(--border-color)',
-                                        backgroundColor: reciterId === r.id ? 'var(--accent-light)' : 'transparent',
-                                        color: reciterId === r.id ? 'var(--accent-primary)' : 'var(--text-primary)',
-                                        textAlign: 'left'
-                                    }}
-                                >
-                                    <span>{r.name}</span>
-                                    {reciterId === r.id && <Check size={18} />}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Translation */}
-                    <div>
-                        <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '1rem', color: 'var(--text-muted)' }}>Translation</h3>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                            {TRANSLATIONS.map((t) => (
-                                <button
-                                    key={t.id}
-                                    onClick={() => setTranslation(t.id)}
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'space-between',
-                                        padding: '1rem',
-                                        borderRadius: '8px',
-                                        border: '1px solid var(--border-color)',
-                                        backgroundColor: translationId === t.id ? 'var(--accent-light)' : 'transparent',
-                                        color: translationId === t.id ? 'var(--accent-primary)' : 'var(--text-primary)',
-                                        textAlign: 'left'
-                                    }}
-                                >
-                                    <span>{t.name}</span>
-                                    {translationId === t.id && <Check size={18} />}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Tafsir Source */}
-                    <div>
-                        <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '1rem', color: 'var(--text-muted)' }}>Tafsir Source</h3>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                            {TAFSIRS.map((t) => (
-                                <button
-                                    key={t.id}
-                                    onClick={() => setTafsirId(t.id)}
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'space-between',
-                                        padding: '1rem',
-                                        borderRadius: '8px',
-                                        border: '1px solid var(--border-color)',
-                                        backgroundColor: tafsirId === t.id ? 'var(--accent-light)' : 'transparent',
-                                        color: tafsirId === t.id ? 'var(--accent-primary)' : 'var(--text-primary)',
-                                        textAlign: 'left'
-                                    }}
-                                >
-                                    <div>
-                                        <span style={{ fontWeight: 500 }}>{t.name}</span>
-                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>({t.lang})</span>
-                                    </div>
-                                    {tafsirId === t.id && <Check size={18} />}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                </div>
-
-                {/* Offline Support */}
-                <div style={{ padding: '0 1.5rem 1.5rem 1.5rem', flexShrink: 0, borderTop: '1px solid var(--border-color)', paddingTop: '1.5rem', backgroundColor: 'var(--bg-primary)' }}>
-                    <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '1rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <DownloadCloud size={18} /> Offline Support
-                    </h3>
-                    <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
-                        Make all 114 Surahs available for reading without an internet connection.
-                    </p>
-
-                    {offlineDataStatus === 'completed' ? (
-                        <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.75rem',
-                            padding: '0.75rem',
-                            backgroundColor: 'rgba(34, 197, 94, 0.1)',
-                            borderRadius: '8px',
-                            color: '#22c55e',
-                            fontWeight: 600,
-                            fontSize: '0.9rem'
-                        }}>
-                            <CheckCircle size={20} /> Quran Text is Offline
-                            <button
-                                onClick={() => setOfflineStatus('idle')}
-                                style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '0.7rem', cursor: 'pointer', textDecoration: 'underline' }}
-                            >
-                                Re-sync
-                            </button>
-                        </div>
+                <div style={{ flex: 1, overflowY: 'auto', padding: '1rem', WebkitOverflowScrolling: 'touch' }}>
+                    {pickerView ? (
+                        pickerView.content
                     ) : (
-                        <button
-                            onClick={handleSyncQuran}
-                            disabled={offlineDataStatus === 'syncing'}
-                            style={{
-                                width: '100%',
-                                padding: '1rem',
-                                borderRadius: '12px',
-                                background: offlineDataStatus === 'syncing' ? 'var(--bg-secondary)' : 'var(--accent-primary)',
-                                color: offlineDataStatus === 'syncing' ? 'var(--text-muted)' : 'white',
-                                border: 'none',
-                                fontWeight: 600,
-                                cursor: offlineDataStatus === 'syncing' ? 'default' : 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '0.75rem',
-                                position: 'relative',
-                                overflow: 'hidden'
-                            }}
-                        >
-                            {offlineDataStatus === 'syncing' ? (
-                                <>
-                                    <RefreshCw size={18} className="spin" />
-                                    Downloading ({syncProgress}%)
-                                    <div style={{
-                                        position: 'absolute',
-                                        bottom: 0,
-                                        left: 0,
-                                        height: '4px',
-                                        width: `${syncProgress}%`,
-                                        backgroundColor: 'var(--accent-primary)',
-                                        transition: 'width 0.3s ease'
-                                    }} />
-                                </>
-                            ) : (
-                                <>
-                                    <DownloadCloud size={18} />
-                                    Download Quran Text
-                                </>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <section>
+                                <div style={sectionTitleStyle()}>Theme</div>
+                                <div style={{ ...cardStyle(), padding: '0.35rem', display: 'flex', gap: '0.4rem' }}>
+                                    <SegmentedOption
+                                        active={theme === 'light'}
+                                        icon={<Sun size={16} aria-hidden="true" />}
+                                        label="Light"
+                                        onClick={() => theme !== 'light' && toggleTheme()}
+                                    />
+                                    <SegmentedOption
+                                        active={theme === 'dark'}
+                                        icon={<Moon size={16} aria-hidden="true" />}
+                                        label="Dark"
+                                        onClick={() => theme !== 'dark' && toggleTheme()}
+                                    />
+                                </div>
+                            </section>
+
+                            <section>
+                                <div style={sectionTitleStyle()}>Quick Settings</div>
+                                <div style={cardStyle()}>
+                                    <SelectionRow label="Mushaf" value={mushaf.name} onClick={() => setActiveView(DRAWER_VIEWS.mushaf)} />
+                                    <SelectionRow label="Translation" value={selectedTranslation?.name} onClick={() => setActiveView(DRAWER_VIEWS.translation)} />
+                                    <SelectionRow label="Reciter" value={selectedReciter?.name} onClick={() => setActiveView(DRAWER_VIEWS.reciter)} />
+                                    <div style={{ padding: '1rem 1.05rem' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '0.65rem' }}>
+                                            <div>
+                                                <div style={{ fontWeight: 600 }}>Arabic Size</div>
+                                                <div style={{ color: 'var(--text-secondary)', fontSize: '0.84rem' }}>Adjust Quran text without opening another view</div>
+                                            </div>
+                                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', color: 'var(--accent-primary)', fontWeight: 700 }}>
+                                                <Type size={16} aria-hidden="true" />
+                                                <span>{fontSize}</span>
+                                            </div>
+                                        </div>
+                                        <input
+                                            type="range"
+                                            min="1"
+                                            max="8"
+                                            step="1"
+                                            value={fontSize}
+                                            onChange={(e) => setFontSize(Number(e.target.value))}
+                                            className="settings-slider"
+                                            aria-label="Arabic font size"
+                                            style={{ width: '100%' }}
+                                        />
+                                    </div>
+                                </div>
+                            </section>
+
+                            <section>
+                                <div style={sectionTitleStyle()}>Reading</div>
+                                <div style={cardStyle()}>
+                                    <ToggleRow
+                                        label="Tajweed"
+                                        hint={mushaf.supportsTajweedToggle ? 'Show color cues while keeping the reader minimal' : 'Not available for this Mushaf'}
+                                        checked={isTajweedActive}
+                                        disabled={!mushaf.supportsTajweedToggle}
+                                        onToggle={() => setTajweed(!tajweedEnabled)}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowAdvanced((value) => !value)}
+                                        style={{
+                                            ...rowButtonStyle(),
+                                            padding: '0.95rem 1.05rem',
+                                            borderTop: '1px solid rgba(0,0,0,0.06)',
+                                        }}
+                                        aria-expanded={showAdvanced}
+                                    >
+                                        <div>
+                                            <div style={{ fontWeight: 600 }}>Advanced</div>
+                                            <div style={{ color: 'var(--text-secondary)', fontSize: '0.84rem' }}>Arabic font, tafsir, offline tools & audio folder</div>
+                                        </div>
+                                        <ChevronDown
+                                            size={18}
+                                            color="var(--text-muted)"
+                                            aria-hidden="true"
+                                            style={{ transform: showAdvanced ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease' }}
+                                        />
+                                    </button>
+                                </div>
+                            </section>
+
+                            {showAdvanced && (
+                                <section style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                    <div>
+                                        <div style={sectionTitleStyle()}>Advanced Reading</div>
+                                        <div style={cardStyle()}>
+                                            <SelectionRow label="Arabic Font" value={selectedFont?.name || 'Default'} onClick={() => setActiveView(DRAWER_VIEWS.arabicFont)} />
+                                            <SelectionRow label="Tafsir" value={selectedTafsir ? `${selectedTafsir.name} - ${selectedTafsir.lang}` : ''} onClick={() => setActiveView(DRAWER_VIEWS.tafsir)} />
+                                            <div style={{ padding: '1rem 1.05rem' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '0.65rem' }}>
+                                                    <div>
+                                                        <div style={{ fontWeight: 600 }}>Translation Size</div>
+                                                        <div style={{ color: 'var(--text-secondary)', fontSize: '0.84rem' }}>Keep the translation subtle or more readable</div>
+                                                    </div>
+                                                    <span style={{ color: 'var(--accent-primary)', fontWeight: 700 }}>{translationFontSize || 2}</span>
+                                                </div>
+                                                <input
+                                                    type="range"
+                                                    min="1"
+                                                    max="8"
+                                                    step="1"
+                                                    value={translationFontSize || 2}
+                                                    onChange={(e) => setTranslationFontSize(Number(e.target.value))}
+                                                    className="settings-slider"
+                                                    aria-label="Translation font size"
+                                                    style={{ width: '100%' }}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <div style={sectionTitleStyle()}>Audio</div>
+                                        <div style={{ ...cardStyle(), padding: '1rem 1.05rem' }}>
+                                            <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>Local Offline Audio</div>
+                                            <div style={{ color: 'var(--text-secondary)', fontSize: '0.84rem', marginBottom: '0.95rem' }}>
+                                                Connect a folder of ayah MP3 files for native offline playback.
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={handleSelectAudioFolder}
+                                                style={{
+                                                    width: '100%',
+                                                    minHeight: '46px',
+                                                    borderRadius: '14px',
+                                                    border: localAudioDirHandle ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(0,0,0,0.06)',
+                                                    background: localAudioDirHandle ? 'rgba(34, 197, 94, 0.1)' : 'var(--bg-secondary)',
+                                                    color: localAudioDirHandle ? '#22c55e' : 'var(--text-primary)',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    gap: '0.55rem',
+                                                    fontWeight: 600,
+                                                }}
+                                            >
+                                                {localAudioDirHandle ? <CheckCircle size={18} aria-hidden="true" /> : <FolderOpen size={18} aria-hidden="true" />}
+                                                <span>{localAudioDirHandle ? 'Folder Connected' : 'Choose Audio Folder'}</span>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <div style={sectionTitleStyle()}>Offline</div>
+                                        <div style={{ ...cardStyle(), padding: '1rem 1.05rem' }}>
+                                            <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>Quran Text</div>
+                                            <div style={{ color: 'var(--text-secondary)', fontSize: '0.84rem', marginBottom: '0.95rem' }}>
+                                                Download the current reading setup for offline access.
+                                            </div>
+
+                                            {offlineDataStatus === 'completed' ? (
+                                                <div style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '0.6rem',
+                                                    padding: '0.9rem 1rem',
+                                                    borderRadius: '14px',
+                                                    backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                                                    color: '#22c55e',
+                                                    fontWeight: 600,
+                                                }}>
+                                                    <CheckCircle size={18} aria-hidden="true" />
+                                                    <span style={{ flex: 1 }}>Quran Text Ready Offline</span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setOfflineStatus('idle')}
+                                                        style={{ color: 'var(--text-secondary)', fontSize: '0.78rem', textDecoration: 'underline' }}
+                                                    >
+                                                        Re-sync
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <button
+                                                    type="button"
+                                                    onClick={handleSyncQuran}
+                                                    disabled={offlineDataStatus === 'syncing'}
+                                                    style={{
+                                                        width: '100%',
+                                                        minHeight: '46px',
+                                                        borderRadius: '14px',
+                                                        background: offlineDataStatus === 'syncing' ? 'var(--bg-secondary)' : 'var(--accent-primary)',
+                                                        color: offlineDataStatus === 'syncing' ? 'var(--text-muted)' : '#fff',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        gap: '0.55rem',
+                                                        fontWeight: 600,
+                                                        position: 'relative',
+                                                        overflow: 'hidden',
+                                                    }}
+                                                >
+                                                    {offlineDataStatus === 'syncing' ? <RefreshCw size={18} className="spin" aria-hidden="true" /> : <DownloadCloud size={18} aria-hidden="true" />}
+                                                    <span>{offlineDataStatus === 'syncing' ? `Downloading ${syncProgress}%` : 'Download Quran Text'}</span>
+                                                    {offlineDataStatus === 'syncing' && (
+                                                        <div style={{
+                                                            position: 'absolute',
+                                                            left: 0,
+                                                            bottom: 0,
+                                                            height: '3px',
+                                                            width: `${syncProgress}%`,
+                                                            background: '#fff',
+                                                            opacity: 0.65,
+                                                        }} />
+                                                    )}
+                                                </button>
+                                            )}
+
+                                            {offlineDataStatus === 'error' && (
+                                                <div style={{
+                                                    marginTop: '0.75rem',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '0.45rem',
+                                                    color: '#ef4444',
+                                                    fontSize: '0.82rem'
+                                                }}>
+                                                    <AlertCircle size={14} aria-hidden="true" />
+                                                    <span>Download failed. Try again with a stable connection.</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </section>
                             )}
-                        </button>
+                        </div>
                     )}
-
-                    {offlineDataStatus === 'error' && (
-                        <p style={{ color: '#ef4444', fontSize: '0.8rem', marginTop: '0.5rem', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                            <AlertCircle size={14} /> Something went wrong. Try again.
-                        </p>
-                    )}
-
-                    <div style={{ marginTop: '1.5rem', borderTop: '1px solid rgba(0,0,0,0.05)', paddingTop: '1.5rem' }}>
-                        <h4 style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-primary)' }}>
-                            Local Offline Audio
-                        </h4>
-                        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
-                            Select a folder containing MP3 files named by Surah and Ayah (e.g. 001001.mp3) to play offline audio natively from your device.
-                        </p>
-
-                        <button
-                            onClick={handleSelectAudioFolder}
-                            style={{
-                                width: '100%',
-                                padding: '1rem',
-                                borderRadius: '12px',
-                                background: localAudioDirHandle ? 'rgba(34, 197, 94, 0.1)' : 'var(--bg-secondary)',
-                                color: localAudioDirHandle ? '#22c55e' : 'var(--text-primary)',
-                                border: localAudioDirHandle ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid var(--border-color)',
-                                fontWeight: 600,
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '0.75rem',
-                            }}
-                        >
-                            {localAudioDirHandle ? (
-                                <>
-                                    <CheckCircle size={18} />
-                                    Folder Connected
-                                </>
-                            ) : (
-                                <>
-                                    <DownloadCloud size={18} />
-                                    Select Audio Folder...
-                                </>
-                            )}
-                        </button>
-                    </div>
                 </div>
-            </div>
+            </aside>
         </>
     );
 }
