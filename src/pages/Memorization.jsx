@@ -142,7 +142,7 @@ export default function Memorization() {
 
     const { data: versesResponse, isLoading: isVersesLoading } = useQuery({
         queryKey: ['memorizeVerses', id, translationId, mushafId],
-        queryFn: () => getVerses(id, translationId, 7, 1, mushafId),
+        queryFn: () => getVerses(id, translationId, 7, 1, mushafId, 300),
     });
 
     const { data: tajweedData } = useQuery({
@@ -221,30 +221,46 @@ export default function Memorization() {
         }
     }
 
+    const scrollPositionsRef = React.useRef({});
+
     const handleNext = () => {
         const step = ayahsPerSwipe === -1 ? currentVerses.length : ayahsPerSwipe;
         if (currentVerseIndex + step < verses.length) {
+            scrollPositionsRef.current[currentVerseIndex] = window.scrollY;
             setCurrentVerseIndex(p => p + step);
+            setTimeout(() => window.scrollTo({ top: 0, behavior: 'instant' }), 0);
         }
         setIsBlurred(false);
     };
 
     const handlePrev = () => {
+        let newIndex = currentVerseIndex;
         if (ayahsPerSwipe === -1) {
             if (currentVerseIndex > 0) {
                 const prevPage = verses[currentVerseIndex - 1].page_number;
-                let newIndex = currentVerseIndex - 1;
+                newIndex = currentVerseIndex - 1;
                 while (newIndex > 0 && verses[newIndex - 1].page_number === prevPage) {
                     newIndex--;
                 }
-                setCurrentVerseIndex(newIndex);
             }
         } else {
             if (currentVerseIndex - ayahsPerSwipe >= 0) {
-                setCurrentVerseIndex(p => p - ayahsPerSwipe);
+                newIndex = currentVerseIndex - ayahsPerSwipe;
             } else {
-                setCurrentVerseIndex(0);
+                newIndex = 0;
             }
+        }
+
+        if (newIndex !== currentVerseIndex) {
+            setCurrentVerseIndex(newIndex);
+            setTimeout(() => {
+                const savedPos = scrollPositionsRef.current[newIndex];
+                if (savedPos !== undefined) {
+                    window.scrollTo({ top: savedPos, behavior: 'instant' });
+                } else {
+                    window.scrollTo({ top: document.body.scrollHeight, behavior: 'instant' });
+                }
+            }, 0);
         }
         setIsBlurred(false);
     };

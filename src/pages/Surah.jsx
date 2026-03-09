@@ -12,6 +12,8 @@ import VerseRow from '../components/VerseRow';
 import { getMushafById, isTajweedEnabledForMushaf } from '../config/mushaf';
 import { sanitizeTajweedHtml } from '../utils/quranText';
 
+const surahScrollPositions = {};
+
 // VerseRow is now imported from components
 export default function Surah() {
     const { id } = useParams();
@@ -298,12 +300,14 @@ export default function Surah() {
     const swipeHandlers = useSwipeable({
         onSwipedLeft: () => {
             if (parseInt(id) < 114) {
+                surahScrollPositions[id] = window.scrollY;
                 swipeDirectionRef.current = 1; // forward
                 navigate(`/surah/${parseInt(id) + 1}`);
             }
         },
         onSwipedRight: () => {
             if (parseInt(id) > 1) {
+                surahScrollPositions[id] = window.scrollY;
                 swipeDirectionRef.current = -1; // backward
                 navigate(`/surah/${parseInt(id) - 1}`);
             }
@@ -312,6 +316,25 @@ export default function Surah() {
         trackMouse: false,
         delta: 50,
     });
+
+    const hasRestoredScroll = React.useRef(null);
+    useEffect(() => {
+        if (!isVersesLoading && !isChapterLoading && verses.length > 0 && hasRestoredScroll.current !== id) {
+            hasRestoredScroll.current = id;
+            if (new URLSearchParams(window.location.search).get('verse')) return; // Do not override if navigating to a specific verse
+            setTimeout(() => {
+                const savedPos = surahScrollPositions[id];
+                if (savedPos !== undefined) {
+                    window.scrollTo({ top: savedPos, behavior: 'instant' });
+                } else if (swipeDirectionRef.current === -1) {
+                    // Navigate backwards and no saved position -> jump to bottom
+                    window.scrollTo({ top: document.body.scrollHeight, behavior: 'instant' });
+                } else {
+                    window.scrollTo({ top: 0, behavior: 'instant' });
+                }
+            }, 50);
+        }
+    }, [isVersesLoading, isChapterLoading, verses.length, id]);
 
     // Direction-aware page variants
     const pageVariants = {
@@ -569,7 +592,11 @@ export default function Surah() {
                             }}>
                                 {parseInt(id) > 1 ? (
                                     <button
-                                        onClick={() => { swipeDirectionRef.current = -1; navigate(`/surah/${parseInt(id) - 1}`); }}
+                                        onClick={() => {
+                                            surahScrollPositions[id] = window.scrollY;
+                                            swipeDirectionRef.current = -1;
+                                            navigate(`/surah/${parseInt(id) - 1}`);
+                                        }}
                                         className="interactive-hover"
                                         style={{
                                             display: 'flex', alignItems: 'center', gap: '8px',
@@ -585,7 +612,11 @@ export default function Surah() {
 
                                 {parseInt(id) < 114 ? (
                                     <button
-                                        onClick={() => { swipeDirectionRef.current = 1; navigate(`/surah/${parseInt(id) + 1}`); }}
+                                        onClick={() => {
+                                            surahScrollPositions[id] = window.scrollY;
+                                            swipeDirectionRef.current = 1;
+                                            navigate(`/surah/${parseInt(id) + 1}`);
+                                        }}
                                         className="interactive-hover"
                                         style={{
                                             display: 'flex', alignItems: 'center', gap: '8px',

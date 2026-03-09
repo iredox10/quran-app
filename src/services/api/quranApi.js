@@ -51,7 +51,7 @@ export const getChapter = async (id) => {
   return data.chapter;
 };
 
-export const getVerses = async (chapterId, translationId = 85, reciterId = 7, page = 1, mushafId = 'madani-standard') => {
+export const getVerses = async (chapterId, translationId = 85, reciterId = 7, page = 1, mushafId = 'madani-standard', perPage = 50) => {
   const { mushaf, fields, wordFields } = buildFieldsForMushaf(mushafId);
   const { data } = await api.get(`/verses/by_chapter/${chapterId}`, {
     params: {
@@ -63,7 +63,7 @@ export const getVerses = async (chapterId, translationId = 85, reciterId = 7, pa
       word_fields: wordFields,
       mushaf: mushaf.apiMushafId,
       page: page,
-      per_page: 50,
+      per_page: perPage,
     },
   });
   return {
