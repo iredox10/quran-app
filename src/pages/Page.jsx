@@ -4,12 +4,13 @@ import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { useSwipeable } from 'react-swipeable';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, ArrowRight, ChevronRight, ChevronLeft, Minus, Pause, Play, Plus, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle2, ChevronRight, ChevronLeft, Minus, Pause, Play, Plus, Target, X } from 'lucide-react';
 
 import { getVersesByPage, getTajweedVersesByPage, getChapters } from '../services/api/quranApi';
 import { useAppStore } from '../store/useAppStore';
 import { getMushafById, isTajweedEnabledForMushaf } from '../config/mushaf';
 import { sanitizeTajweedHtml } from '../utils/quranText';
+import { getAssignmentProgress, getPlannerPageContext } from '../utils/planner';
 
 import VerseRow from '../components/VerseRow';
 import MushafPageView from '../components/MushafPageView';
@@ -57,6 +58,7 @@ export default function Page() {
         setNavHeaderTitle,
         autoScroll, setAutoScroll, autoScrollSpeed, setAutoScrollSpeed,
         isAutoScrollPaused, setIsAutoScrollPaused,
+        planner, markPlannerItemComplete, togglePlannerDayComplete,
         setIsPlaying, isPlaying, audioPlaylist, setAudioPlaylist,
         audioTrackIndex, audioSettings, updateAudioSettings,
         isPlayerVisible, setIsPlayerVisible, playTriggerCount,
@@ -94,6 +96,10 @@ export default function Page() {
 
     const verses = pageData?.verses || [];
     const maxPageNumber = mushaf.pageCount || 604;
+    const plannerPageContext = React.useMemo(() => getPlannerPageContext(planner, pageNumber, chapters || []), [planner, pageNumber, chapters]);
+    const plannerAssignmentProgress = plannerPageContext
+        ? getAssignmentProgress(planner, plannerPageContext.assignment)
+        : null;
 
     const activeSurahId = verses.length > 0 ? verses[0].verse_key.split(':')[0] : null;
     const activeSurah = chapters?.find(c => c.id.toString() === activeSurahId);
@@ -401,6 +407,93 @@ export default function Page() {
             </AnimatePresence>
 
             {/* Bottom Navigation */}
+            {plannerPageContext && plannerAssignmentProgress && (
+                <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    marginTop: '0.5rem',
+                    marginBottom: '1rem',
+                    padding: '0.8rem 1rem',
+                    borderRadius: '16px',
+                    background: 'var(--bg-surface)',
+                    border: '1px solid var(--border-color)',
+                    boxShadow: 'var(--shadow-sm)',
+                    flexWrap: 'wrap'
+                }}>
+                    <div style={{ minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '0.2rem', color: 'var(--text-primary)', fontWeight: 700 }}>
+                            <Target size={14} aria-hidden="true" />
+                            <span>{plannerPageContext.assignment.title}</span>
+                        </div>
+                        <div style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>
+                            {plannerAssignmentProgress.isComplete
+                                ? 'Day completed'
+                                : plannerPageContext.isLastPageOfDay
+                                    ? 'Last page of the day reached'
+                                    : plannerPageContext.isLastPageOfCurrentItem
+                                        ? 'Ready to mark current unit done'
+                                        : `Progress ${plannerAssignmentProgress.completedCount}/${plannerAssignmentProgress.totalCount} · unlocks at page ${plannerPageContext.currentItemPageEnd || plannerPageContext.assignmentPageEnd}`}
+                        </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        {!plannerAssignmentProgress.isComplete && (
+                            <button
+                                type="button"
+                                disabled={!plannerPageContext.isLastPageOfCurrentItem || plannerPageContext.isCurrentItemComplete}
+                                onClick={() => markPlannerItemComplete(plannerPageContext.assignment.dayNumber, plannerPageContext.currentItem?.rangeValue)}
+                                style={{
+                                    minHeight: '40px',
+                                    padding: '0.7rem 0.9rem',
+                                    borderRadius: '999px',
+                                    background: plannerPageContext.isLastPageOfCurrentItem && !plannerPageContext.isCurrentItemComplete ? 'var(--accent-light)' : 'var(--bg-secondary)',
+                                    color: plannerPageContext.isLastPageOfCurrentItem && !plannerPageContext.isCurrentItemComplete ? 'var(--accent-primary)' : 'var(--text-muted)',
+                                    fontWeight: 700,
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '0.4rem',
+                                    opacity: plannerPageContext.isLastPageOfCurrentItem && !plannerPageContext.isCurrentItemComplete ? 1 : 0.72,
+                                }}
+                            >
+                                <CheckCircle2 size={15} aria-hidden="true" />
+                                <span>{plannerPageContext.isCurrentItemComplete ? 'Done' : 'Done'}</span>
+                            </button>
+                        )}
+
+                        <button
+                            type="button"
+                            disabled={!plannerPageContext.isLastPageOfDay && !plannerAssignmentProgress.isComplete}
+                            onClick={() => togglePlannerDayComplete(plannerPageContext.assignment.dayNumber)}
+                            style={{
+                                minHeight: '40px',
+                                padding: '0.7rem 0.9rem',
+                                borderRadius: '999px',
+                                background: plannerAssignmentProgress.isComplete
+                                    ? 'rgba(34, 197, 94, 0.12)'
+                                    : plannerPageContext.isLastPageOfDay
+                                        ? '#22c55e'
+                                        : 'var(--bg-secondary)',
+                                color: plannerAssignmentProgress.isComplete
+                                    ? '#22c55e'
+                                    : plannerPageContext.isLastPageOfDay
+                                        ? '#fff'
+                                        : 'var(--text-muted)',
+                                fontWeight: 700,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.4rem',
+                                opacity: plannerPageContext.isLastPageOfDay || plannerAssignmentProgress.isComplete ? 1 : 0.72,
+                            }}
+                        >
+                            <CheckCircle2 size={15} aria-hidden="true" />
+                            <span>{plannerAssignmentProgress.isComplete ? 'Completed' : 'Finish day'}</span>
+                        </button>
+                    </div>
+                </div>
+            )}
+
             <div style={{
                 display: 'flex',
                 justifyContent: 'space-between',

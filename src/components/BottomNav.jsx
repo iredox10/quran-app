@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, BookOpen, Brain, TrendingUp, User } from 'lucide-react';
+import { BookOpen, Brain, CalendarDays, TrendingUp, User } from 'lucide-react';
 
 export default function BottomNav() {
     const location = useLocation();
@@ -21,6 +21,7 @@ export default function BottomNav() {
     const tabs = [
         { path: '/', icon: BookOpen, label: 'Quran' },
         { path: '/memorize', icon: Brain, label: 'Memorize' },
+        { path: '/planner', icon: CalendarDays, label: 'Planner' },
         { path: '/progress', icon: TrendingUp, label: 'Analytics' },
         { path: '/profile', icon: User, label: 'Profile' }
     ];

@@ -30,6 +30,21 @@ export default function Layout() {
     const isPagePage = /^\/page\/\d+/.test(location.pathname);
     const isImmersivePage = isSurahPage || isMemorizePage || isPagePage;
     const hasAudio = audioPlaylist.length > 0 || !!currentAudioUrl;
+    const shouldReturnToPlanner = Boolean(location.state?.backToPlanner);
+
+    const handleImmersiveBack = () => {
+        if (shouldReturnToPlanner) {
+            navigate('/planner');
+            return;
+        }
+
+        if (isMemorizePage) {
+            navigate('/memorize');
+            return;
+        }
+
+        navigate('/');
+    };
 
     useEffect(() => {
         document.documentElement.setAttribute('data-theme', theme);
@@ -116,7 +131,7 @@ export default function Layout() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
                         {isImmersivePage ? (
                             <>
-                                <button className="btn-icon" onClick={() => isMemorizePage ? navigate('/memorize') : navigate('/')} style={{ flexShrink: 0 }} aria-label="Go back">
+                                <button className="btn-icon" onClick={handleImmersiveBack} style={{ flexShrink: 0 }} aria-label="Go back">
                                     <ArrowLeft size={20} />
                                 </button>
                                 <button
