@@ -257,23 +257,14 @@ export default function Memorization() {
         const surahId = Number(id);
 
         const handleKeyDown = (e) => {
-            if (e.key === 'ArrowUp') {
+            if (e.key === 'ArrowLeft') {
                 e.preventDefault();
                 handlePrev();
-            } else if (e.key === 'ArrowDown') {
+            } else if (e.key === 'ArrowRight') {
                 e.preventDefault();
                 handleNext();
-            } else if (e.key === 'ArrowLeft') {
-                // Previous Surah
-                if (surahId > 1) {
-                    navigate(`/memorize/${surahId - 1}`);
-                }
-            } else if (e.key === 'ArrowRight') {
-                // Next Surah
-                if (surahId < 114) {
-                    navigate(`/memorize/${surahId + 1}`);
-                }
             }
+            // ArrowUp / ArrowDown are left to default browser scroll behavior
         };
 
         let touchStartX = 0;
@@ -291,17 +282,10 @@ export default function Memorization() {
             const deltaY = touchEndY - touchStartY;
             const SWIPE_THRESHOLD = 50;
 
-            // Determine if swipe is more horizontal or vertical
+            // Only handle horizontal swipes — vertical is left to natural page scroll
             if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > SWIPE_THRESHOLD) {
-                // Horizontal swipe → switch surah
-                if (deltaX < 0 && surahId < 114) {
-                    navigate(`/memorize/${surahId + 1}`);
-                } else if (deltaX > 0 && surahId > 1) {
-                    navigate(`/memorize/${surahId - 1}`);
-                }
-            } else if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > SWIPE_THRESHOLD) {
-                // Vertical swipe → scroll verses
-                if (deltaY < 0) {
+                // Horizontal swipe → navigate ayahs
+                if (deltaX < 0) {
                     handleNext();
                 } else {
                     handlePrev();
