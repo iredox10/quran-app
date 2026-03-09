@@ -602,356 +602,357 @@ export default function Surah() {
                         )}
                     </div>
 
-                    {/* Floating Auto-scroll Control */}
-                    <AnimatePresence>
-                        {autoScroll && (
-                            <motion.div
-                                initial={{ opacity: 0, y: 40, x: '-50%' }}
-                                animate={{ opacity: 1, y: 0, x: '-50%' }}
-                                exit={{ opacity: 0, y: 40, x: '-50%' }}
-                                transition={{ duration: 0.25 }}
-                                style={{
-                                    position: 'fixed',
-                                    bottom: '100px',
-                                    left: '50%',
-                                    transform: 'translateX(-50%)',
-                                    zIndex: 100,
-                                }}
+                </motion.div>
+            </AnimatePresence>
+
+            {/* Floating Auto-scroll Control */}
+            <AnimatePresence>
+                {autoScroll && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 40, x: '-50%' }}
+                        animate={{ opacity: 1, y: 0, x: '-50%' }}
+                        exit={{ opacity: 0, y: 40, x: '-50%' }}
+                        transition={{ duration: 0.25 }}
+                        style={{
+                            position: 'fixed',
+                            bottom: '100px',
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            zIndex: 100,
+                        }}
+                    >
+                        {/* Controls Panel */}
+                        <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.75rem',
+                            padding: '0.6rem 1rem',
+                            borderRadius: '9999px',
+                            background: 'var(--glass-bg)',
+                            backdropFilter: 'blur(16px)',
+                            WebkitBackdropFilter: 'blur(16px)',
+                            border: 'var(--glass-border)',
+                            boxShadow: 'var(--shadow-xl)'
+                        }}>
+                            {/* Manual scroll buttons */}
+                            <div style={{ display: 'flex', gap: '0.25rem' }}>
+                                <button
+                                    className="btn-icon"
+                                    style={{ width: '28px', height: '28px', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                                    onClick={() => window.scrollBy({ top: -200, behavior: 'smooth' })}
+                                >
+                                    <ArrowLeft size={14} style={{ transform: 'rotate(90deg)' }} />
+                                </button>
+                                <button
+                                    className="btn-icon"
+                                    style={{ width: '28px', height: '28px', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                                    onClick={() => window.scrollBy({ top: 200, behavior: 'smooth' })}
+                                >
+                                    <ArrowRight size={14} style={{ transform: 'rotate(90deg)' }} />
+                                </button>
+                            </div>
+
+                            <div style={{ width: '1px', height: '24px', background: 'var(--border-color)' }} />
+
+                            {/* Speed Control & Pause */}
+                            <button
+                                className="btn-icon"
+                                style={{ width: '28px', height: '28px', border: '1px solid var(--border-color)', borderRadius: '50%' }}
+                                onClick={() => setAutoScrollSpeed(Math.max(1, autoScrollSpeed - 1))}
                             >
-                                {/* Controls Panel */}
-                                <div style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '0.75rem',
-                                    padding: '0.6rem 1rem',
-                                    borderRadius: '9999px',
-                                    background: 'var(--glass-bg)',
-                                    backdropFilter: 'blur(16px)',
-                                    WebkitBackdropFilter: 'blur(16px)',
-                                    border: 'var(--glass-border)',
-                                    boxShadow: 'var(--shadow-xl)'
-                                }}>
-                                    {/* Manual scroll buttons */}
-                                    <div style={{ display: 'flex', gap: '0.25rem' }}>
-                                        <button
-                                            className="btn-icon"
-                                            style={{ width: '28px', height: '28px', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
-                                            onClick={() => window.scrollBy({ top: -200, behavior: 'smooth' })}
-                                        >
-                                            <ArrowLeft size={14} style={{ transform: 'rotate(90deg)' }} />
-                                        </button>
-                                        <button
-                                            className="btn-icon"
-                                            style={{ width: '28px', height: '28px', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
-                                            onClick={() => window.scrollBy({ top: 200, behavior: 'smooth' })}
-                                        >
-                                            <ArrowRight size={14} style={{ transform: 'rotate(90deg)' }} />
+                                <Minus size={14} />
+                            </button>
+                            <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-primary)', minWidth: '40px', textAlign: 'center' }}>
+                                {autoScrollSpeed}x
+                            </span>
+                            <button
+                                className="btn-icon"
+                                style={{ width: '28px', height: '28px', border: '1px solid var(--border-color)', borderRadius: '50%' }}
+                                onClick={() => setAutoScrollSpeed(Math.min(5, autoScrollSpeed + 1))}
+                            >
+                                <Plus size={14} />
+                            </button>
+
+                            <button
+                                className="btn-icon"
+                                style={{
+                                    width: '32px', height: '32px',
+                                    background: isAutoScrollPaused ? 'var(--accent-light)' : 'transparent',
+                                    color: 'var(--accent-primary)'
+                                }}
+                                onClick={() => setIsAutoScrollPaused(!isAutoScrollPaused)}
+                            >
+                                {isAutoScrollPaused ? <Play size={16} fill="currentColor" /> : <Pause size={16} fill="currentColor" />}
+                            </button>
+
+                            <div style={{ width: '1px', height: '24px', background: 'var(--border-color)' }} />
+
+                            <button
+                                onClick={() => setAutoScroll(false)}
+                                style={{
+                                    width: '32px', height: '32px',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    borderRadius: '50%',
+                                    background: 'rgba(239, 68, 68, 0.1)',
+                                    color: 'rgb(239, 68, 68)',
+                                    border: 'none',
+                                    cursor: 'pointer'
+                                }}
+                                title="Stop Scroll"
+                            >
+                                <X size={16} />
+                            </button>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+            {/* Tafsir Bottom Drawer */}
+            <AnimatePresence>
+                {activeTafsir && (
+                    <>
+                        {/* Overlay */}
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setActiveTafsir(null)}
+                            style={{
+                                position: 'fixed',
+                                inset: 0,
+                                background: 'rgba(0, 0, 0, 0.5)',
+                                zIndex: 999,
+                                backdropFilter: 'blur(4px)',
+                                WebkitBackdropFilter: 'blur(4px)'
+                            }}
+                        />
+                        {/* Drawer */}
+                        <motion.div
+                            initial={{ y: '100%' }}
+                            animate={{ y: 0 }}
+                            exit={{ y: '100%' }}
+                            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                            style={{
+                                position: 'fixed',
+                                bottom: 0,
+                                left: 0,
+                                right: 0,
+                                background: 'var(--bg-surface)',
+                                zIndex: 1000,
+                                borderTopLeftRadius: '24px',
+                                borderTopRightRadius: '24px',
+                                padding: '1.5rem 1.5rem 2rem 1.5rem',
+                                boxShadow: '0 -10px 40px rgba(0, 0, 0, 0.1)',
+                                maxHeight: '80vh',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                borderTop: '1px solid var(--border-color)'
+                            }}
+                        >
+                            <div style={{
+                                width: '40px',
+                                height: '5px',
+                                background: 'var(--border-color)',
+                                borderRadius: '3px',
+                                margin: '0 auto 1.5rem auto'
+                            }} />
+
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                                <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+                                    Tafsir (Ayah {activeTafsir.verse_key.split(':')[1]})
+                                </h3>
+                                <button
+                                    className="btn-icon"
+                                    onClick={() => setActiveTafsir(null)}
+                                    style={{ background: 'var(--bg-secondary)' }}
+                                    aria-label="Close Tafsir"
+                                >
+                                    <X size={20} />
+                                </button>
+                            </div>
+
+                            <div
+                                className="tafsir-content"
+                                style={{
+                                    overflowY: 'auto',
+                                    paddingRight: '0.5rem',
+                                    color: 'var(--text-secondary)',
+                                    lineHeight: 1.8,
+                                    fontSize: '1rem'
+                                }}
+                                dangerouslySetInnerHTML={{ __html: activeTafsir.text }}
+                            />
+                        </motion.div>
+                    </>
+                )}
+            </AnimatePresence>
+
+            {/* ── Audio Setup Modal (shown before playback starts) ── */}
+            <AnimatePresence>
+                {showAudioSetup && (
+                    <>
+                        {/* Backdrop */}
+                        <motion.div
+                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                            onClick={() => setShowAudioSetup(false)}
+                            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1100, backdropFilter: 'blur(4px)' }}
+                        />
+                        {/* Bottom Drawer — outer row handles centering via flex */}
+                        <motion.div
+                            initial={{ y: '100%' }}
+                            animate={{ y: 0 }}
+                            exit={{ y: '100%' }}
+                            transition={{ type: 'spring', damping: 28, stiffness: 280 }}
+                            style={{
+                                position: 'fixed',
+                                bottom: 0, left: 0, right: 0,
+                                display: 'flex',
+                                justifyContent: 'center',
+                                zIndex: 1101,
+                            }}
+                        >
+                            {/* Inner card — constrained width */}
+                            <div style={{
+                                width: '100%',
+                                maxWidth: '520px',
+                                maxHeight: '85vh',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                background: 'var(--bg-surface)',
+                                borderTopLeftRadius: '24px',
+                                borderTopRightRadius: '24px',
+                                boxShadow: '0 -8px 40px rgba(0,0,0,0.25)',
+                                border: '1px solid var(--border-color)',
+                                borderBottom: 'none',
+                                overflow: 'hidden',
+                            }}>
+                                {/* Drag handle */}
+                                <div style={{ display: 'flex', justifyContent: 'center', paddingTop: '0.75rem', paddingBottom: '0.25rem', flexShrink: 0 }}>
+                                    <div style={{ width: '40px', height: '5px', borderRadius: '9999px', background: 'var(--border-color)' }} />
+                                </div>
+                                {/* Sticky Header */}
+                                <div style={{ padding: '0 1.5rem 1rem', flexShrink: 0 }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <div>
+                                            <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)' }}>Audio Setup</h3>
+                                            <p style={{ margin: '0.2rem 0 0', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                                                Configure before playing · {pendingPlaylist.length} Ayahs
+                                            </p>
+                                        </div>
+                                        <button className="btn-icon" onClick={() => setShowAudioSetup(false)} style={{ background: 'var(--bg-secondary)', width: '36px', height: '36px', flexShrink: 0 }}>
+                                            <X size={18} />
                                         </button>
                                     </div>
+                                </div>
 
-                                    <div style={{ width: '1px', height: '24px', background: 'var(--border-color)' }} />
+                                {/* Scrollable settings body */}
+                                <div style={{ flex: 1, overflowY: 'auto', padding: '0 1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
 
-                                    {/* Speed Control & Pause */}
+                                    {/* Range */}
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.6rem' }}>
+                                            Ayah Range
+                                        </label>
+                                        <div style={{ display: 'flex', gap: '0.75rem' }}>
+                                            <div style={{ flex: 1 }}>
+                                                <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>From</label>
+                                                <select
+                                                    className="form-input"
+                                                    value={audioSettings.startRange ?? 0}
+                                                    onChange={(e) => updateAudioSettings({ startRange: Number(e.target.value) })}
+                                                >
+                                                    {pendingPlaylist.map((v, i) => (
+                                                        <option key={v.verseKey} value={i}>{v.verseKey}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <div style={{ flex: 1 }}>
+                                                <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>To</label>
+                                                <select
+                                                    className="form-input"
+                                                    value={audioSettings.endRange ?? pendingPlaylist.length - 1}
+                                                    onChange={(e) => updateAudioSettings({ endRange: Number(e.target.value) })}
+                                                >
+                                                    {pendingPlaylist.map((v, i) => (
+                                                        <option key={v.verseKey} value={i}>{v.verseKey}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Repeat */}
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.6rem' }}>
+                                            Repeat
+                                        </label>
+                                        <div style={{ display: 'flex', gap: '0.75rem' }}>
+                                            <div style={{ flex: 1 }}>
+                                                <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>Each Ayah</label>
+                                                <select className="form-input" value={audioSettings.repeatAya} onChange={(e) => updateAudioSettings({ repeatAya: Number(e.target.value) })}>
+                                                    {[1, 2, 3, 5, 10, -1].map(opt => <option key={opt} value={opt}>{opt === -1 ? '∞ Infinite' : `${opt}×`}</option>)}
+                                                </select>
+                                            </div>
+                                            <div style={{ flex: 1 }}>
+                                                <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>Full Selection</label>
+                                                <select className="form-input" value={audioSettings.repeatSelection} onChange={(e) => updateAudioSettings({ repeatSelection: Number(e.target.value) })}>
+                                                    {[1, 2, 3, 5, 10, -1].map(opt => <option key={opt} value={opt}>{opt === -1 ? '∞ Infinite' : `${opt}×`}</option>)}
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Advanced */}
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.6rem' }}>
+                                            Advanced
+                                        </label>
+                                        <div style={{ display: 'flex', gap: '0.75rem' }}>
+                                            <div style={{ flex: 1 }}>
+                                                <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>Delay Between Ayahs</label>
+                                                <select className="form-input" value={audioSettings.delayBetweenAyas} onChange={(e) => updateAudioSettings({ delayBetweenAyas: Number(e.target.value) })}>
+                                                    {[0, 1, 2, 3, 5, 10].map(opt => <option key={opt} value={opt}>{opt === 0 ? 'None' : `${opt}s`}</option>)}
+                                                </select>
+                                            </div>
+                                            <div style={{ flex: 1 }}>
+                                                <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>Playback Speed</label>
+                                                <select className="form-input" value={audioSettings.playbackSpeed} onChange={(e) => updateAudioSettings({ playbackSpeed: Number(e.target.value) })}>
+                                                    {[0.5, 0.75, 1.0, 1.25, 1.5, 2.0].map(opt => <option key={opt} value={opt}>{opt}×</option>)}
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Auto-scroll toggle */}
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', padding: '0.75rem', borderRadius: '12px', background: 'var(--bg-secondary)' }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={audioSettings.scrollWhilePlaying}
+                                            onChange={(e) => updateAudioSettings({ scrollWhilePlaying: e.target.checked })}
+                                            style={{ width: '18px', height: '18px', accentColor: 'var(--accent-primary)', flexShrink: 0 }}
+                                        />
+                                        <div>
+                                            <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>Auto-scroll while playing</div>
+                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Highlights and scrolls to each Ayah</div>
+                                        </div>
+                                    </label>
+
+                                </div>{/* end scrollable body */}
+
+                                {/* Pinned Start Playing button */}
+                                <div style={{ padding: '1rem 1.5rem 1.5rem', flexShrink: 0 }}>
                                     <button
-                                        className="btn-icon"
-                                        style={{ width: '28px', height: '28px', border: '1px solid var(--border-color)', borderRadius: '50%' }}
-                                        onClick={() => setAutoScrollSpeed(Math.max(1, autoScrollSpeed - 1))}
+                                        className="btn-primary"
+                                        onClick={handleStartPlaying}
+                                        style={{ width: '100%', padding: '0.9rem', borderRadius: '14px', fontSize: '1rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
                                     >
-                                        <Minus size={14} />
-                                    </button>
-                                    <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-primary)', minWidth: '40px', textAlign: 'center' }}>
-                                        {autoScrollSpeed}x
-                                    </span>
-                                    <button
-                                        className="btn-icon"
-                                        style={{ width: '28px', height: '28px', border: '1px solid var(--border-color)', borderRadius: '50%' }}
-                                        onClick={() => setAutoScrollSpeed(Math.min(5, autoScrollSpeed + 1))}
-                                    >
-                                        <Plus size={14} />
-                                    </button>
-
-                                    <button
-                                        className="btn-icon"
-                                        style={{
-                                            width: '32px', height: '32px',
-                                            background: isAutoScrollPaused ? 'var(--accent-light)' : 'transparent',
-                                            color: 'var(--accent-primary)'
-                                        }}
-                                        onClick={() => setIsAutoScrollPaused(!isAutoScrollPaused)}
-                                    >
-                                        {isAutoScrollPaused ? <Play size={16} fill="currentColor" /> : <Pause size={16} fill="currentColor" />}
-                                    </button>
-
-                                    <div style={{ width: '1px', height: '24px', background: 'var(--border-color)' }} />
-
-                                    <button
-                                        onClick={() => setAutoScroll(false)}
-                                        style={{
-                                            width: '32px', height: '32px',
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                            borderRadius: '50%',
-                                            background: 'rgba(239, 68, 68, 0.1)',
-                                            color: 'rgb(239, 68, 68)',
-                                            border: 'none',
-                                            cursor: 'pointer'
-                                        }}
-                                        title="Stop Scroll"
-                                    >
-                                        <X size={16} />
+                                        <Play size={20} fill="currentColor" />
+                                        Start Playing
                                     </button>
                                 </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-                    {/* Tafsir Bottom Drawer */}
-                    <AnimatePresence>
-                        {activeTafsir && (
-                            <>
-                                {/* Overlay */}
-                                <motion.div
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    exit={{ opacity: 0 }}
-                                    onClick={() => setActiveTafsir(null)}
-                                    style={{
-                                        position: 'fixed',
-                                        inset: 0,
-                                        background: 'rgba(0, 0, 0, 0.5)',
-                                        zIndex: 999,
-                                        backdropFilter: 'blur(4px)',
-                                        WebkitBackdropFilter: 'blur(4px)'
-                                    }}
-                                />
-                                {/* Drawer */}
-                                <motion.div
-                                    initial={{ y: '100%' }}
-                                    animate={{ y: 0 }}
-                                    exit={{ y: '100%' }}
-                                    transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                                    style={{
-                                        position: 'fixed',
-                                        bottom: 0,
-                                        left: 0,
-                                        right: 0,
-                                        background: 'var(--bg-surface)',
-                                        zIndex: 1000,
-                                        borderTopLeftRadius: '24px',
-                                        borderTopRightRadius: '24px',
-                                        padding: '1.5rem 1.5rem 2rem 1.5rem',
-                                        boxShadow: '0 -10px 40px rgba(0, 0, 0, 0.1)',
-                                        maxHeight: '80vh',
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        borderTop: '1px solid var(--border-color)'
-                                    }}
-                                >
-                                    <div style={{
-                                        width: '40px',
-                                        height: '5px',
-                                        background: 'var(--border-color)',
-                                        borderRadius: '3px',
-                                        margin: '0 auto 1.5rem auto'
-                                    }} />
-
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                                        <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
-                                            Tafsir (Ayah {activeTafsir.verse_key.split(':')[1]})
-                                        </h3>
-                                        <button
-                                            className="btn-icon"
-                                            onClick={() => setActiveTafsir(null)}
-                                            style={{ background: 'var(--bg-secondary)' }}
-                                            aria-label="Close Tafsir"
-                                        >
-                                            <X size={20} />
-                                        </button>
-                                    </div>
-
-                                    <div
-                                        className="tafsir-content"
-                                        style={{
-                                            overflowY: 'auto',
-                                            paddingRight: '0.5rem',
-                                            color: 'var(--text-secondary)',
-                                            lineHeight: 1.8,
-                                            fontSize: '1rem'
-                                        }}
-                                        dangerouslySetInnerHTML={{ __html: activeTafsir.text }}
-                                    />
-                                </motion.div>
-                            </>
-                        )}
-                    </AnimatePresence>
-
-                    {/* ── Audio Setup Modal (shown before playback starts) ── */}
-                    <AnimatePresence>
-                        {showAudioSetup && (
-                            <>
-                                {/* Backdrop */}
-                                <motion.div
-                                    initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                                    onClick={() => setShowAudioSetup(false)}
-                                    style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1100, backdropFilter: 'blur(4px)' }}
-                                />
-                                {/* Bottom Drawer — outer row handles centering via flex */}
-                                <motion.div
-                                    initial={{ y: '100%' }}
-                                    animate={{ y: 0 }}
-                                    exit={{ y: '100%' }}
-                                    transition={{ type: 'spring', damping: 28, stiffness: 280 }}
-                                    style={{
-                                        position: 'fixed',
-                                        bottom: 0, left: 0, right: 0,
-                                        display: 'flex',
-                                        justifyContent: 'center',
-                                        zIndex: 1101,
-                                    }}
-                                >
-                                    {/* Inner card — constrained width */}
-                                    <div style={{
-                                        width: '100%',
-                                        maxWidth: '520px',
-                                        maxHeight: '85vh',
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        background: 'var(--bg-surface)',
-                                        borderTopLeftRadius: '24px',
-                                        borderTopRightRadius: '24px',
-                                        boxShadow: '0 -8px 40px rgba(0,0,0,0.25)',
-                                        border: '1px solid var(--border-color)',
-                                        borderBottom: 'none',
-                                        overflow: 'hidden',
-                                    }}>
-                                        {/* Drag handle */}
-                                        <div style={{ display: 'flex', justifyContent: 'center', paddingTop: '0.75rem', paddingBottom: '0.25rem', flexShrink: 0 }}>
-                                            <div style={{ width: '40px', height: '5px', borderRadius: '9999px', background: 'var(--border-color)' }} />
-                                        </div>
-                                        {/* Sticky Header */}
-                                        <div style={{ padding: '0 1.5rem 1rem', flexShrink: 0 }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <div>
-                                                    <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)' }}>Audio Setup</h3>
-                                                    <p style={{ margin: '0.2rem 0 0', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                                                        Configure before playing · {pendingPlaylist.length} Ayahs
-                                                    </p>
-                                                </div>
-                                                <button className="btn-icon" onClick={() => setShowAudioSetup(false)} style={{ background: 'var(--bg-secondary)', width: '36px', height: '36px', flexShrink: 0 }}>
-                                                    <X size={18} />
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        {/* Scrollable settings body */}
-                                        <div style={{ flex: 1, overflowY: 'auto', padding: '0 1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-
-                                            {/* Range */}
-                                            <div>
-                                                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.6rem' }}>
-                                                    Ayah Range
-                                                </label>
-                                                <div style={{ display: 'flex', gap: '0.75rem' }}>
-                                                    <div style={{ flex: 1 }}>
-                                                        <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>From</label>
-                                                        <select
-                                                            className="form-input"
-                                                            value={audioSettings.startRange ?? 0}
-                                                            onChange={(e) => updateAudioSettings({ startRange: Number(e.target.value) })}
-                                                        >
-                                                            {pendingPlaylist.map((v, i) => (
-                                                                <option key={v.verseKey} value={i}>{v.verseKey}</option>
-                                                            ))}
-                                                        </select>
-                                                    </div>
-                                                    <div style={{ flex: 1 }}>
-                                                        <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>To</label>
-                                                        <select
-                                                            className="form-input"
-                                                            value={audioSettings.endRange ?? pendingPlaylist.length - 1}
-                                                            onChange={(e) => updateAudioSettings({ endRange: Number(e.target.value) })}
-                                                        >
-                                                            {pendingPlaylist.map((v, i) => (
-                                                                <option key={v.verseKey} value={i}>{v.verseKey}</option>
-                                                            ))}
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {/* Repeat */}
-                                            <div>
-                                                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.6rem' }}>
-                                                    Repeat
-                                                </label>
-                                                <div style={{ display: 'flex', gap: '0.75rem' }}>
-                                                    <div style={{ flex: 1 }}>
-                                                        <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>Each Ayah</label>
-                                                        <select className="form-input" value={audioSettings.repeatAya} onChange={(e) => updateAudioSettings({ repeatAya: Number(e.target.value) })}>
-                                                            {[1, 2, 3, 5, 10, -1].map(opt => <option key={opt} value={opt}>{opt === -1 ? '∞ Infinite' : `${opt}×`}</option>)}
-                                                        </select>
-                                                    </div>
-                                                    <div style={{ flex: 1 }}>
-                                                        <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>Full Selection</label>
-                                                        <select className="form-input" value={audioSettings.repeatSelection} onChange={(e) => updateAudioSettings({ repeatSelection: Number(e.target.value) })}>
-                                                            {[1, 2, 3, 5, 10, -1].map(opt => <option key={opt} value={opt}>{opt === -1 ? '∞ Infinite' : `${opt}×`}</option>)}
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {/* Advanced */}
-                                            <div>
-                                                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.6rem' }}>
-                                                    Advanced
-                                                </label>
-                                                <div style={{ display: 'flex', gap: '0.75rem' }}>
-                                                    <div style={{ flex: 1 }}>
-                                                        <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>Delay Between Ayahs</label>
-                                                        <select className="form-input" value={audioSettings.delayBetweenAyas} onChange={(e) => updateAudioSettings({ delayBetweenAyas: Number(e.target.value) })}>
-                                                            {[0, 1, 2, 3, 5, 10].map(opt => <option key={opt} value={opt}>{opt === 0 ? 'None' : `${opt}s`}</option>)}
-                                                        </select>
-                                                    </div>
-                                                    <div style={{ flex: 1 }}>
-                                                        <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>Playback Speed</label>
-                                                        <select className="form-input" value={audioSettings.playbackSpeed} onChange={(e) => updateAudioSettings({ playbackSpeed: Number(e.target.value) })}>
-                                                            {[0.5, 0.75, 1.0, 1.25, 1.5, 2.0].map(opt => <option key={opt} value={opt}>{opt}×</option>)}
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {/* Auto-scroll toggle */}
-                                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', padding: '0.75rem', borderRadius: '12px', background: 'var(--bg-secondary)' }}>
-                                                <input
-                                                    type="checkbox"
-                                                    checked={audioSettings.scrollWhilePlaying}
-                                                    onChange={(e) => updateAudioSettings({ scrollWhilePlaying: e.target.checked })}
-                                                    style={{ width: '18px', height: '18px', accentColor: 'var(--accent-primary)', flexShrink: 0 }}
-                                                />
-                                                <div>
-                                                    <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>Auto-scroll while playing</div>
-                                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Highlights and scrolls to each Ayah</div>
-                                                </div>
-                                            </label>
-
-                                        </div>{/* end scrollable body */}
-
-                                        {/* Pinned Start Playing button */}
-                                        <div style={{ padding: '1rem 1.5rem 1.5rem', flexShrink: 0 }}>
-                                            <button
-                                                className="btn-primary"
-                                                onClick={handleStartPlaying}
-                                                style={{ width: '100%', padding: '0.9rem', borderRadius: '14px', fontSize: '1rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
-                                            >
-                                                <Play size={20} fill="currentColor" />
-                                                Start Playing
-                                            </button>
-                                        </div>
-                                    </div>
-                                </motion.div>
-                            </>
-                        )}
-                    </AnimatePresence>
-                </motion.div>
+                            </div>
+                        </motion.div>
+                    </>
+                )}
             </AnimatePresence>
         </div>
     );
