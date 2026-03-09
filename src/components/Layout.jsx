@@ -27,7 +27,8 @@ export default function Layout() {
 
     const isSurahPage = /^\/surah\/\d+/.test(location.pathname);
     const isMemorizePage = /^\/memorize\/\d+/.test(location.pathname);
-    const isImmersivePage = isSurahPage || isMemorizePage;
+    const isPagePage = /^\/page\/\d+/.test(location.pathname);
+    const isImmersivePage = isSurahPage || isMemorizePage || isPagePage;
     const hasAudio = audioPlaylist.length > 0 || !!currentAudioUrl;
 
     useEffect(() => {

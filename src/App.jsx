@@ -30,9 +30,8 @@ function App() {
           <Route path="/progress" element={<Progress />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/surah/:id" element={<Surah />} />
+          <Route path="/page/:id" element={<Page />} />
         </Route>
-
-        <Route path="/page/:id" element={<Page />} />
       </Routes>
       <BottomNav />
       <TajweedTooltip />

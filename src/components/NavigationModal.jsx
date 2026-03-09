@@ -10,9 +10,10 @@ export default function NavigationModal({ isOpen, onClose }) {
     const location = useLocation();
 
     // Context
-    const match = location.pathname.match(/\/(surah|memorize)\/(\d+)/);
-    const contextType = match ? match[1] : 'surah';
-    const currentSurahId = match ? parseInt(match[2], 10) : 1;
+    const match = location.pathname.match(/\/(surah|memorize|page)\/(\d+)/);
+    const contextType = match && match[1] !== 'page' ? match[1] : 'surah';
+    const currentSurahId = match && match[1] !== 'page' ? parseInt(match[2], 10) : 1;
+    const currentPageId = match && match[1] === 'page' ? parseInt(match[2], 10) : '';
 
     // Tabs
     const [activeTab, setActiveTab] = useState('surah');
@@ -21,15 +22,15 @@ export default function NavigationModal({ isOpen, onClose }) {
     const [surahSearch, setSurahSearch] = useState('');
     const [selectedSurahForAyah, setSelectedSurahForAyah] = useState(currentSurahId);
     const [ayahNumber, setAyahNumber] = useState('');
-    const [pageNumber, setPageNumber] = useState('');
+    const [pageNumber, setPageNumber] = useState(currentPageId);
 
     useEffect(() => {
         if (isOpen) {
             setSelectedSurahForAyah(currentSurahId);
             setAyahNumber('');
-            setPageNumber('');
+            setPageNumber(currentPageId);
             setSurahSearch('');
-            setActiveTab('surah');
+            setActiveTab(match && match[1] === 'page' ? 'page' : 'surah');
         }
     }, [isOpen, currentSurahId]);
 
