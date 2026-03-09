@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
 import { getLocalAudioDirHandle } from '../utils/localAudio';
-import { Moon, Sun, Settings, TrendingUp, Mic, LayoutDashboard, Bookmark, ArrowLeft, BookOpen, ChevronsDown, Volume2 } from 'lucide-react';
+import { Moon, Sun, Settings, TrendingUp, Mic, LayoutDashboard, Bookmark, ArrowLeft, BookOpen, ChevronsDown, Volume2, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import GlobalAudioPlayer from './GlobalAudioPlayer';
 import SettingsDrawer from './SettingsDrawer';
+import NavigationModal from './NavigationModal';
 
 export default function Layout() {
     const {
@@ -19,6 +20,7 @@ export default function Layout() {
     } = useAppStore();
     const [showHeader, setShowHeader] = useState(true);
     const [lastScrollY, setLastScrollY] = useState(0);
+    const [isNavModalOpen, setIsNavModalOpen] = useState(false);
 
     const location = useLocation();
     const navigate = useNavigate();
@@ -116,12 +118,22 @@ export default function Layout() {
                                 <button className="btn-icon" onClick={() => isMemorizePage ? navigate('/memorize') : navigate('/')} style={{ flexShrink: 0 }} aria-label="Go back">
                                     <ArrowLeft size={20} />
                                 </button>
-                                <span style={{
-                                    fontWeight: 600, fontSize: '1.1rem', color: 'var(--text-primary)',
-                                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
-                                }}>
-                                    {navHeaderTitle || 'Page'}
-                                </span>
+                                <button
+                                    onClick={() => setIsNavModalOpen(true)}
+                                    style={{
+                                        background: 'none', border: 'none', padding: '4px 8px', borderRadius: '8px', cursor: 'pointer',
+                                        display: 'flex', alignItems: 'center', gap: '6px'
+                                    }}
+                                    className="interactive-hover"
+                                >
+                                    <span style={{
+                                        fontWeight: 600, fontSize: '1.1rem', color: 'var(--text-primary)',
+                                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
+                                    }}>
+                                        {navHeaderTitle || 'Page'}
+                                    </span>
+                                    <ChevronDown size={16} style={{ color: 'var(--text-muted)' }} />
+                                </button>
                             </>
                         ) : (
                             <>
@@ -235,6 +247,7 @@ export default function Layout() {
 
             <GlobalAudioPlayer />
             <SettingsDrawer isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+            <NavigationModal isOpen={isNavModalOpen} onClose={() => setIsNavModalOpen(false)} />
         </div>
     );
 }
