@@ -134,6 +134,21 @@ export default function Home() {
         queryFn: getChapters,
     });
 
+    const browseItems = useMemo(() => getBrowseItems(browseMode, chapters), [browseMode, chapters]);
+
+    const filteredItems = useMemo(() => {
+        const query = searchQuery.trim().toLowerCase();
+        if (!query) {
+            return browseItems;
+        }
+
+        return browseItems.filter((item) => {
+            return [item.title, item.subtitle, item.meta, item.arabic]
+                .filter(Boolean)
+                .some((value) => value.toLowerCase().includes(query));
+        });
+    }, [browseItems, searchQuery]);
+
     if (isLoading) return (
         <div className="container" style={{ textAlign: 'center', padding: '10vh 0', color: 'var(--text-muted)' }}>
             <motion.div
@@ -150,21 +165,6 @@ export default function Home() {
             <h2>Error fetching data. Please try again later.</h2>
         </div>
     );
-
-    const browseItems = useMemo(() => getBrowseItems(browseMode, chapters), [browseMode, chapters]);
-
-    const filteredItems = useMemo(() => {
-        const query = searchQuery.trim().toLowerCase();
-        if (!query) {
-            return browseItems;
-        }
-
-        return browseItems.filter((item) => {
-            return [item.title, item.subtitle, item.meta, item.arabic]
-                .filter(Boolean)
-                .some((value) => value.toLowerCase().includes(query));
-        });
-    }, [browseItems, searchQuery]);
 
     return (
         <div className="container">

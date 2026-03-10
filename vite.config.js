@@ -41,6 +41,7 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+        navigateFallback: '/index.html',
         runtimeCaching: [
           {
             urlPattern: ({ url }) => url.origin === 'https://api.quran.com',
@@ -50,6 +51,20 @@ export default defineConfig({
               expiration: {
                 maxEntries: 2000, // Increased to support all paginated pages of all 114 Surahs
                 maxAgeSeconds: 60 * 60 * 24 * 60, // 60 Days
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+            },
+          },
+          {
+            urlPattern: ({ url }) => url.origin === 'https://verses.quran.foundation',
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'quran-foundation-assets',
+              expiration: {
+                maxEntries: 100,
+                maxAgeSeconds: 60 * 60 * 24 * 365,
               },
               cacheableResponse: {
                 statuses: [0, 200],
