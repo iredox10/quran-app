@@ -6,7 +6,6 @@ import { useAppStore } from '../store/useAppStore';
 import { getVerseArabicText } from '../utils/quranText';
 
 
-
 const TAFSIR_NAMES = {
     169: 'Ibn Kathir (Abridged)',
     168: "Ma'arif al-Qur'an",
@@ -95,7 +94,7 @@ const VerseRow = ({
                 >
                     {tajweedEnabled && tajweedMap?.[verse.verse_key]
                         ? <span dangerouslySetInnerHTML={{ __html: tajweedMap[verse.verse_key] }} />
-                        : verseArabicText
+                        : <>{verseArabicText}</>
                     }
 
                 </span>
@@ -229,7 +228,7 @@ const VerseRow = ({
                 >
                     {tajweedEnabled && tajweedMap?.[verse.verse_key]
                         ? <span dangerouslySetInnerHTML={{ __html: tajweedMap[verse.verse_key] }} />
-                        : verseArabicText
+                        : <>{verseArabicText}</>
                     }
 
                 </div>
