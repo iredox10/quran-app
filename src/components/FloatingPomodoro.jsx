@@ -83,7 +83,9 @@ export default function FloatingPomodoro() {
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                background: pomodoroIsRunning ? 'var(--accent-primary)' : 'var(--bg-secondary)',
+                                background: pomodoroIsRunning
+                                    ? (pomodoroMode === 'focus' ? 'var(--accent-primary)' : '#4ade80')
+                                    : 'var(--bg-secondary)',
                                 color: pomodoroIsRunning ? '#fff' : 'var(--text-primary)',
                                 border: 'none',
                                 cursor: 'pointer',
@@ -137,40 +139,47 @@ export default function FloatingPomodoro() {
 
                 {showGlobalPomodoro && isMinimized && (
                     <motion.div
-                        initial={{ opacity: 0, x: 50 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: 50 }}
+                        drag
+                        dragMomentum={false}
+                        initial={{ opacity: 0, scale: 0.5 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.5 }}
                         transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-                        onClick={() => setIsMinimized(false)}
-                        className="interactive-hover"
+                        onTap={() => setIsMinimized(false)}
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
                         style={{
                             position: 'fixed',
-                            bottom: '80px',
-                            right: '-10px',
+                            bottom: '100px',
+                            right: '25px',
                             zIndex: 1000,
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            gap: '0.25rem',
-                            padding: '0.5rem 1rem 0.5rem 0.5rem',
-                            background: pomodoroIsRunning ? 'var(--accent-primary)' : 'var(--bg-surface)',
-                            border: '1px solid var(--border-color)',
-                            borderRight: 'none',
-                            borderRadius: '24px 0 0 24px',
-                            boxShadow: 'var(--shadow-lg)',
-                            cursor: 'pointer',
-                            color: pomodoroIsRunning ? '#fff' : 'var(--text-primary)'
+                            width: '36px',
+                            height: '36px',
+                            borderRadius: '50%',
+                            background: pomodoroIsRunning
+                                ? (pomodoroMode === 'focus' ? 'var(--accent-primary)' : '#4ade80')
+                                : 'var(--bg-surface)',
+                            border: pomodoroIsRunning
+                                ? '2px solid transparent'
+                                : `2px solid ${pomodoroMode === 'focus' ? 'var(--accent-primary)' : '#4ade80'}`,
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                            cursor: 'grab',
                         }}
                     >
-                        <ChevronLeft size={16} style={{ marginLeft: '-4px' }} />
-                        <Timer size={18} color={pomodoroIsRunning ? '#fff' : (pomodoroMode === 'focus' ? 'var(--accent-primary)' : '#4ade80')} />
-                        <span style={{
-                            fontSize: '0.9rem',
-                            fontWeight: 800,
-                            fontFamily: 'monospace'
-                        }}>
-                            {formatTime(pomodoroSecondsLeft)}
-                        </span>
+                        <div style={{
+                            width: '12px',
+                            height: '12px',
+                            borderRadius: '50%',
+                            background: pomodoroIsRunning
+                                ? '#fff'
+                                : (pomodoroMode === 'focus' ? 'var(--accent-primary)' : '#4ade80'),
+                            opacity: pomodoroIsRunning ? 1 : 0.8,
+                            boxShadow: pomodoroIsRunning ? '0 0 8px rgba(255,255,255,0.8)' : 'none',
+                            transition: 'all 0.3s'
+                        }} />
                     </motion.div>
                 )}
             </AnimatePresence>
