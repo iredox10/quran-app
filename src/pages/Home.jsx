@@ -4,7 +4,7 @@ import { getChapters } from '../services/api/quranApi';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../store/useAppStore';
-import { BookOpen, Search, Bookmark, DownloadCloud, X, Hash, Layers3, LibraryBig, Rows3, CalendarDays } from 'lucide-react';
+import { BookOpen, Search, Bookmark, DownloadCloud, X, Hash, Layers3, LibraryBig, Rows3 } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
 import { HIZB_STARTS, JUZ_STARTS, PAGE_GROUPS } from '../data/quranNavigation';
 import PomodoroWidget from '../components/PomodoroWidget';
@@ -25,6 +25,7 @@ function getBrowseItems(mode, chapters) {
             meta: `Page ${String(item.pageNumber).padStart(3, '0')}`,
             to: `/page/${item.pageNumber}`,
             arabic: null,
+            prefix: null, // to replace chapter.id block
         }));
     }
 
@@ -36,6 +37,7 @@ function getBrowseItems(mode, chapters) {
             meta: `Page ${item.pageNumber}`,
             to: `/page/${item.pageNumber}`,
             arabic: `الجزء ${item.id}`,
+            prefix: item.id,
         }));
     }
 
@@ -47,17 +49,18 @@ function getBrowseItems(mode, chapters) {
             meta: `Page ${item.pageNumber}`,
             to: `/page/${item.pageNumber}`,
             arabic: `حزب ${item.id}`,
+            prefix: item.id,
         }));
     }
 
     return (chapters || []).map((chapter) => ({
         key: `surah-${chapter.id}`,
         title: chapter.name_simple,
-        subtitle: `${chapter.translated_name.name} · ${chapter.verses_count} Ayahs`,
-        meta: String(chapter.id).padStart(3, '0'),
+        subtitle: `${chapter.translated_name.name}`,
+        meta: `${chapter.verses_count} Ayahs`,
         to: `/surah/${chapter.id}`,
         arabic: chapter.name_arabic,
-        chapterId: chapter.id,
+        prefix: chapter.id,
     }));
 }
 
@@ -323,133 +326,149 @@ export default function Home() {
             </div>
 
             <section style={{ marginBottom: '2rem' }}>
-                <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-                    <div>
-                        <h2 style={{ fontSize: '1.5rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
-                            Browse the Quran
-                        </h2>
-                        <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>
-                            Start by Surah, Mushaf page, Juz, or Hizb - similar to how major Quran readers structure entry points.
-                        </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', marginBottom: '2rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+                        <div>
+                            <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                <BookOpen size={24} color="var(--accent-primary)" />
+                                Browse the Quran
+                            </h2>
+                            <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>
+                                Select a Surah, Page, Juz, or Hizb to begin reading.
+                            </p>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                            {BROWSE_MODES.map((mode) => {
+                                const Icon = mode.icon;
+                                const active = browseMode === mode.id;
+                                return (
+                                    <button
+                                        key={mode.id}
+                                        type="button"
+                                        onClick={() => setBrowseMode(mode.id)}
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '0.5rem',
+                                            minHeight: '42px',
+                                            padding: '0.65rem 0.95rem',
+                                            borderRadius: '999px',
+                                            border: `1px solid ${active ? 'rgba(198, 168, 124, 0.35)' : 'rgba(0,0,0,0.06)'}`,
+                                            background: active ? 'var(--accent-light)' : 'var(--bg-secondary)',
+                                            color: active ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                                            fontWeight: 600,
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        <Icon size={16} aria-hidden="true" />
+                                        <span>{mode.label}</span>
+                                    </button>
+                                );
+                            })}
+                        </div>
                     </div>
 
-                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                        {BROWSE_MODES.map((mode) => {
-                            const Icon = mode.icon;
-                            const active = browseMode === mode.id;
-                            return (
-                                <button
-                                    key={mode.id}
-                                    type="button"
-                                    onClick={() => setBrowseMode(mode.id)}
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '0.5rem',
-                                        minHeight: '42px',
-                                        padding: '0.65rem 0.95rem',
-                                        borderRadius: '999px',
-                                        border: `1px solid ${active ? 'rgba(198, 168, 124, 0.35)' : 'rgba(0,0,0,0.06)'}`,
-                                        background: active ? 'var(--accent-light)' : 'var(--bg-secondary)',
-                                        color: active ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                                        fontWeight: 600,
-                                    }}
-                                >
-                                    <Icon size={16} aria-hidden="true" />
-                                    <span>{mode.label}</span>
-                                </button>
-                            );
-                        })}
+                    <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        background: 'var(--bg-secondary)',
+                        borderRadius: '16px',
+                        border: '1px solid var(--border-color)',
+                        padding: '1rem 1.5rem',
+                        boxShadow: 'var(--shadow-sm)',
+                        transition: 'border-color 0.2s, box-shadow 0.2s',
+                    }} className="search-container">
+                        <Search size={20} color="var(--text-muted)" style={{ marginRight: '1rem' }} />
+                        <input
+                            type="text"
+                            placeholder={`Search ${browseMode}...`}
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            aria-label={`Search ${browseMode}`}
+                            style={{ border: 'none', background: 'transparent', outline: 'none', color: 'var(--text-primary)', width: '100%', fontSize: '1.1rem', fontFamily: 'inherit' }}
+                        />
                     </div>
                 </div>
-            </section>
 
-            <div style={{
-                marginBottom: '2rem',
-                display: 'flex',
-                alignItems: 'center',
-                background: 'var(--bg-secondary)',
-                borderRadius: '12px',
-                border: '1px solid var(--border-color)',
-                padding: '0.75rem 1.5rem',
-                boxShadow: 'var(--shadow-sm)'
-            }}>
-                <Search size={20} color="var(--text-muted)" style={{ marginRight: '1rem' }} />
-                <input
-                    type="text"
-                    placeholder={`Search ${browseMode}...`}
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    aria-label={`Search ${browseMode}`}
-                    style={{ border: 'none', background: 'transparent', outline: 'none', color: 'var(--text-primary)', width: '100%', fontSize: '1.1rem', fontFamily: 'inherit' }}
-                />
-            </div>
-
-            <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-                gap: '1.5rem'
-            }}>
-                {filteredItems?.map((item) => (
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ duration: 0.2 }}
-                        key={item.key}
-                    >
-                        <Link
-                            to={item.to}
-                            className="glass-panel interactive-hover"
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                padding: '1.25rem',
-                                textDecoration: 'none',
-                                color: 'inherit',
-                                border: '1px solid var(--border-color)', // overriding glass if we want solid borders in light mode
-                                background: 'var(--bg-secondary)', // giving it solid bg on grid
-                            }}
+                <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+                    gap: '1.25rem'
+                }}>
+                    {filteredItems.map((item) => (
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ duration: 0.15 }}
+                            key={item.key}
                         >
-                            <div style={{
-                                width: '40px',
-                                height: '40px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                background: 'var(--bg-primary)',
-                                borderRadius: '8px',
-                                fontWeight: 600,
-                                color: 'var(--accent-primary)',
-                                marginRight: '1rem',
-                                fontSize: '0.9rem'
-                            }}>
-                                {browseMode === 'surah' ? item.chapterId : <Hash size={16} aria-hidden="true" />}
-                            </div>
-
-                            <div style={{ flex: 1 }}>
-                                <h3 style={{ fontSize: '1.1rem', fontWeight: 600 }}>{item.title}</h3>
-                                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                                    {item.subtitle}
-                                </p>
-                                <p style={{ fontSize: '0.75rem', color: 'var(--accent-primary)', marginTop: '0.35rem', fontWeight: 600 }}>
-                                    {item.meta}
-                                </p>
-                            </div>
-
-                            {item.arabic && (
+                            <Link
+                                to={item.to}
+                                className="interactive-hover"
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    padding: '1.25rem 1.5rem',
+                                    textDecoration: 'none',
+                                    color: 'inherit',
+                                    border: '1px solid var(--border-color)',
+                                    background: 'var(--bg-secondary)',
+                                    borderRadius: '20px',
+                                    boxShadow: 'var(--shadow-sm)',
+                                    position: 'relative',
+                                    overflow: 'hidden'
+                                }}
+                            >
                                 <div style={{
-                                    fontFamily: "'Amiri Quran', serif",
-                                    fontSize: '1.5rem',
+                                    width: '44px',
+                                    height: '44px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    background: 'var(--bg-primary)',
+                                    borderRadius: '12px',
+                                    fontWeight: 700,
                                     color: 'var(--accent-primary)',
-                                    direction: 'rtl'
+                                    marginRight: '1.25rem',
+                                    fontSize: '1rem',
+                                    border: '1px solid rgba(198, 168, 124, 0.15)'
                                 }}>
-                                    {item.arabic}
+                                    {item.prefix || <Hash size={16} />}
                                 </div>
-                            )}
-                        </Link>
-                    </motion.div>
-                ))}
-            </div>
+
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.2rem' }}>
+                                        <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                                            {item.title}
+                                        </h3>
+                                        {item.arabic && (
+                                            <div style={{
+                                                fontFamily: "'Amiri Quran', serif",
+                                                fontSize: '1.4rem',
+                                                color: 'var(--accent-primary)',
+                                                direction: 'rtl',
+                                                marginLeft: '1rem'
+                                            }}>
+                                                {item.arabic}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                        <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 500 }}>
+                                            {item.subtitle}
+                                        </span>
+                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', background: 'var(--bg-primary)', padding: '0.15rem 0.5rem', borderRadius: '999px', fontWeight: 600 }}>
+                                            {item.meta}
+                                        </span>
+                                    </div>
+                                </div>
+                            </Link>
+                        </motion.div>
+                    ))}
+                </div>
+            </section>
         </div>
     );
 }
