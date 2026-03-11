@@ -21,6 +21,7 @@ export default function PomodoroWidget({ compact = false, showConfigurator = tru
         pomodoroIsRunning,
         pomodoroSecondsLeft,
         pomodoroCompletedFocusCount,
+        pomodoroDailyGoal,
         togglePomodoroRunning,
         resetPomodoroSession,
         switchPomodoroMode,
@@ -114,7 +115,12 @@ export default function PomodoroWidget({ compact = false, showConfigurator = tru
                     {compact ? (
                         <span>{formatTime(pomodoroSecondsLeft)}</span>
                     ) : (
-                        <span>{activeProfile.name} Timer</span>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                            <span>{activeProfile.name} Timer</span>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: pomodoroIsRunning ? 'rgba(255,255,255,0.8)' : 'var(--text-muted)' }}>
+                                {pomodoroCompletedFocusCount}/{pomodoroDailyGoal || 4} Sessions Today
+                            </span>
+                        </div>
                     )}
                 </div>
 

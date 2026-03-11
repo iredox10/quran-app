@@ -254,38 +254,6 @@ export default function Home() {
             </AnimatePresence>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '2rem', marginBottom: '3rem' }}>
-                <section>
-                    <Link
-                        to="/planner"
-                        className="interactive-hover"
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            gap: '1rem',
-                            padding: '1.25rem 1.35rem',
-                            background: 'linear-gradient(135deg, var(--accent-light), rgba(198, 168, 124, 0.08))',
-                            border: '1px solid rgba(198, 168, 124, 0.28)',
-                            borderRadius: '20px',
-                            textDecoration: 'none',
-                            color: 'inherit',
-                            boxShadow: 'var(--shadow-sm)'
-                        }}
-                    >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                            <div style={{ width: '52px', height: '52px', borderRadius: '16px', background: 'var(--bg-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent-primary)' }}>
-                                <CalendarDays size={24} />
-                            </div>
-                            <div>
-                                <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.2rem' }}>Reading Planner</div>
-                                <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Build a daily Quran plan by page, juz, hizb, or surah.</div>
-                            </div>
-                        </div>
-                        <span style={{ padding: '0.55rem 0.85rem', borderRadius: '999px', background: 'var(--bg-primary)', color: 'var(--accent-primary)', fontWeight: 700, fontSize: '0.82rem' }}>
-                            Open
-                        </span>
-                    </Link>
-                </section>
 
                 <section>
                     <PomodoroWidget />

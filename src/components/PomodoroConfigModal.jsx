@@ -23,6 +23,14 @@ export default function PomodoroConfigModal({ isOpen, onClose }) {
         togglePomodoroRunning,
         resetPomodoroSession,
         switchPomodoroMode,
+        pomodoroSound,
+        setPomodoroSound,
+        pomodoroAutoStartBreaks,
+        setPomodoroAutoStartBreaks,
+        pomodoroAutoStartFocus,
+        setPomodoroAutoStartFocus,
+        pomodoroDailyGoal,
+        setPomodoroDailyGoal,
     } = useAppStore();
 
     // The active profile from store
@@ -231,6 +239,83 @@ export default function PomodoroConfigModal({ isOpen, onClose }) {
                                             />
                                         </label>
                                     </div>
+
+                                </div>
+
+                                {/* Global Sound Settings */}
+                                <div>
+                                    <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.75rem', display: 'block' }}>
+                                        Timer Sound
+                                    </label>
+                                    <select
+                                        value={pomodoroSound || 'allahu-akbar'}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            setPomodoroSound(val);
+                                            if (val !== 'silent') {
+                                                try {
+                                                    const audioUrl = val === 'allahu-akbar' ? '/allahu-akbar.mp3' :
+                                                        val === 'bismillah' ? '/bismillah.mp3' :
+                                                            val === 'alhamdulillah' ? '/alhamdulillah.mp3' : '';
+                                                    if (audioUrl) {
+                                                        const ad = new Audio(audioUrl);
+                                                        ad.play().catch(() => { });
+                                                    }
+                                                } catch {
+                                                    // ignore
+                                                }
+                                            }
+                                        }}
+                                        style={{ width: '100%', minHeight: '48px', borderRadius: '12px', border: '1px solid var(--border-color)', padding: '0.7rem 1rem', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '1rem', fontWeight: 500, appearance: 'none', cursor: 'pointer' }}
+                                    >
+                                        <option value="allahu-akbar">Allahu Akbar (Adhan Snippet)</option>
+                                        <option value="bismillah">Bismillah (Mishary Alafasy)</option>
+                                        <option value="alhamdulillah">Alhamdulillah (Mishary Alafasy)</option>
+                                        <option value="silent">Silent / No Sound</option>
+                                    </select>
+                                </div>
+
+                                {/* Global Behavior Settings */}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', background: 'var(--bg-secondary)', padding: '1.25rem', borderRadius: '16px' }}>
+
+                                    <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
+                                        <span style={{ fontSize: '0.9rem', color: 'var(--text-primary)', fontWeight: 600 }}>Auto-start Breaks</span>
+                                        <input
+                                            type="checkbox"
+                                            checked={pomodoroAutoStartBreaks}
+                                            onChange={(e) => setPomodoroAutoStartBreaks(e.target.checked)}
+                                            style={{ width: '20px', height: '20px', accentColor: 'var(--accent-primary)', cursor: 'pointer' }}
+                                        />
+                                    </label>
+
+                                    <div style={{ height: '1px', background: 'var(--border-color)', width: '100%' }} />
+
+                                    <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
+                                        <span style={{ fontSize: '0.9rem', color: 'var(--text-primary)', fontWeight: 600 }}>Auto-start Focus Sessions</span>
+                                        <input
+                                            type="checkbox"
+                                            checked={pomodoroAutoStartFocus}
+                                            onChange={(e) => setPomodoroAutoStartFocus(e.target.checked)}
+                                            style={{ width: '20px', height: '20px', accentColor: 'var(--accent-primary)', cursor: 'pointer' }}
+                                        />
+                                    </label>
+
+                                    <div style={{ height: '1px', background: 'var(--border-color)', width: '100%' }} />
+
+                                    <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                            <span style={{ fontSize: '0.9rem', color: 'var(--text-primary)', fontWeight: 600 }}>Daily Session Goal</span>
+                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>How many focus sessions to aim for today</span>
+                                        </div>
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            max="20"
+                                            value={pomodoroDailyGoal}
+                                            onChange={(e) => setPomodoroDailyGoal(Number(e.target.value) || 4)}
+                                            style={{ minHeight: '38px', width: '70px', borderRadius: '8px', border: '1px solid var(--border-color)', padding: '0.5rem', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '1rem', fontWeight: 600, textAlign: 'center' }}
+                                        />
+                                    </label>
 
                                 </div>
 

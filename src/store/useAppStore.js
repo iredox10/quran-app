@@ -92,6 +92,10 @@ export const useAppStore = create(
             activePomodoroProfileId: DEFAULT_POMODORO_PROFILES[0].id,
             pomodoroHistory: [], // Array of { date, duration, mode, completedAt }
             pomodoroMode: 'focus',
+            pomodoroSound: 'allahu-akbar',
+            pomodoroAutoStartBreaks: false,
+            pomodoroAutoStartFocus: false,
+            pomodoroDailyGoal: 4,
             pomodoroIsRunning: false,
             pomodoroSecondsLeft: DEFAULT_POMODORO_PROFILES[0].focusMinutes * 60,
             pomodoroCompletedFocusCount: 0,
@@ -300,6 +304,10 @@ export const useAppStore = create(
                 };
             }),
             setPomodoroVisibleInReader: (isVisible) => set({ isPomodoroVisibleInReader: isVisible }),
+            setPomodoroSound: (sound) => set({ pomodoroSound: sound }),
+            setPomodoroAutoStartBreaks: (val) => set({ pomodoroAutoStartBreaks: val }),
+            setPomodoroAutoStartFocus: (val) => set({ pomodoroAutoStartFocus: val }),
+            setPomodoroDailyGoal: (val) => set({ pomodoroDailyGoal: val }),
             tickPomodoro: () => {
                 const state = get();
                 if (!state.pomodoroIsRunning) {
@@ -318,11 +326,17 @@ export const useAppStore = create(
                         : state.readingSessions || [];
                     const nextMode = state.pomodoroMode === 'focus' ? 'break' : 'focus';
 
-                    try {
-                        const audio = new Audio('data:audio/wav;base64,UklGRlQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YTAAAAAAAP//AAD//wAA//8AAP//AAD//wAA');
-                        audio.play().catch(() => {});
-                    } catch {
-                        // ignore audio failures
+                    if (state.pomodoroSound && state.pomodoroSound !== 'silent') {
+                        try {
+                            const audioUrl = state.pomodoroSound === 'allahu-akbar' ? '/allahu-akbar.mp3' :
+                                state.pomodoroSound === 'bismillah' ? '/bismillah.mp3' :
+                                    state.pomodoroSound === 'alhamdulillah' ? '/alhamdulillah.mp3' :
+                                        'data:audio/wav;base64,UklGRlQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YTAAAAAAAP//AAD//wAA//8AAP//AAD//wAA';
+                            const audio = new Audio(audioUrl);
+                            audio.play().catch(() => { });
+                        } catch {
+                            // ignore audio failures
+                        }
                     }
 
                     if (navigator.vibrate) {
@@ -333,7 +347,7 @@ export const useAppStore = create(
                         pomodoroHistory: history,
                         readingSessions,
                         pomodoroMode: nextMode,
-                        pomodoroIsRunning: false,
+                        pomodoroIsRunning: state.pomodoroMode === 'focus' ? !!state.pomodoroAutoStartBreaks : !!state.pomodoroAutoStartFocus,
                         pomodoroSecondsLeft: getPomodoroDurationSeconds(activeProfile, nextMode),
                         pomodoroCompletedFocusCount: state.pomodoroMode === 'focus'
                             ? state.pomodoroCompletedFocusCount + 1
