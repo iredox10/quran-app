@@ -154,7 +154,7 @@ export default function Memorization() {
     const tajweedMap = React.useMemo(() => {
         if (!tajweedData) return {};
         return tajweedData.reduce((acc, v) => {
-            acc[v.verse_key] = sanitizeTajweedHtml(v.text_uthmani_tajweed.replace(/<span class=end>.*?<\/span>/g, ''));
+            acc[v.verse_key] = sanitizeTajweedHtml(v.text_uthmani_tajweed);
             return acc;
         }, {});
     }, [tajweedData]);
