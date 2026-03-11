@@ -126,7 +126,8 @@ export default function Surah() {
     const tajweedMap = React.useMemo(() => {
         if (!tajweedData) return {};
         return tajweedData.reduce((acc, v) => {
-            acc[v.verse_key] = sanitizeTajweedHtml(v.text_uthmani_tajweed);
+            // Strip the embedded end-of-ayah marker as we provide our own styled one
+            acc[v.verse_key] = sanitizeTajweedHtml(v.text_uthmani_tajweed.replace(/<span class=end>.*?<\/span>/g, ''));
             return acc;
         }, {});
     }, [tajweedData]);

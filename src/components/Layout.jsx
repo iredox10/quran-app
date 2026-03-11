@@ -7,7 +7,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import GlobalAudioPlayer from './GlobalAudioPlayer';
 import SettingsDrawer from './SettingsDrawer';
 import NavigationModal from './NavigationModal';
-import PomodoroWidget from './PomodoroWidget';
 
 export default function Layout() {
     const {
@@ -17,8 +16,7 @@ export default function Layout() {
         isPlayerVisible, setIsPlayerVisible,
         audioPlaylist, currentAudioUrl, isPlaying,
         incrementPlayTrigger,
-        isSettingsOpen, setIsSettingsOpen,
-        isPomodoroVisibleInReader, setPomodoroVisibleInReader
+        isSettingsOpen, setIsSettingsOpen
     } = useAppStore();
     const [showHeader, setShowHeader] = useState(true);
     const [lastScrollY, setLastScrollY] = useState(0);
@@ -199,17 +197,6 @@ export default function Layout() {
                                 >
                                     <BookOpen size={20} />
                                 </button>
-                                <button
-                                    className="btn-icon"
-                                    onClick={() => setPomodoroVisibleInReader(!isPomodoroVisibleInReader)}
-                                    title={isPomodoroVisibleInReader ? 'Hide Pomodoro' : 'Show Pomodoro'}
-                                    style={{
-                                        color: isPomodoroVisibleInReader ? 'var(--accent-primary)' : 'var(--text-muted)',
-                                        background: isPomodoroVisibleInReader ? 'var(--accent-light)' : 'transparent'
-                                    }}
-                                >
-                                    <Mic size={20} />
-                                </button>
                             </>
                         )}
 
@@ -274,18 +261,6 @@ export default function Layout() {
             <main style={{ flex: 1, padding: '2rem 0', paddingTop: 'calc(56px + 2.5rem)', paddingBottom: '90px' }}>
                 <Outlet />
             </main>
-
-            {isReadingView && isPomodoroVisibleInReader && (
-                <div style={{
-                    position: 'fixed',
-                    right: '16px',
-                    bottom: 'calc(env(safe-area-inset-bottom, 0px) + 88px)',
-                    zIndex: 150,
-                    maxWidth: 'min(320px, calc(100vw - 32px))'
-                }}>
-                    <PomodoroWidget compact showConfigurator={false} />
-                </div>
-            )}
 
             <GlobalAudioPlayer />
             <SettingsDrawer isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
