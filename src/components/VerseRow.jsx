@@ -142,61 +142,77 @@ const VerseRow = ({
                     borderRadius: '16px'
                 }}
             >
-                {/* Verse Actions Row — on top */}
-                <div className="verse-actions-row" style={{
-                    display: 'flex',
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: '0.75rem',
-                    flexWrap: 'wrap'
-                }}>
-                    <button
-                        className="btn-icon"
-                        style={{ color: 'var(--text-muted)', width: '32px', height: '32px' }}
-                        onClick={() => setShowCollectionModal(true)}
-                        title="Add to Collection"
-                    >
-                        <Plus size={18} />
-                    </button>
-                    <button
-                        className="btn-icon"
-                        style={{ color: bookmark?.verseKey === verse.verse_key ? 'var(--accent-primary)' : 'var(--text-muted)', width: '32px', height: '32px' }}
-                        onClick={() => setBookmark(verse.verse_key, chapter ? chapter.name_simple : `Surah ${verse.verse_key.split(':')[0]}`, chapter?.id)}
-                        title="Bookmark Verse"
-                    >
-                        <Bookmark size={18} fill={bookmark?.verseKey === verse.verse_key ? 'currentColor' : 'none'} />
-                    </button>
-                    <button
-                        className="btn-icon"
-                        style={{ color: (memorizedAyahs || []).includes(verse.verse_key) ? 'var(--status-success, #10b981)' : 'var(--text-muted)', width: '32px', height: '32px' }}
-                        title={(memorizedAyahs || []).includes(verse.verse_key) ? "Marked as Memorized" : "Mark as Memorized"}
-                        onClick={() => toggleMemorizedAyah(verse.verse_key)}
-                    >
-                        <CheckCircle size={18} fill={(memorizedAyahs || []).includes(verse.verse_key) ? 'currentColor' : 'none'} color={(memorizedAyahs || []).includes(verse.verse_key) ? 'white' : 'currentColor'} />
-                    </button>
-                    <button
-                        className="btn-icon"
-                        style={{ color: activeTafsir?.verse_key === verse.verse_key ? 'var(--accent-primary)' : 'var(--text-muted)', width: '32px', height: '32px' }}
-                        title="Read Tafsir"
-                        onClick={() => {
-                            if (activeTafsir?.verse_key === verse.verse_key) {
-                                setActiveTafsir(null);
-                            } else if (isTafsirFetching) {
-                                setActiveTafsir({
-                                    verse_key: verse.verse_key,
-                                    text: '<p>Loading tafsir...</p>'
-                                });
-                            } else {
-                                const tafsirObj = tafsirs?.find((t) => t.verse_key === verse.verse_key);
-                                setActiveTafsir({
-                                    verse_key: verse.verse_key,
-                                    text: tafsirObj ? tafsirObj.text : '<p>Tafsir is not available for this verse in the selected source.</p>'
-                                });
-                            }
-                        }}
-                    >
-                        <Info size={18} />
-                    </button>
+                {/* Verse Header Row */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                    <div style={{
+                        fontSize: '0.85rem',
+                        fontWeight: 700,
+                        color: 'var(--accent-primary)',
+                        backgroundColor: 'var(--accent-light)',
+                        border: '1px solid rgba(198, 168, 124, 0.2)',
+                        padding: '0.35rem 0.85rem',
+                        borderRadius: '999px',
+                        fontFamily: "'Outfit', sans-serif",
+                        letterSpacing: '0.05em'
+                    }}>
+                        {verse.verse_key}
+                    </div>
+
+                    <div className="verse-actions-row" style={{
+                        display: 'flex',
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        flexWrap: 'wrap'
+                    }}>
+                        <button
+                            className="btn-icon"
+                            style={{ color: 'var(--text-muted)', width: '32px', height: '32px' }}
+                            onClick={() => setShowCollectionModal(true)}
+                            title="Add to Collection"
+                        >
+                            <Plus size={18} />
+                        </button>
+                        <button
+                            className="btn-icon"
+                            style={{ color: bookmark?.verseKey === verse.verse_key ? 'var(--accent-primary)' : 'var(--text-muted)', width: '32px', height: '32px' }}
+                            onClick={() => setBookmark(verse.verse_key, chapter ? chapter.name_simple : `Surah ${verse.verse_key.split(':')[0]}`, chapter?.id)}
+                            title="Bookmark Verse"
+                        >
+                            <Bookmark size={18} fill={bookmark?.verseKey === verse.verse_key ? 'currentColor' : 'none'} />
+                        </button>
+                        <button
+                            className="btn-icon"
+                            style={{ color: (memorizedAyahs || []).includes(verse.verse_key) ? 'var(--status-success, #10b981)' : 'var(--text-muted)', width: '32px', height: '32px' }}
+                            title={(memorizedAyahs || []).includes(verse.verse_key) ? "Marked as Memorized" : "Mark as Memorized"}
+                            onClick={() => toggleMemorizedAyah(verse.verse_key)}
+                        >
+                            <CheckCircle size={18} fill={(memorizedAyahs || []).includes(verse.verse_key) ? 'currentColor' : 'none'} color={(memorizedAyahs || []).includes(verse.verse_key) ? 'white' : 'currentColor'} />
+                        </button>
+                        <button
+                            className="btn-icon"
+                            style={{ color: activeTafsir?.verse_key === verse.verse_key ? 'var(--accent-primary)' : 'var(--text-muted)', width: '32px', height: '32px' }}
+                            title="Read Tafsir"
+                            onClick={() => {
+                                if (activeTafsir?.verse_key === verse.verse_key) {
+                                    setActiveTafsir(null);
+                                } else if (isTafsirFetching) {
+                                    setActiveTafsir({
+                                        verse_key: verse.verse_key,
+                                        text: '<p>Loading tafsir...</p>'
+                                    });
+                                } else {
+                                    const tafsirObj = tafsirs?.find((t) => t.verse_key === verse.verse_key);
+                                    setActiveTafsir({
+                                        verse_key: verse.verse_key,
+                                        text: tafsirObj ? tafsirObj.text : '<p>Tafsir is not available for this verse in the selected source.</p>'
+                                    });
+                                }
+                            }}
+                        >
+                            <Info size={18} />
+                        </button>
+                    </div>
                 </div>
 
                 {/* Arabic Text */}

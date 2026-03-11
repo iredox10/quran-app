@@ -14,6 +14,7 @@ import Planner from './pages/Planner';
 import TajweedTooltip from './components/TajweedTooltip';
 import GlobalAudioPlayer from './components/GlobalAudioPlayer';
 import Profile from './pages/Profile';
+import FloatingPomodoro from './components/FloatingPomodoro';
 import { useAppStore } from './store/useAppStore';
 
 function App() {
@@ -36,6 +37,7 @@ function App() {
         </Route>
       </Routes>
       <BottomNav />
+      <FloatingPomodoro />
       <TajweedTooltip />
     </BrowserRouter>
   );

@@ -100,6 +100,7 @@ export const useAppStore = create(
             pomodoroSecondsLeft: DEFAULT_POMODORO_PROFILES[0].focusMinutes * 60,
             pomodoroCompletedFocusCount: 0,
             isPomodoroVisibleInReader: false,
+            showGlobalPomodoro: false,
 
             setIsSettingsOpen: (isOpen) => set({ isSettingsOpen: isOpen }),
             toggleTheme: () => set((state) => ({
@@ -289,8 +290,12 @@ export const useAppStore = create(
                 pomodoroIsRunning: false,
                 pomodoroSecondsLeft: getPomodoroDurationSeconds(getActivePomodoroProfile(state).activeProfile, mode),
             })),
-            setPomodoroRunning: (isRunning) => set({ pomodoroIsRunning: isRunning }),
-            togglePomodoroRunning: () => set((state) => ({ pomodoroIsRunning: !state.pomodoroIsRunning })),
+            setPomodoroSecondsLeft: (seconds) => set({ pomodoroSecondsLeft: seconds }),
+            togglePomodoroRunning: () => set((state) => ({
+                pomodoroIsRunning: !state.pomodoroIsRunning,
+                showGlobalPomodoro: !state.pomodoroIsRunning ? true : state.showGlobalPomodoro
+            })),
+            setShowGlobalPomodoro: (val) => set({ showGlobalPomodoro: val }),
             resetPomodoroSession: () => set((state) => ({
                 pomodoroIsRunning: false,
                 pomodoroSecondsLeft: getPomodoroDurationSeconds(getActivePomodoroProfile(state).activeProfile, state.pomodoroMode),
