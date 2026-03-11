@@ -26,7 +26,7 @@ function formatMinutes(seconds) {
 }
 
 export default function Progress() {
-    const { setNavHeaderTitle, readingSessions, recentlyRead, bookmarks, collections } = useAppStore();
+    const { setNavHeaderTitle, readingSessions, recentlyRead, bookmarks, collections, pomodoroHistory } = useAppStore();
 
     useEffect(() => {
         setNavHeaderTitle('Progress & Analytics');
@@ -51,7 +51,7 @@ export default function Progress() {
 
     // Activity breakdown by type
     const activityByType = useMemo(() => {
-        const typeMap = { reading: 0, memorizing: 0, listening: 0 };
+        const typeMap = { reading: 0, memorizing: 0, listening: 0, pomodoro: 0 };
         sessions.forEach(s => {
             if (typeMap[s.type] !== undefined) {
                 typeMap[s.type] += s.duration || 0;
@@ -61,8 +61,19 @@ export default function Progress() {
             { name: 'Reading', minutes: Math.round(typeMap.reading / 60) },
             { name: 'Memorizing', minutes: Math.round(typeMap.memorizing / 60) },
             { name: 'Listening', minutes: Math.round(typeMap.listening / 60) },
+            { name: 'Pomodoro', minutes: Math.round(typeMap.pomodoro / 60) },
         ];
     }, [sessions]);
+
+    const pomodoroFocusMinutes = useMemo(() => {
+        return (pomodoroHistory || [])
+            .filter((session) => session.mode === 'focus')
+            .reduce((sum, session) => sum + (session.duration || 0), 0);
+    }, [pomodoroHistory]);
+
+    const pomodoroFocusCount = useMemo(() => {
+        return (pomodoroHistory || []).filter((session) => session.mode === 'focus').length;
+    }, [pomodoroHistory]);
 
     // Unique surahs read
     const uniqueSurahsRead = useMemo(() => {
@@ -145,6 +156,8 @@ export default function Progress() {
                         { label: 'Surahs Read', value: `${uniqueSurahsRead} / ${TOTAL_SURAHS}`, icon: <BookMarked size={20} /> },
                         { label: 'Today', value: formatMinutes(todayTotal), icon: <Clock size={20} /> },
                         { label: 'All Time', value: formatMinutes(allTimeTotal), icon: <TrendingUp size={20} /> },
+                        { label: 'Pomodoro Focus', value: formatMinutes(pomodoroFocusMinutes), icon: <Target size={20} /> },
+                        { label: 'Focus Sessions', value: `${pomodoroFocusCount}`, icon: <CalendarDays size={20} /> },
                     ].map((stat, i) => (
                         <motion.div
                             key={i}

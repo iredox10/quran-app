@@ -78,11 +78,11 @@ define(['./workbox-fec5aa16'], (function (workbox) { 'use strict';
    * See https://goo.gl/S9QRab
    */
   workbox.precacheAndRoute([{
-    "url": "index.html",
-    "revision": "0.hrkp3tgnbno"
+    "url": "/index.html",
+    "revision": "0.4ce41cv6vn8"
   }], {});
   workbox.cleanupOutdatedCaches();
-  workbox.registerRoute(new workbox.NavigationRoute(workbox.createHandlerBoundToURL("index.html"), {
+  workbox.registerRoute(new workbox.NavigationRoute(workbox.createHandlerBoundToURL("/index.html"), {
     allowlist: [/^\/$/]
   }));
   workbox.registerRoute(({
@@ -92,6 +92,17 @@ define(['./workbox-fec5aa16'], (function (workbox) { 'use strict';
     plugins: [new workbox.ExpirationPlugin({
       maxEntries: 2000,
       maxAgeSeconds: 5184000
+    }), new workbox.CacheableResponsePlugin({
+      statuses: [0, 200]
+    })]
+  }), 'GET');
+  workbox.registerRoute(({
+    url
+  }) => url.origin === "https://verses.quran.foundation", new workbox.CacheFirst({
+    "cacheName": "quran-foundation-assets",
+    plugins: [new workbox.ExpirationPlugin({
+      maxEntries: 100,
+      maxAgeSeconds: 31536000
     }), new workbox.CacheableResponsePlugin({
       statuses: [0, 200]
     })]

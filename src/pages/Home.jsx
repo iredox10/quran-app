@@ -7,6 +7,7 @@ import { useAppStore } from '../store/useAppStore';
 import { BookOpen, Search, Bookmark, DownloadCloud, X, Hash, Layers3, LibraryBig, Rows3, CalendarDays } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
 import { HIZB_STARTS, JUZ_STARTS, PAGE_GROUPS } from '../data/quranNavigation';
+import PomodoroWidget from '../components/PomodoroWidget';
 
 const BROWSE_MODES = [
     { id: 'surah', label: 'Surah', icon: BookOpen },
@@ -284,6 +285,10 @@ export default function Home() {
                             Open
                         </span>
                     </Link>
+                </section>
+
+                <section>
+                    <PomodoroWidget />
                 </section>
 
                 {/* Recently Read */}

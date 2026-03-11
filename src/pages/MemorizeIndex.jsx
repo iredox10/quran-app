@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../store/useAppStore';
 import { Search, Mic, Bookmark, Folder, ArrowRight, CheckCircle, Award, X } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
+import PomodoroWidget from '../components/PomodoroWidget';
 
 export default function MemorizeIndex() {
     const { setNavHeaderTitle, bookmarks, collections, memorizedSurahs, memorizedAyahs } = useAppStore();
@@ -114,6 +115,10 @@ export default function MemorizeIndex() {
                             </div>
                         </div>
                     </div>
+                </div>
+
+                <div style={{ marginBottom: '2rem' }}>
+                    <PomodoroWidget />
                 </div>
 
                 {/* Library Quick Access */}

@@ -1,0 +1,134 @@
+import { useEffect, useMemo, useState } from 'react';
+import { Clock3, Pause, Play, PlusCircle, RotateCcw, TimerReset, Trash2 } from 'lucide-react';
+import { useAppStore } from '../store/useAppStore';
+import PomodoroConfigModal from './PomodoroConfigModal';
+
+function formatTime(totalSeconds) {
+    const mins = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
+    const secs = String(totalSeconds % 60).padStart(2, '0');
+    return `${mins}:${secs}`;
+}
+
+export default function PomodoroWidget({ compact = false, showConfigurator = true }) {
+    const {
+        pomodoroProfiles,
+        activePomodoroProfileId,
+        addPomodoroProfile,
+        updatePomodoroProfile,
+        deletePomodoroProfile,
+        setActivePomodoroProfile,
+        pomodoroMode,
+        pomodoroIsRunning,
+        pomodoroSecondsLeft,
+        pomodoroCompletedFocusCount,
+        togglePomodoroRunning,
+        resetPomodoroSession,
+        switchPomodoroMode,
+        tickPomodoro,
+    } = useAppStore();
+
+    const activeProfile = useMemo(
+        () => (pomodoroProfiles || []).find((profile) => profile.id === activePomodoroProfileId) || pomodoroProfiles?.[0] || null,
+        [activePomodoroProfileId, pomodoroProfiles]
+    );
+
+    const [draftName, setDraftName] = useState('');
+    const [draftFocusMinutes, setDraftFocusMinutes] = useState(25);
+    const [draftBreakMinutes, setDraftBreakMinutes] = useState(5);
+    const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
+
+    useEffect(() => {
+        if (!pomodoroIsRunning) {
+            return undefined;
+        }
+
+        const intervalId = window.setInterval(() => {
+            tickPomodoro();
+        }, 1000);
+
+        return () => window.clearInterval(intervalId);
+    }, [pomodoroIsRunning, tickPomodoro]);
+
+    useEffect(() => {
+        if (!activeProfile) {
+            return;
+        }
+
+        setDraftName(activeProfile.name);
+        setDraftFocusMinutes(activeProfile.focusMinutes);
+        setDraftBreakMinutes(activeProfile.breakMinutes);
+    }, [activeProfile?.id]);
+
+    const progressRatio = useMemo(() => {
+        const totalSeconds = activeProfile ? (pomodoroMode === 'focus' ? activeProfile.focusMinutes : activeProfile.breakMinutes) * 60 : 0;
+        return totalSeconds ? ((totalSeconds - pomodoroSecondsLeft) / totalSeconds) * 100 : 0;
+    }, [activeProfile, pomodoroMode, pomodoroSecondsLeft]);
+
+    const handleCreateProfile = () => {
+        addPomodoroProfile({
+            name: `Pomodoro ${(pomodoroProfiles?.length || 0) + 1}`,
+            focusMinutes: 25,
+            breakMinutes: 5,
+        });
+    };
+
+    const handleSaveProfile = () => {
+        if (!activeProfile) {
+            return;
+        }
+
+        updatePomodoroProfile(activeProfile.id, {
+            name: draftName,
+            focusMinutes: draftFocusMinutes,
+            breakMinutes: draftBreakMinutes,
+        });
+    };
+
+    if (!activeProfile) {
+        return null;
+    }
+
+    return (
+        <>
+            <button
+                type="button"
+                onClick={() => setIsConfigModalOpen(true)}
+                style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    padding: compact ? '0.6rem 0.9rem' : '0.85rem 1.25rem',
+                    borderRadius: '999px',
+                    background: pomodoroIsRunning ? 'var(--accent-primary)' : 'var(--bg-surface)',
+                    border: pomodoroIsRunning ? '1px solid transparent' : '1px solid var(--border-color)',
+                    color: pomodoroIsRunning ? '#fff' : 'var(--text-primary)',
+                    boxShadow: 'var(--shadow-sm)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    width: compact ? 'auto' : '100%',
+                    justifyContent: compact ? 'center' : 'space-between'
+                }}
+            >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700, fontSize: compact ? '0.9rem' : '1rem' }}>
+                    {pomodoroIsRunning ? <Play size={compact ? 16 : 18} fill="currentColor" /> : <Clock3 size={compact ? 16 : 18} />}
+                    {compact ? (
+                        <span>{formatTime(pomodoroSecondsLeft)}</span>
+                    ) : (
+                        <span>{activeProfile.name} Timer</span>
+                    )}
+                </div>
+
+                {!compact && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span style={{ fontSize: '1.1rem', fontWeight: 800, fontFamily: 'monospace' }}>
+                            {formatTime(pomodoroSecondsLeft)}
+                        </span>
+                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: pomodoroIsRunning ? '#4ade80' : 'var(--text-muted)' }} />
+                    </div>
+                )}
+            </button>
+
+            <PomodoroConfigModal isOpen={isConfigModalOpen} onClose={() => setIsConfigModalOpen(false)} />
+        </>
+    );
+}

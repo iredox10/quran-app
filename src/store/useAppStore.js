@@ -41,9 +41,27 @@ function replaceActivePlanner(state, plannerUpdater) {
     });
 }
 
+const DEFAULT_POMODORO_PROFILES = [
+    { id: 'pomodoro-1', name: 'Reading Focus', focusMinutes: 25, breakMinutes: 5 },
+    { id: 'pomodoro-2', name: 'Deep Study', focusMinutes: 45, breakMinutes: 10 },
+    { id: 'pomodoro-3', name: 'Hifz Sprint', focusMinutes: 15, breakMinutes: 3 },
+];
+
+function getActivePomodoroProfile(state) {
+    const profiles = state.pomodoroProfiles?.length ? state.pomodoroProfiles : DEFAULT_POMODORO_PROFILES;
+    const activeProfileId = state.activePomodoroProfileId || profiles[0]?.id || null;
+    const activeProfile = profiles.find((profile) => profile.id === activeProfileId) || profiles[0] || null;
+    return { profiles, activeProfileId: activeProfile?.id || null, activeProfile };
+}
+
+function getPomodoroDurationSeconds(profile, mode) {
+    if (!profile) return 0;
+    return (mode === 'focus' ? profile.focusMinutes : profile.breakMinutes) * 60;
+}
+
 export const useAppStore = create(
     persist(
-        (set) => ({
+        (set, get) => ({
             theme: 'light', // 'light' or 'dark'
             translationId: 85, // Default: M.A.S. Abdel Haleem (85)
             reciterId: 7, // Default: Mishary
@@ -70,6 +88,14 @@ export const useAppStore = create(
             planners: [],
             activePlannerId: null,
             planner: null,
+            pomodoroProfiles: DEFAULT_POMODORO_PROFILES,
+            activePomodoroProfileId: DEFAULT_POMODORO_PROFILES[0].id,
+            pomodoroHistory: [], // Array of { date, duration, mode, completedAt }
+            pomodoroMode: 'focus',
+            pomodoroIsRunning: false,
+            pomodoroSecondsLeft: DEFAULT_POMODORO_PROFILES[0].focusMinutes * 60,
+            pomodoroCompletedFocusCount: 0,
+            isPomodoroVisibleInReader: false,
 
             setIsSettingsOpen: (isOpen) => set({ isSettingsOpen: isOpen }),
             toggleTheme: () => set((state) => ({
@@ -181,6 +207,143 @@ export const useAppStore = create(
                 const sessions = [...(state.readingSessions || []), session].slice(-500); // Keep last 500
                 return { readingSessions: sessions };
             }),
+            addPomodoroProfile: (profile) => set((state) => {
+                const nextProfile = {
+                    id: profile.id || `pomodoro-${Date.now()}`,
+                    name: profile.name?.trim() || `Pomodoro ${((state.pomodoroProfiles || []).length + 1)}`,
+                    focusMinutes: Number(profile.focusMinutes) || 25,
+                    breakMinutes: Number(profile.breakMinutes) || 5,
+                };
+                const profiles = [...(state.pomodoroProfiles || DEFAULT_POMODORO_PROFILES), nextProfile];
+                return {
+                    pomodoroProfiles: profiles,
+                    activePomodoroProfileId: nextProfile.id,
+                    pomodoroMode: 'focus',
+                    pomodoroIsRunning: false,
+                    pomodoroSecondsLeft: nextProfile.focusMinutes * 60,
+                };
+            }),
+            updatePomodoroProfile: (profileId, updates) => set((state) => {
+                const profiles = (state.pomodoroProfiles || DEFAULT_POMODORO_PROFILES).map((profile) =>
+                    profile.id === profileId
+                        ? {
+                            ...profile,
+                            ...updates,
+                            name: updates.name !== undefined ? (updates.name?.trim() || profile.name) : profile.name,
+                            focusMinutes: updates.focusMinutes !== undefined ? Number(updates.focusMinutes) || profile.focusMinutes : profile.focusMinutes,
+                            breakMinutes: updates.breakMinutes !== undefined ? Number(updates.breakMinutes) || profile.breakMinutes : profile.breakMinutes,
+                        }
+                        : profile
+                );
+                const activeProfile = profiles.find((profile) => profile.id === state.activePomodoroProfileId) || profiles[0] || null;
+                return {
+                    pomodoroProfiles: profiles,
+                    pomodoroSecondsLeft: state.pomodoroIsRunning
+                        ? state.pomodoroSecondsLeft
+                        : getPomodoroDurationSeconds(activeProfile, state.pomodoroMode),
+                };
+            }),
+            deletePomodoroProfile: (profileId) => set((state) => {
+                const existingProfiles = state.pomodoroProfiles || DEFAULT_POMODORO_PROFILES;
+                const profiles = existingProfiles.filter((profile) => profile.id !== profileId);
+                const fallbackProfiles = profiles.length ? profiles : [DEFAULT_POMODORO_PROFILES[0]];
+                const nextActiveProfile = fallbackProfiles.find((profile) => profile.id === state.activePomodoroProfileId) || fallbackProfiles[0];
+                return {
+                    pomodoroProfiles: fallbackProfiles,
+                    activePomodoroProfileId: nextActiveProfile.id,
+                    pomodoroIsRunning: false,
+                    pomodoroMode: 'focus',
+                    pomodoroSecondsLeft: nextActiveProfile.focusMinutes * 60,
+                };
+            }),
+            setActivePomodoroProfile: (profileId) => set((state) => {
+                const profiles = state.pomodoroProfiles || DEFAULT_POMODORO_PROFILES;
+                const activeProfile = profiles.find((profile) => profile.id === profileId) || profiles[0] || null;
+                return {
+                    activePomodoroProfileId: activeProfile?.id || null,
+                    pomodoroIsRunning: false,
+                    pomodoroMode: 'focus',
+                    pomodoroSecondsLeft: activeProfile ? activeProfile.focusMinutes * 60 : 0,
+                };
+            }),
+            logPomodoroSession: (duration, mode = 'focus') => set((state) => {
+                const today = new Date().toISOString().split('T')[0];
+                const session = { date: today, duration, mode, completedAt: Date.now() };
+                const history = [...(state.pomodoroHistory || []), session].slice(-500);
+                const readingSessions = mode === 'focus'
+                    ? [...(state.readingSessions || []), { date: today, duration, type: 'pomodoro', chapterId: null, timestamp: Date.now() }].slice(-500)
+                    : state.readingSessions || [];
+
+                return {
+                    pomodoroHistory: history,
+                    readingSessions,
+                };
+            }),
+            setPomodoroMode: (mode) => set((state) => ({
+                activePomodoroProfileId: getActivePomodoroProfile(state).activeProfileId,
+                pomodoroMode: mode,
+                pomodoroIsRunning: false,
+                pomodoroSecondsLeft: getPomodoroDurationSeconds(getActivePomodoroProfile(state).activeProfile, mode),
+            })),
+            setPomodoroRunning: (isRunning) => set({ pomodoroIsRunning: isRunning }),
+            togglePomodoroRunning: () => set((state) => ({ pomodoroIsRunning: !state.pomodoroIsRunning })),
+            resetPomodoroSession: () => set((state) => ({
+                pomodoroIsRunning: false,
+                pomodoroSecondsLeft: getPomodoroDurationSeconds(getActivePomodoroProfile(state).activeProfile, state.pomodoroMode),
+            })),
+            switchPomodoroMode: () => set((state) => {
+                const nextMode = state.pomodoroMode === 'focus' ? 'break' : 'focus';
+                return {
+                    pomodoroMode: nextMode,
+                    pomodoroIsRunning: false,
+                    pomodoroSecondsLeft: getPomodoroDurationSeconds(getActivePomodoroProfile(state).activeProfile, nextMode),
+                };
+            }),
+            setPomodoroVisibleInReader: (isVisible) => set({ isPomodoroVisibleInReader: isVisible }),
+            tickPomodoro: () => {
+                const state = get();
+                if (!state.pomodoroIsRunning) {
+                    return;
+                }
+
+                const { activeProfile } = getActivePomodoroProfile(state);
+
+                if (state.pomodoroSecondsLeft <= 1) {
+                    const today = new Date().toISOString().split('T')[0];
+                    const duration = getPomodoroDurationSeconds(activeProfile, state.pomodoroMode);
+                    const session = { date: today, duration, mode: state.pomodoroMode, completedAt: Date.now() };
+                    const history = [...(state.pomodoroHistory || []), session].slice(-500);
+                    const readingSessions = state.pomodoroMode === 'focus'
+                        ? [...(state.readingSessions || []), { date: today, duration, type: 'pomodoro', chapterId: null, timestamp: Date.now() }].slice(-500)
+                        : state.readingSessions || [];
+                    const nextMode = state.pomodoroMode === 'focus' ? 'break' : 'focus';
+
+                    try {
+                        const audio = new Audio('data:audio/wav;base64,UklGRlQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YTAAAAAAAP//AAD//wAA//8AAP//AAD//wAA');
+                        audio.play().catch(() => {});
+                    } catch {
+                        // ignore audio failures
+                    }
+
+                    if (navigator.vibrate) {
+                        navigator.vibrate([200, 120, 200]);
+                    }
+
+                    set({
+                        pomodoroHistory: history,
+                        readingSessions,
+                        pomodoroMode: nextMode,
+                        pomodoroIsRunning: false,
+                        pomodoroSecondsLeft: getPomodoroDurationSeconds(activeProfile, nextMode),
+                        pomodoroCompletedFocusCount: state.pomodoroMode === 'focus'
+                            ? state.pomodoroCompletedFocusCount + 1
+                            : state.pomodoroCompletedFocusCount,
+                    });
+                    return;
+                }
+
+                set({ pomodoroSecondsLeft: state.pomodoroSecondsLeft - 1 });
+            },
 
             setPlanner: (planner) => set((state) => {
                 const planners = state.planners || [];
@@ -387,6 +550,8 @@ export const useAppStore = create(
                     planners,
                     activePlannerId: planner?.id || null,
                     planner,
+                    pomodoroProfiles: merged.pomodoroProfiles || DEFAULT_POMODORO_PROFILES,
+                    activePomodoroProfileId: merged.activePomodoroProfileId || merged.pomodoroProfiles?.[0]?.id || DEFAULT_POMODORO_PROFILES[0].id,
                 };
             },
             partialize: (state) => ({
@@ -408,6 +573,14 @@ export const useAppStore = create(
                 collections: state.collections || [],
                 recentlyRead: state.recentlyRead || [],
                 readingSessions: state.readingSessions || [],
+                pomodoroProfiles: state.pomodoroProfiles || DEFAULT_POMODORO_PROFILES,
+                activePomodoroProfileId: state.activePomodoroProfileId || state.pomodoroProfiles?.[0]?.id || DEFAULT_POMODORO_PROFILES[0].id,
+                pomodoroHistory: state.pomodoroHistory || [],
+                pomodoroMode: state.pomodoroMode || 'focus',
+                pomodoroIsRunning: state.pomodoroIsRunning || false,
+                pomodoroSecondsLeft: state.pomodoroSecondsLeft || DEFAULT_POMODORO_PROFILES[0].focusMinutes * 60,
+                pomodoroCompletedFocusCount: state.pomodoroCompletedFocusCount || 0,
+                isPomodoroVisibleInReader: state.isPomodoroVisibleInReader || false,
                 planners: state.planners || (state.planner ? [state.planner] : []),
                 activePlannerId: state.activePlannerId || state.planner?.id || state.planners?.[0]?.id || null,
                 planner: state.planner || null,
