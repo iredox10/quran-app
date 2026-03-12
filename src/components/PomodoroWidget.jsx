@@ -25,7 +25,6 @@ export default function PomodoroWidget({ compact = false, showConfigurator = tru
         togglePomodoroRunning,
         resetPomodoroSession,
         switchPomodoroMode,
-        tickPomodoro,
     } = useAppStore();
 
     const activeProfile = useMemo(
@@ -37,18 +36,6 @@ export default function PomodoroWidget({ compact = false, showConfigurator = tru
     const [draftFocusMinutes, setDraftFocusMinutes] = useState(25);
     const [draftBreakMinutes, setDraftBreakMinutes] = useState(5);
     const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
-
-    useEffect(() => {
-        if (!pomodoroIsRunning) {
-            return undefined;
-        }
-
-        const intervalId = window.setInterval(() => {
-            tickPomodoro();
-        }, 1000);
-
-        return () => window.clearInterval(intervalId);
-    }, [pomodoroIsRunning, tickPomodoro]);
 
     useEffect(() => {
         if (!activeProfile) {

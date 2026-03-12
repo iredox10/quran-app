@@ -9,6 +9,7 @@ export function getWordArabicText(word, mushaf) {
 
 const TAJWEED_HTML_REPLACEMENTS = [
   [/\u0672/g, '\u0670'],
+  [/\u06df/g, ''],
 ];
 
 export function sanitizeTajweedHtml(html) {
