@@ -100,7 +100,6 @@ export const useAppStore = create(
             pomodoroIsRunning: false,
             pomodoroSecondsLeft: DEFAULT_POMODORO_PROFILES[0].focusMinutes * 60,
             pomodoroCompletedFocusCount: 0,
-            isPomodoroVisibleInReader: false,
             showGlobalPomodoro: false,
 
             setIsSettingsOpen: (isOpen) => set({ isSettingsOpen: isOpen }),
@@ -303,7 +302,7 @@ export const useAppStore = create(
             setPomodoroSecondsLeft: (seconds) => set({ pomodoroSecondsLeft: seconds }),
             togglePomodoroRunning: () => set((state) => ({
                 pomodoroIsRunning: !state.pomodoroIsRunning,
-                showGlobalPomodoro: !state.pomodoroIsRunning ? true : state.showGlobalPomodoro
+                showGlobalPomodoro: !state.pomodoroIsRunning ? true : state.showGlobalPomodoro,
             })),
             setShowGlobalPomodoro: (val) => set({ showGlobalPomodoro: val }),
             resetPomodoroSession: () => set((state) => ({
@@ -318,7 +317,6 @@ export const useAppStore = create(
                     pomodoroSecondsLeft: getPomodoroDurationSeconds(getActivePomodoroProfile(state).activeProfile, nextMode),
                 };
             }),
-            setPomodoroVisibleInReader: (isVisible) => set({ isPomodoroVisibleInReader: isVisible }),
             setPomodoroSound: (sound) => set({ pomodoroSound: sound }),
             setPomodoroAutoStartBreaks: (val) => set({ pomodoroAutoStartBreaks: val }),
             setPomodoroAutoStartFocus: (val) => set({ pomodoroAutoStartFocus: val }),
@@ -609,7 +607,6 @@ export const useAppStore = create(
                 pomodoroIsRunning: state.pomodoroIsRunning || false,
                 pomodoroSecondsLeft: state.pomodoroSecondsLeft || DEFAULT_POMODORO_PROFILES[0].focusMinutes * 60,
                 pomodoroCompletedFocusCount: state.pomodoroCompletedFocusCount || 0,
-                isPomodoroVisibleInReader: state.isPomodoroVisibleInReader || false,
                 planners: state.planners || (state.planner ? [state.planner] : []),
                 activePlannerId: state.activePlannerId || state.planner?.id || state.planners?.[0]?.id || null,
                 planner: state.planner || null,

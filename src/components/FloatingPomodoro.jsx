@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, Pause, Settings, X, Timer, ChevronLeft } from 'lucide-react';
+import { Play, Pause, Settings, X, Timer } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 import PomodoroConfigModal from './PomodoroConfigModal';
 
@@ -16,14 +16,12 @@ export default function FloatingPomodoro() {
         pomodoroSecondsLeft,
         pomodoroMode,
         showGlobalPomodoro,
-        setShowGlobalPomodoro,
         togglePomodoroRunning,
     } = useAppStore();
 
     const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
     const [isMinimized, setIsMinimized] = useState(false);
 
-    // If global pomodoro is explicitly turned off from elsewhere (e.g. store logic), reset minimize
     useEffect(() => {
         if (!showGlobalPomodoro) {
             setIsMinimized(false);
@@ -45,7 +43,7 @@ export default function FloatingPomodoro() {
                         transition={{ type: 'spring', stiffness: 400, damping: 25 }}
                         style={{
                             position: 'fixed',
-                            bottom: '80px', // Above bottom nav
+                            bottom: '80px',
                             right: '20px',
                             zIndex: 1000,
                             display: 'flex',
@@ -65,7 +63,7 @@ export default function FloatingPomodoro() {
                                 fontWeight: 800,
                                 fontFamily: 'monospace',
                                 color: 'var(--text-primary)',
-                                width: '48px', // Fixed width to avoid jumping
+                                width: '48px',
                                 textAlign: 'center'
                             }}>
                                 {formatTime(pomodoroSecondsLeft)}
