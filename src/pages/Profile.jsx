@@ -1,7 +1,8 @@
 import React, { useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
-import { User, Settings, Bookmark, Folder, Download, Moon, Sun, ChevronRight, Palette } from 'lucide-react';
+import { User, Settings, Bookmark, Folder, Download, Moon, Sun, ChevronRight, HardDrive } from 'lucide-react';
 
 export default function Profile() {
     const {
@@ -138,6 +139,32 @@ export default function Profile() {
                         </div>
                         <ChevronRight size={20} color="var(--text-muted)" />
                     </button>
+
+                    <Link
+                        to="/offline-library"
+                        className="interactive-hover"
+                        style={{
+                            width: '100%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '1.25rem 1.5rem',
+                            background: 'transparent',
+                            border: 'none',
+                            cursor: 'pointer',
+                            color: 'var(--text-primary)',
+                            textDecoration: 'none',
+                            borderTop: '1px solid var(--border-color)',
+                        }}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                            <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: 'var(--accent-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent-primary)' }}>
+                                <HardDrive size={24} />
+                            </div>
+                            <span style={{ fontSize: '1.1rem', fontWeight: 600 }}>Offline Library</span>
+                        </div>
+                        <ChevronRight size={20} color="var(--text-muted)" />
+                    </Link>
                 </div>
 
             </motion.div>

@@ -16,6 +16,8 @@ const buildCacheKey = (path, params = {}) => {
   return `${path}?${new URLSearchParams(normalizedParams).toString()}`;
 };
 
+export const buildOfflineCacheKey = buildCacheKey;
+
 const fetchWithOfflineCache = async (path, params = {}) => {
   const cacheKey = buildCacheKey(path, params);
 

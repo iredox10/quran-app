@@ -75,6 +75,7 @@ export const useAppStore = create(
             tafsirId: 169, // Default: Ibn Kathir (Abridged) English
             offlineDataStatus: 'idle', // 'idle', 'syncing', 'completed', 'error'
             downloadedSurahs: [], // Array of chapter IDs with offline audio
+            offlinePackStatus: {},
 
             isSettingsOpen: false, // Global settings state
 
@@ -136,6 +137,15 @@ export const useAppStore = create(
             }),
             setTafsirId: (id) => set({ tafsirId: id }),
             setOfflineStatus: (status) => set({ offlineDataStatus: status }),
+            setOfflinePackStatus: (packId, updates) => set((state) => ({
+                offlinePackStatus: {
+                    ...(state.offlinePackStatus || {}),
+                    [packId]: {
+                        ...(state.offlinePackStatus?.[packId] || {}),
+                        ...updates,
+                    },
+                },
+            })),
             addDownloadedSurah: (id) => set((state) => ({
                 downloadedSurahs: state.downloadedSurahs.includes(id) ? state.downloadedSurahs : [...state.downloadedSurahs, id]
             })),
@@ -604,6 +614,7 @@ export const useAppStore = create(
                 activePlannerId: state.activePlannerId || state.planner?.id || state.planners?.[0]?.id || null,
                 planner: state.planner || null,
                 offlineDataStatus: state.offlineDataStatus,
+                offlinePackStatus: state.offlinePackStatus || {},
                 downloadedSurahs: state.downloadedSurahs || [],
                 customAudioBaseUrl: state.customAudioBaseUrl || '',
                 audioSettings: state.audioSettings || {

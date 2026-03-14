@@ -1,22 +1,23 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { useAppStore } from '../store/useAppStore';
 import {
-    AlertCircle,
     ArrowLeft,
     Check,
     CheckCircle,
     ChevronDown,
     ChevronRight,
-    DownloadCloud,
     FolderOpen,
+    HardDrive,
     Moon,
-    RefreshCw,
     Sun,
     Type,
+    WifiOff,
 } from 'lucide-react';
-import { getChapters, getTajweedVerses, getVerses } from '../services/api/quranApi';
 import { getMushafById, getMushafFontOptions, isTajweedEnabledForMushaf, MUSHAFS } from '../config/mushaf';
 import { saveLocalAudioDirHandle } from '../utils/localAudio';
+import { getOfflinePackStats } from '../utils/offlineLibrary';
 
 const RECITERS = [
     { id: 7, name: 'Mishary Rashid Alafasy' },
@@ -208,6 +209,7 @@ function PickerOption({ title, subtitle, active, onClick, sampleStyle }) {
 }
 
 export default function SettingsDrawer({ isOpen, onClose }) {
+    const navigate = useNavigate();
     const {
         theme, toggleTheme,
         fontSize, setFontSize,
@@ -218,7 +220,6 @@ export default function SettingsDrawer({ isOpen, onClose }) {
         arabicFontId, setArabicFont,
         tajweedEnabled, setTajweed,
         tafsirId, setTafsirId,
-        offlineDataStatus, setOfflineStatus,
         localAudioDirHandle, setLocalAudioDirHandle
     } = useAppStore();
 
@@ -226,7 +227,6 @@ export default function SettingsDrawer({ isOpen, onClose }) {
     const mushafFonts = getMushafFontOptions(mushafId);
     const isTajweedActive = isTajweedEnabledForMushaf(mushafId, tajweedEnabled);
 
-    const [syncProgress, setSyncProgress] = useState(0);
     const [activeView, setActiveView] = useState(DRAWER_VIEWS.root);
     const [showAdvanced, setShowAdvanced] = useState(false);
 
@@ -253,40 +253,11 @@ export default function SettingsDrawer({ isOpen, onClose }) {
         [arabicFontId, mushafFonts]
     );
 
-    const handleSyncQuran = async () => {
-        try {
-            setOfflineStatus('syncing');
-            setSyncProgress(0);
-
-            const chapters = await getChapters();
-            setSyncProgress(5);
-
-            for (let i = 0; i < chapters.length; i++) {
-                const chapterId = chapters[i].id;
-                const totalPages = Math.ceil(chapters[i].verses_count / 50);
-
-                for (let page = 1; page <= totalPages; page++) {
-                    await getVerses(chapterId, translationId, reciterId, page, mushafId);
-                }
-
-                if (mushaf.tajweedSource === 'uthmani_html' && isTajweedActive) {
-                    await getTajweedVerses(chapterId);
-                }
-
-                setSyncProgress(5 + Math.floor((i / chapters.length) * 95));
-
-                if (i % 5 === 0) {
-                    await new Promise((resolve) => setTimeout(resolve, 50));
-                }
-            }
-
-            setOfflineStatus('completed');
-            setSyncProgress(100);
-        } catch (error) {
-            console.error('Sync failed', error);
-            setOfflineStatus('error');
-        }
-    };
+    const { data: offlineStats } = useQuery({
+        queryKey: ['offline-pack-stats', translationId, reciterId, mushafId],
+        queryFn: () => getOfflinePackStats({ translationId, reciterId, mushafId }),
+        enabled: isOpen,
+    });
 
     const handleSelectAudioFolder = async () => {
         try {
@@ -643,81 +614,59 @@ export default function SettingsDrawer({ isOpen, onClose }) {
                                     <div>
                                         <div style={sectionTitleStyle()}>Offline</div>
                                         <div style={{ ...cardStyle(), padding: '1rem 1.05rem' }}>
-                                            <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>Quran Text</div>
-                                            <div style={{ color: 'var(--text-secondary)', fontSize: '0.84rem', marginBottom: '0.95rem' }}>
-                                                Download the current reading setup for offline access.
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', alignItems: 'flex-start', marginBottom: '0.95rem' }}>
+                                                <div>
+                                                    <div style={{ fontWeight: 600, marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                                                        <HardDrive size={16} aria-hidden="true" />
+                                                        <span>Offline Library</span>
+                                                    </div>
+                                                    <div style={{ color: 'var(--text-secondary)', fontSize: '0.84rem' }}>
+                                                        Manage downloadable Quran packs and keep your reading setup available offline.
+                                                    </div>
+                                                </div>
+                                                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.35rem 0.65rem', borderRadius: '999px', background: navigator.onLine ? 'var(--bg-secondary)' : 'rgba(239, 68, 68, 0.12)', color: navigator.onLine ? 'var(--text-secondary)' : '#ef4444', fontWeight: 700, fontSize: '0.76rem', whiteSpace: 'nowrap' }}>
+                                                    <WifiOff size={13} aria-hidden="true" />
+                                                    {navigator.onLine ? 'Online' : 'Offline'}
+                                                </div>
                                             </div>
 
-                                            {offlineDataStatus === 'completed' ? (
-                                                <div style={{
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: '0.6rem',
-                                                    padding: '0.9rem 1rem',
-                                                    borderRadius: '14px',
-                                                    backgroundColor: 'rgba(34, 197, 94, 0.1)',
-                                                    color: '#22c55e',
-                                                    fontWeight: 600,
-                                                }}>
-                                                    <CheckCircle size={18} aria-hidden="true" />
-                                                    <span style={{ flex: 1 }}>Quran Text Ready Offline</span>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setOfflineStatus('idle')}
-                                                        style={{ color: 'var(--text-secondary)', fontSize: '0.78rem', textDecoration: 'underline' }}
-                                                    >
-                                                        Re-sync
-                                                    </button>
+                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.75rem', marginBottom: '0.95rem' }}>
+                                                <div style={{ padding: '0.9rem', borderRadius: '14px', background: 'var(--bg-secondary)' }}>
+                                                    <div style={{ color: 'var(--text-muted)', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700, marginBottom: '0.25rem' }}>Quran text</div>
+                                                    <div style={{ color: 'var(--text-primary)', fontWeight: 800, fontSize: '0.92rem' }}>
+                                                        {offlineStats?.quranText?.downloaded ? offlineStats.quranText.sizeLabel : 'Not downloaded'}
+                                                    </div>
                                                 </div>
-                                            ) : (
-                                                <button
-                                                    type="button"
-                                                    onClick={handleSyncQuran}
-                                                    disabled={offlineDataStatus === 'syncing'}
-                                                    style={{
-                                                        width: '100%',
-                                                        minHeight: '46px',
-                                                        borderRadius: '14px',
-                                                        background: offlineDataStatus === 'syncing' ? 'var(--bg-secondary)' : 'var(--accent-primary)',
-                                                        color: offlineDataStatus === 'syncing' ? 'var(--text-muted)' : '#fff',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        gap: '0.55rem',
-                                                        fontWeight: 600,
-                                                        position: 'relative',
-                                                        overflow: 'hidden',
-                                                    }}
-                                                >
-                                                    {offlineDataStatus === 'syncing' ? <RefreshCw size={18} className="spin" aria-hidden="true" /> : <DownloadCloud size={18} aria-hidden="true" />}
-                                                    <span>{offlineDataStatus === 'syncing' ? `Downloading ${syncProgress}%` : 'Download Quran Text'}</span>
-                                                    {offlineDataStatus === 'syncing' && (
-                                                        <div style={{
-                                                            position: 'absolute',
-                                                            left: 0,
-                                                            bottom: 0,
-                                                            height: '3px',
-                                                            width: `${syncProgress}%`,
-                                                            background: '#fff',
-                                                            opacity: 0.65,
-                                                        }} />
-                                                    )}
-                                                </button>
-                                            )}
+                                                <div style={{ padding: '0.9rem', borderRadius: '14px', background: 'var(--bg-secondary)' }}>
+                                                    <div style={{ color: 'var(--text-muted)', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700, marginBottom: '0.25rem' }}>Tajweed</div>
+                                                    <div style={{ color: 'var(--text-primary)', fontWeight: 800, fontSize: '0.92rem' }}>
+                                                        {offlineStats?.tajweed?.downloaded ? offlineStats.tajweed.sizeLabel : 'Not downloaded'}
+                                                    </div>
+                                                </div>
+                                            </div>
 
-                                            {offlineDataStatus === 'error' && (
-                                                <div style={{
-                                                    marginTop: '0.75rem',
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    onClose();
+                                                    navigate('/offline-library');
+                                                }}
+                                                style={{
+                                                    width: '100%',
+                                                    minHeight: '46px',
+                                                    borderRadius: '14px',
+                                                    background: 'var(--accent-primary)',
+                                                    color: '#fff',
                                                     display: 'flex',
                                                     alignItems: 'center',
-                                                    gap: '0.45rem',
-                                                    color: '#ef4444',
-                                                    fontSize: '0.82rem'
-                                                }}>
-                                                    <AlertCircle size={14} aria-hidden="true" />
-                                                    <span>Download failed. Try again with a stable connection.</span>
-                                                </div>
-                                            )}
+                                                    justifyContent: 'center',
+                                                    gap: '0.55rem',
+                                                    fontWeight: 600,
+                                                }}
+                                            >
+                                                <CheckCircle size={18} aria-hidden="true" />
+                                                <span>Open Offline Library</span>
+                                            </button>
                                         </div>
                                     </div>
                                 </section>
