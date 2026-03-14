@@ -1,0 +1,338 @@
+/* Planner.css */
+/* Advanced UI styles for the Planner application */
+
+.planner-container {
+    padding-bottom: 6rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* Hero Section */
+.planner-hero {
+    position: relative;
+    border-radius: 28px;
+    padding: 2.5rem;
+    overflow: hidden;
+    margin-bottom: 2rem;
+    background: linear-gradient(135deg, var(--bg-surface) 0%, var(--bg-secondary) 100%);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-md);
+    isolation: isolate;
+}
+
+.planner-hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(var(--accent-primary) 1.5px, transparent 1.5px);
+    background-size: 32px 32px;
+    opacity: 0.08;
+    z-index: -1;
+}
+
+html[data-theme='dark'] .planner-hero::before {
+    opacity: 0.15;
+}
+
+.planner-hero-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2rem;
+    flex-wrap: wrap;
+}
+
+.planner-hero-text {
+    flex: 1 1 300px;
+}
+
+.planner-hero-title {
+    font-size: clamp(2rem, 5vw, 2.8rem);
+    font-weight: 800;
+    line-height: 1.1;
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+    letter-spacing: -0.02em;
+}
+
+/* Stat Cards */
+.stat-card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1.25rem;
+    margin-bottom: 2rem;
+}
+
+.stat-card {
+    padding: 1.25rem;
+    border-radius: 20px;
+    background: var(--bg-primary);
+    border: 1px solid rgba(0, 0, 0, 0.04);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.stat-card-icon {
+    display: inline-flex;
+    padding: 0.6rem;
+    border-radius: 12px;
+    background: var(--bg-secondary);
+    color: var(--accent-primary);
+    margin-bottom: 0.8rem;
+}
+
+.stat-card-label {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.25rem;
+    font-weight: 700;
+}
+
+.stat-card-value {
+    color: var(--text-primary);
+    font-weight: 800;
+    font-size: 1.4rem;
+    line-height: 1.2;
+}
+
+.stat-card-helper {
+    color: var(--text-secondary);
+    margin-top: 0.4rem;
+    font-size: 0.85rem;
+}
+
+/* Planner Cards List */
+.planners-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.25rem;
+    margin-bottom: 2rem;
+}
+
+.planner-item-card {
+    padding: 1.5rem;
+    border-radius: 24px;
+    background: var(--bg-primary);
+    border: 2px solid rgba(0, 0, 0, 0.04);
+    position: relative;
+    transition: all 0.2s ease;
+    display: flex;
+    flex-direction: column;
+}
+
+.planner-item-card.active {
+    background: var(--accent-light);
+    border-color: var(--accent-primary);
+    box-shadow: 0 8px 32px var(--accent-light);
+}
+
+/* Inputs */
+.planner-input {
+    width: 100%;
+    padding: 1.1rem 1.25rem;
+    border-radius: 16px;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    outline: none;
+    font-family: inherit;
+    font-weight: 600;
+    font-size: 1rem;
+    transition: all 0.2s;
+}
+
+.planner-input:focus {
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 4px var(--accent-light);
+}
+
+html[data-theme='dark'] .planner-input {
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+}
+
+.unit-btn {
+    padding: 1.25rem;
+    border-radius: 18px;
+    text-align: left;
+    background: var(--bg-primary);
+    border: 2px solid rgba(0, 0, 0, 0.04);
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+.unit-btn.active {
+    background: var(--accent-light);
+    border-color: var(--accent-primary);
+}
+
+.unit-btn:hover:not(.active) {
+    border-color: var(--accent-light);
+    background: var(--bg-secondary);
+}
+
+/* Timeline */
+.timeline-card {
+    border-radius: 24px;
+    background: var(--bg-surface);
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+}
+
+.timeline-header {
+    padding: 1.5rem 2rem;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    background: var(--bg-primary);
+}
+
+.timeline-list {
+    position: relative;
+    padding: 0;
+}
+
+.timeline-line {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 3rem;
+    width: 2px;
+    background: rgba(0, 0, 0, 0.06);
+    z-index: 0;
+}
+
+html[data-theme='dark'] .timeline-line {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.timeline-item {
+    display: flex;
+    gap: 1.5rem;
+    padding: 1.5rem 2rem;
+    position: relative;
+    z-index: 1;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.03);
+    transition: background 0.2s;
+}
+
+.timeline-item.done {
+    background: rgba(34, 197, 94, 0.02);
+}
+
+.timeline-item.today {
+    background: var(--bg-primary);
+}
+
+.timeline-node {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-secondary);
+    color: var(--text-muted);
+    border: 2px solid rgba(0, 0, 0, 0.08);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    flex-shrink: 0;
+    z-index: 2;
+    cursor: pointer;
+}
+
+html[data-theme='dark'] .timeline-node {
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.timeline-node:hover {
+    transform: scale(1.05);
+}
+
+.timeline-node.done {
+    background: #22c55e;
+    border-color: #22c55e;
+    color: white;
+}
+
+.timeline-node.today {
+    background: var(--accent-light);
+    border-color: var(--accent-primary);
+    color: var(--accent-primary);
+    box-shadow: 0 0 0 4px var(--bg-primary), 0 0 0 6px var(--accent-light);
+}
+
+.assignment-card {
+    margin-top: 1.25rem;
+    padding: 1.25rem;
+    border-radius: 16px;
+    background: var(--bg-primary);
+    border: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.assignment-card.done {
+    background: rgba(34, 197, 94, 0.04);
+}
+
+/* Base Buttons */
+.btn-secondary {
+    padding: 0.85rem 1.5rem;
+    border-radius: 999px;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-secondary:hover {
+    background: var(--border-color);
+    /* assuming it might be slightly darker/lighter */
+    filter: brightness(0.95);
+}
+
+html[data-theme='dark'] .btn-secondary:hover {
+    filter: brightness(1.2);
+}
+
+/* Overrides for mobile responsiveness */
+@media (max-width: 768px) {
+    .planner-hero {
+        padding: 1.5rem;
+    }
+
+    .planner-hero-text,
+    .planner-hero-progress {
+        flex: 1 1 100%;
+    }
+
+    .timeline-item {
+        padding: 1.25rem;
+        gap: 1rem;
+    }
+
+    .timeline-line {
+        left: calc(1.25rem + 20px);
+    }
+
+    .timeline-node {
+        width: 40px;
+        height: 40px;
+    }
+
+    .timeline-node svg {
+        width: 20px;
+        height: 20px;
+    }
+}
