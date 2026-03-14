@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
 import { getLocalAudioDirHandle } from '../utils/localAudio';
@@ -32,15 +32,25 @@ export default function Layout() {
     const isImmersivePage = isSurahPage || isMemorizePage || isPagePage;
     const hasAudio = audioPlaylist.length > 0 || !!currentAudioUrl;
     const shouldReturnToPlanner = Boolean(location.state?.backToPlanner);
+    const shouldForceHomeBack = isSurahPage || isMemorizePage;
+
+    const navigateHomeAtTop = useCallback((replace = false) => {
+        navigate('/', {
+            replace,
+            state: {
+                scrollToTop: Date.now(),
+            },
+        });
+    }, [navigate]);
 
     const handleImmersiveBack = () => {
-        if (shouldReturnToPlanner) {
-            navigate('/planner');
+        if (shouldForceHomeBack) {
+            navigateHomeAtTop(true);
             return;
         }
 
-        if (isMemorizePage) {
-            navigate('/memorize');
+        if (shouldReturnToPlanner) {
+            navigate('/planner');
             return;
         }
 
@@ -69,6 +79,31 @@ export default function Layout() {
 
         return () => window.clearInterval(intervalId);
     }, [pomodoroIsRunning, tickPomodoro]);
+
+    useEffect(() => {
+        if (!shouldForceHomeBack) {
+            return undefined;
+        }
+
+        const state = window.history.state || {};
+        if (!state.quranBackTrap || state.quranBackTrapPath !== location.pathname) {
+            window.history.pushState(
+                {
+                    ...state,
+                    quranBackTrap: true,
+                    quranBackTrapPath: location.pathname,
+                },
+                ''
+            );
+        }
+
+        const handlePopState = () => {
+            navigateHomeAtTop(true);
+        };
+
+        window.addEventListener('popstate', handlePopState);
+        return () => window.removeEventListener('popstate', handlePopState);
+    }, [location.pathname, navigateHomeAtTop, shouldForceHomeBack]);
 
     useEffect(() => {
         let hideTimer;

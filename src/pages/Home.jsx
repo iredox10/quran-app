@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getChapters } from '../services/api/quranApi';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../store/useAppStore';
 import { BookOpen, Search, Bookmark, DownloadCloud, X, Hash, Layers3, LibraryBig, Rows3 } from 'lucide-react';
@@ -66,9 +66,20 @@ function getBrowseItems(mode, chapters) {
 
 export default function Home() {
     const { recentlyRead, bookmark } = useAppStore();
+    const location = useLocation();
+    const navigate = useNavigate();
     const [searchQuery, setSearchQuery] = useState('');
     const [isOnline, setIsOnline] = useState(navigator.onLine);
     const [browseMode, setBrowseMode] = useState('surah');
+
+    useEffect(() => {
+        if (!location.state?.scrollToTop) {
+            return;
+        }
+
+        window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+        navigate(location.pathname, { replace: true, state: null });
+    }, [location.pathname, location.state, navigate]);
 
     useEffect(() => {
         const handleOnline = () => setIsOnline(true);
