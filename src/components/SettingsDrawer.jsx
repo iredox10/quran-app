@@ -264,10 +264,10 @@ function CloudSyncView({ currentUser, setCurrentUser }) {
         setLoading(true);
         try {
             await authService.logout();
-            setCurrentUser(null);
         } catch (err) {
-            console.error(err);
+            console.error('Logout error:', err);
         } finally {
+            setCurrentUser(null);
             setLoading(false);
         }
     };
