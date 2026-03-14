@@ -15,10 +15,13 @@ import TajweedTooltip from './components/TajweedTooltip';
 import GlobalAudioPlayer from './components/GlobalAudioPlayer';
 import Profile from './pages/Profile';
 import FloatingPomodoro from './components/FloatingPomodoro';
+import CloudSync from './components/CloudSync';
 
 function App() {
   return (
     <BrowserRouter>
+      {/* Headless cloud sync — runs silently in the background on every page */}
+      <CloudSync />
       <Routes>
         <Route element={<Layout />}>
           <Route path="/" element={<Home />} />

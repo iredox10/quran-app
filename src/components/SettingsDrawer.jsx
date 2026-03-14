@@ -14,10 +14,17 @@ import {
     Sun,
     Type,
     WifiOff,
+    Cloud,
+    UploadCloud,
+    DownloadCloud,
+    LogOut,
+    RefreshCw,
 } from 'lucide-react';
 import { getMushafById, getMushafFontOptions, isTajweedEnabledForMushaf, MUSHAFS } from '../config/mushaf';
 import { saveLocalAudioDirHandle } from '../utils/localAudio';
 import { getOfflinePackStats } from '../utils/offlineLibrary';
+import { authService, syncService } from '../services/appwrite';
+import { getSyncableState } from '../store/useAppStore';
 
 const RECITERS = [
     { id: 7, name: 'Mishary Rashid Alafasy' },
@@ -52,6 +59,7 @@ const DRAWER_VIEWS = {
     reciter: 'reciter',
     arabicFont: 'arabicFont',
     tafsir: 'tafsir',
+    sync: 'sync',
 };
 
 function sectionTitleStyle() {
@@ -208,6 +216,271 @@ function PickerOption({ title, subtitle, active, onClick, sampleStyle }) {
     );
 }
 
+function CloudSyncView({ currentUser, setCurrentUser }) {
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [name, setName] = useState('');
+    const [isLoginMode, setIsLoginMode] = useState(true);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+    const [syncStatus, setSyncStatus] = useState('');
+    const [syncLoading, setSyncLoading] = useState(false);
+
+    useEffect(() => {
+        const checkUser = async () => {
+            try {
+                const user = await authService.getCurrentUser();
+                setCurrentUser(user);
+            } catch {
+                setCurrentUser(null);
+            }
+        };
+        if (!currentUser) checkUser();
+    }, [currentUser, setCurrentUser]);
+
+    const handleAuth = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        setError('');
+        try {
+            if (isLoginMode) {
+                await authService.login(email, password);
+            } else {
+                await authService.register(email, password, name);
+                await authService.login(email, password); // auto login after register
+            }
+            const user = await authService.getCurrentUser();
+            setCurrentUser(user);
+            setEmail('');
+            setPassword('');
+        } catch (err) {
+            setError(err.message || 'Authentication failed');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleLogout = async () => {
+        setLoading(true);
+        try {
+            await authService.logout();
+            setCurrentUser(null);
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handlePush = async () => {
+        if (!currentUser) return;
+        setSyncLoading(true);
+        setSyncStatus('Pushing to cloud...');
+        try {
+            const state = getSyncableState(useAppStore.getState());
+            const result = await syncService.pushState(currentUser.$id, state);
+            useAppStore.setState({ lastSyncAt: result.updatedAt });
+            setSyncStatus('Successfully backed up to cloud! ✅');
+            setTimeout(() => setSyncStatus(''), 3000);
+        } catch (err) {
+            console.error(err);
+            setSyncStatus('Failed to push data ❌');
+        } finally {
+            setSyncLoading(false);
+        }
+    };
+
+    const handlePull = async () => {
+        if (!currentUser) return;
+        if (!window.confirm("Warning: This will overwrite your local data with the cloud data. Proceed?")) return;
+        
+        setSyncLoading(true);
+        setSyncStatus('Pulling from cloud...');
+        try {
+            const remoteData = await syncService.pullState(currentUser.$id);
+            if (remoteData && remoteData.state) {
+                useAppStore.setState({ ...remoteData.state, lastSyncAt: remoteData.updatedAt });
+                setSyncStatus('Successfully restored from cloud! ✅');
+            } else {
+                setSyncStatus('No cloud backup found.');
+            }
+            setTimeout(() => setSyncStatus(''), 3000);
+        } catch (err) {
+            console.error(err);
+            setSyncStatus('Failed to pull data ❌');
+        } finally {
+            setSyncLoading(false);
+        }
+    };
+
+    if (currentUser) {
+        return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div style={{ ...cardStyle(), padding: '1rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'var(--accent-light)', color: 'var(--accent-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', fontWeight: 'bold' }}>
+                        {currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'U'}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{currentUser.name || 'User'}</div>
+                        <div style={{ color: 'var(--text-secondary)', fontSize: '0.84rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{currentUser.email}</div>
+                    </div>
+                    <button 
+                        type="button" 
+                        onClick={handleLogout} 
+                        disabled={loading}
+                        style={{ padding: '0.5rem', color: 'var(--text-muted)', background: 'transparent' }}
+                        aria-label="Logout"
+                    >
+                        <LogOut size={20} />
+                    </button>
+                </div>
+
+                <div style={{ ...cardStyle(), padding: '1rem' }}>
+                    <div style={{ marginBottom: '1rem' }}>
+                        <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>Cloud Backup</div>
+                        <div style={{ color: 'var(--text-secondary)', fontSize: '0.84rem' }}>
+                            Securely back up your bookmarks, memorization progress, planners, and reading history.
+                        </div>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        <button
+                            type="button"
+                            onClick={handlePush}
+                            disabled={syncLoading}
+                            style={{
+                                width: '100%',
+                                minHeight: '46px',
+                                borderRadius: '14px',
+                                background: 'var(--accent-primary)',
+                                color: '#fff',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '0.55rem',
+                                fontWeight: 600,
+                                opacity: syncLoading ? 0.7 : 1
+                            }}
+                        >
+                            <UploadCloud size={18} aria-hidden="true" />
+                            <span>{syncLoading ? 'Syncing...' : 'Backup to Cloud'}</span>
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={handlePull}
+                            disabled={syncLoading}
+                            style={{
+                                width: '100%',
+                                minHeight: '46px',
+                                borderRadius: '14px',
+                                border: '1px solid var(--accent-primary)',
+                                background: 'transparent',
+                                color: 'var(--accent-primary)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '0.55rem',
+                                fontWeight: 600,
+                                opacity: syncLoading ? 0.7 : 1
+                            }}
+                        >
+                            <DownloadCloud size={18} aria-hidden="true" />
+                            <span>Restore from Cloud</span>
+                        </button>
+                    </div>
+
+                    {syncStatus && (
+                        <div style={{ marginTop: '1rem', textAlign: 'center', fontSize: '0.84rem', color: syncStatus.includes('Failed') ? '#ef4444' : 'var(--text-secondary)' }}>
+                            {syncStatus}
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div style={{ ...cardStyle(), padding: '1.25rem 1rem' }}>
+            <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+                <div style={{ display: 'inline-flex', padding: '1rem', borderRadius: '50%', background: 'var(--accent-light)', color: 'var(--accent-primary)', marginBottom: '0.75rem' }}>
+                    <Cloud size={24} />
+                </div>
+                <h3 style={{ fontWeight: 600, fontSize: '1.1rem', marginBottom: '0.25rem' }}>Cloud Sync</h3>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.84rem', lineHeight: 1.4 }}>
+                    Create an account to securely back up and sync your reading progress across devices.
+                </p>
+            </div>
+
+            <form onSubmit={handleAuth} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                {!isLoginMode && (
+                    <input
+                        type="text"
+                        placeholder="Your Name"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        required
+                        style={{ width: '100%', padding: '0.8rem 1rem', borderRadius: '12px', border: '1px solid rgba(0,0,0,0.1)', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                    />
+                )}
+                <input
+                    type="email"
+                    placeholder="Email Address"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    style={{ width: '100%', padding: '0.8rem 1rem', borderRadius: '12px', border: '1px solid rgba(0,0,0,0.1)', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                />
+                <input
+                    type="password"
+                    placeholder="Password (min 8 chars)"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    minLength={8}
+                    style={{ width: '100%', padding: '0.8rem 1rem', borderRadius: '12px', border: '1px solid rgba(0,0,0,0.1)', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                />
+
+                {error && (
+                    <div style={{ color: '#ef4444', fontSize: '0.84rem', textAlign: 'center' }}>
+                        {error}
+                    </div>
+                )}
+
+                <button
+                    type="submit"
+                    disabled={loading}
+                    style={{
+                        width: '100%',
+                        minHeight: '46px',
+                        borderRadius: '12px',
+                        background: 'var(--accent-primary)',
+                        color: '#fff',
+                        fontWeight: 600,
+                        marginTop: '0.5rem',
+                        opacity: loading ? 0.7 : 1
+                    }}
+                >
+                    {loading ? 'Processing...' : (isLoginMode ? 'Sign In' : 'Create Account')}
+                </button>
+
+                <div style={{ textAlign: 'center', marginTop: '0.5rem' }}>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setIsLoginMode(!isLoginMode);
+                            setError('');
+                        }}
+                        style={{ color: 'var(--text-secondary)', fontSize: '0.84rem', background: 'transparent', textDecoration: 'underline' }}
+                    >
+                        {isLoginMode ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
+                    </button>
+                </div>
+            </form>
+        </div>
+    );
+}
+
 export default function SettingsDrawer({ isOpen, onClose }) {
     const navigate = useNavigate();
     const {
@@ -220,7 +493,8 @@ export default function SettingsDrawer({ isOpen, onClose }) {
         arabicFontId, setArabicFont,
         tajweedEnabled, setTajweed,
         tafsirId, setTafsirId,
-        localAudioDirHandle, setLocalAudioDirHandle
+        localAudioDirHandle, setLocalAudioDirHandle,
+        currentUser, setCurrentUser
     } = useAppStore();
 
     const mushaf = getMushafById(mushafId);
@@ -231,9 +505,13 @@ export default function SettingsDrawer({ isOpen, onClose }) {
     const [showAdvanced, setShowAdvanced] = useState(false);
 
     useEffect(() => {
-        if (isOpen) {
-            setActiveView(DRAWER_VIEWS.root);
+        let isMounted = true;
+        if (isOpen && isMounted) {
+            setTimeout(() => {
+                if (isMounted) setActiveView(DRAWER_VIEWS.root);
+            }, 0);
         }
+        return () => { isMounted = false; };
     }, [isOpen]);
 
     const selectedTranslation = useMemo(
@@ -386,6 +664,13 @@ export default function SettingsDrawer({ isOpen, onClose }) {
             };
         }
 
+        if (activeView === DRAWER_VIEWS.sync) {
+            return {
+                title: 'Cloud Sync',
+                content: <CloudSyncView currentUser={currentUser} setCurrentUser={setCurrentUser} />
+            };
+        }
+
         return null;
     };
 
@@ -491,6 +776,11 @@ export default function SettingsDrawer({ isOpen, onClose }) {
                                     <SelectionRow label="Mushaf" value={mushaf.name} onClick={() => setActiveView(DRAWER_VIEWS.mushaf)} />
                                     <SelectionRow label="Translation" value={selectedTranslation?.name} onClick={() => setActiveView(DRAWER_VIEWS.translation)} />
                                     <SelectionRow label="Reciter" value={selectedReciter?.name} onClick={() => setActiveView(DRAWER_VIEWS.reciter)} />
+                                    <SelectionRow 
+                                        label="Cloud Sync" 
+                                        hint={currentUser ? `Signed in as ${currentUser.name || currentUser.email}` : "Backup your reading progress"} 
+                                        onClick={() => setActiveView(DRAWER_VIEWS.sync)} 
+                                    />
                                     <div style={{ padding: '1rem 1.05rem' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '0.65rem' }}>
                                             <div>

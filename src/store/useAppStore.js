@@ -107,6 +107,9 @@ export const useAppStore = create(
                 theme: state.theme === 'light' ? 'dark' : 'light'
             })),
 
+            currentUser: null,
+            setCurrentUser: (user) => set({ currentUser: user }),
+
             setTranslation: (id) => set({ translationId: id }),
             setReciter: (id) => set({ reciterId: id }),
             setFontSize: (size) => set({ fontSize: size }),
@@ -559,6 +562,9 @@ export const useAppStore = create(
             // Native File System Handle for Offline Audio
             localAudioDirHandle: null,
             setLocalAudioDirHandle: (handle) => set({ localAudioDirHandle: handle }),
+
+            lastSyncAt: 0,
+            setLastSyncAt: (timestamp) => set({ lastSyncAt: timestamp }),
         }),
         {
             name: 'quran-app-storage',
@@ -581,45 +587,50 @@ export const useAppStore = create(
                     activePomodoroProfileId: merged.activePomodoroProfileId || merged.pomodoroProfiles?.[0]?.id || DEFAULT_POMODORO_PROFILES[0].id,
                 };
             },
-            partialize: (state) => ({
-                theme: state.theme,
-                translationId: state.translationId,
-                reciterId: state.reciterId,
-                fontSize: state.fontSize,
-                translationFontSize: state.translationFontSize || 2,
-                readingMode: state.readingMode,
-                mushafId: state.mushafId || DEFAULT_MUSHAF.id,
-                arabicFontId: state.arabicFontId || DEFAULT_ARABIC_FONT_ID,
-                arabicFont: state.arabicFont,
-                tajweedEnabled: state.tajweedEnabled,
-                tafsirId: state.tafsirId,
-                bookmark: state.bookmark,
-                bookmarks: state.bookmarks || [],
-                memorizedAyahs: state.memorizedAyahs || [],
-                memorizedSurahs: state.memorizedSurahs || [],
-                collections: state.collections || [],
-                recentlyRead: state.recentlyRead || [],
-                readingSessions: state.readingSessions || [],
-                pomodoroProfiles: state.pomodoroProfiles || DEFAULT_POMODORO_PROFILES,
-                activePomodoroProfileId: state.activePomodoroProfileId || state.pomodoroProfiles?.[0]?.id || DEFAULT_POMODORO_PROFILES[0].id,
-                pomodoroHistory: state.pomodoroHistory || [],
-                pomodoroMode: state.pomodoroMode || 'focus',
-                pomodoroIsRunning: state.pomodoroIsRunning || false,
-                pomodoroSecondsLeft: state.pomodoroSecondsLeft || DEFAULT_POMODORO_PROFILES[0].focusMinutes * 60,
-                pomodoroCompletedFocusCount: state.pomodoroCompletedFocusCount || 0,
-                planners: state.planners || (state.planner ? [state.planner] : []),
-                activePlannerId: state.activePlannerId || state.planner?.id || state.planners?.[0]?.id || null,
-                planner: state.planner || null,
-                offlineDataStatus: state.offlineDataStatus,
-                offlinePackStatus: state.offlinePackStatus || {},
-                downloadedSurahs: state.downloadedSurahs || [],
-                customAudioBaseUrl: state.customAudioBaseUrl || '',
-                audioSettings: state.audioSettings || {
-                    startRange: null, endRange: null, reciterId: 7,
-                    repeatSelection: 1, repeatAya: 1, delayBetweenAyas: 0,
-                    playbackSpeed: 1.0, scrollWhilePlaying: true
-                }
-            }), // Persist settings and user data
+            partialize: (state) => getSyncableState(state), // Persist settings and user data
         }
     )
 );
+
+export function getSyncableState(state) {
+    return {
+        theme: state.theme,
+        translationId: state.translationId,
+        reciterId: state.reciterId,
+        fontSize: state.fontSize,
+        translationFontSize: state.translationFontSize || 2,
+        readingMode: state.readingMode,
+        mushafId: state.mushafId || DEFAULT_MUSHAF.id,
+        arabicFontId: state.arabicFontId || DEFAULT_ARABIC_FONT_ID,
+        arabicFont: state.arabicFont,
+        tajweedEnabled: state.tajweedEnabled,
+        tafsirId: state.tafsirId,
+        bookmark: state.bookmark,
+        bookmarks: state.bookmarks || [],
+        memorizedAyahs: state.memorizedAyahs || [],
+        memorizedSurahs: state.memorizedSurahs || [],
+        collections: state.collections || [],
+        recentlyRead: state.recentlyRead || [],
+        readingSessions: state.readingSessions || [],
+        pomodoroProfiles: state.pomodoroProfiles || DEFAULT_POMODORO_PROFILES,
+        activePomodoroProfileId: state.activePomodoroProfileId || state.pomodoroProfiles?.[0]?.id || DEFAULT_POMODORO_PROFILES[0].id,
+        pomodoroHistory: state.pomodoroHistory || [],
+        pomodoroMode: state.pomodoroMode || 'focus',
+        pomodoroIsRunning: state.pomodoroIsRunning || false,
+        pomodoroSecondsLeft: state.pomodoroSecondsLeft || DEFAULT_POMODORO_PROFILES[0].focusMinutes * 60,
+        pomodoroCompletedFocusCount: state.pomodoroCompletedFocusCount || 0,
+        planners: state.planners || (state.planner ? [state.planner] : []),
+        activePlannerId: state.activePlannerId || state.planner?.id || state.planners?.[0]?.id || null,
+        planner: state.planner || null,
+        offlineDataStatus: state.offlineDataStatus,
+        offlinePackStatus: state.offlinePackStatus || {},
+        downloadedSurahs: state.downloadedSurahs || [],
+        customAudioBaseUrl: state.customAudioBaseUrl || '',
+        audioSettings: state.audioSettings || {
+            startRange: null, endRange: null, reciterId: 7,
+            repeatSelection: 1, repeatAya: 1, delayBetweenAyas: 0,
+            playbackSpeed: 1.0, scrollWhilePlaying: true
+        },
+        lastSyncAt: state.lastSyncAt || 0
+    };
+}
