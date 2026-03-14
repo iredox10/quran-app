@@ -58,7 +58,11 @@ export default function BottomNav() {
 
                 if (active) {
                     return (
-                        <div key={tab.path} style={{ flex: '1.5', display: 'flex', justifyContent: 'center' }}>
+                        <div 
+                            key={tab.path} 
+                            style={{ flex: '1.5', display: 'flex', justifyContent: 'center', cursor: 'pointer' }}
+                            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                        >
                             <div style={{
                                 background: 'var(--accent-light)',
                                 borderRadius: '999px',

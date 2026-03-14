@@ -161,6 +161,11 @@ export default function Layout() {
         setShowHeader(true);
     }, [location.pathname]);
 
+    // Scroll to top on route change
+    useEffect(() => {
+        window.scrollTo(0, 0);
+    }, [location.pathname]);
+
     return (
         <div className="layout" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
             <header style={{

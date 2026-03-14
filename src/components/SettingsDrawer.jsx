@@ -961,6 +961,25 @@ export default function SettingsDrawer({ isOpen, onClose }) {
                                     </div>
                                 </section>
                             )}
+
+                            <div style={{ textAlign: 'center', margin: '1.5rem 0 1rem 0' }}>
+                                <a 
+                                    href="https://iredox.tech" 
+                                    target="_blank" 
+                                    rel="noopener noreferrer" 
+                                    style={{ 
+                                        color: 'var(--text-muted)', 
+                                        fontSize: '0.8rem', 
+                                        textDecoration: 'none',
+                                        fontWeight: 500,
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '0.25rem'
+                                    }}
+                                >
+                                    built by iredox.tech
+                                </a>
+                            </div>
                         </div>
                     )}
                 </div>
