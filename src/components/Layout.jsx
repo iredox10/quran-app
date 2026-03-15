@@ -7,7 +7,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import GlobalAudioPlayer from './GlobalAudioPlayer';
 import SettingsDrawer from './SettingsDrawer';
 import NavigationModal from './NavigationModal';
-import AutoSyncManager from './AutoSyncManager';
 
 export default function Layout() {
     const {
@@ -315,7 +314,6 @@ export default function Layout() {
                 <Outlet />
             </main>
 
-            <AutoSyncManager />
             <GlobalAudioPlayer />
             <SettingsDrawer isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
             <NavigationModal isOpen={isNavModalOpen} onClose={() => setIsNavModalOpen(false)} />

@@ -226,18 +226,6 @@ function CloudSyncView({ currentUser, setCurrentUser }) {
     const [syncStatus, setSyncStatus] = useState('');
     const [syncLoading, setSyncLoading] = useState(false);
 
-    useEffect(() => {
-        const checkUser = async () => {
-            try {
-                const user = await authService.getCurrentUser();
-                setCurrentUser(user);
-            } catch {
-                setCurrentUser(null);
-            }
-        };
-        if (!currentUser) checkUser();
-    }, [currentUser, setCurrentUser]);
-
     const handleAuth = async (e) => {
         e.preventDefault();
         setLoading(true);

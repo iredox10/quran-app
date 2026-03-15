@@ -22,11 +22,13 @@ export default function CloudSync() {
                     // 2. Initial Pull
                     isPulling.current = true;
                     try {
-                        const remoteState = await syncService.pullState(user.$id);
-                        if (remoteState) {
-                            useAppStore.setState(remoteState);
+                        const remoteData = await syncService.pullState(user.$id);
+                        const localLastSyncAt = useAppStore.getState().lastSyncAt || 0;
+
+                        if (remoteData && remoteData.state && remoteData.updatedAt > localLastSyncAt) {
+                            useAppStore.setState({ ...remoteData.state, lastSyncAt: remoteData.updatedAt });
+                            console.log('Successfully pulled remote state from Appwrite');
                         }
-                        console.log('Successfully pulled remote state from Appwrite');
                     } catch (error) {
                         console.error('Failed to pull state from Appwrite', error);
                     } finally {
@@ -48,9 +50,18 @@ export default function CloudSync() {
             if (isPulling.current) return; // Prevent loop right after pulling
 
             // Check if actual syncable data changed 
-            // stringifying the partialize output ensures we don't trigger on internal transient state changes
-            const prevStr = JSON.stringify(getSyncableState(prevState));
-            const currentStr = JSON.stringify(getSyncableState(state));
+            const currentSyncState = getSyncableState(state);
+            const prevSyncState = getSyncableState(prevState);
+
+            // Exclude lastSyncAt from comparison to avoid infinite loops
+            const currentCompare = { ...currentSyncState };
+            delete currentCompare.lastSyncAt;
+
+            const prevCompare = { ...prevSyncState };
+            delete prevCompare.lastSyncAt;
+
+            const prevStr = JSON.stringify(prevCompare);
+            const currentStr = JSON.stringify(currentCompare);
 
             if (prevStr !== currentStr) {
                 // Debounce the push step to prevent hammering the Appwrite DB
@@ -58,8 +69,8 @@ export default function CloudSync() {
 
                 pushTimeout.current = setTimeout(async () => {
                     try {
-                        const dataToSync = getSyncableState(state);
-                        await syncService.pushState(user.$id, dataToSync);
+                        const result = await syncService.pushState(user.$id, currentSyncState);
+                        useAppStore.setState({ lastSyncAt: result.updatedAt });
                         console.log('Automated background backup complete');
                     } catch (error) {
                         console.error('Automated backup failed', error);

@@ -31,6 +31,12 @@ const TAJWEED_RULES = {
         color: '#000FB5',
         description: 'A mandatory elongation of 6 counts that occurs when a madd letter is followed by a shaddah or sukoon within the same word. It must always be stretched to 6 counts.'
     },
+    madda_necessary: {
+        name: 'Madda (Necessary)',
+        nameAr: 'مد واجب',
+        color: '#2142c7',
+        description: 'A necessary elongation of 4-5 counts that occurs when a madd letter is followed by a hamza in the same word.'
+    },
     qalpiala: {
         name: 'Qalqalah',
         nameAr: 'قلقلة',
@@ -98,6 +104,17 @@ const TAJWEED_RULES = {
         description: 'A letter that is written but not pronounced during recitation. It appears in the script but is skipped when reading aloud.'
     }
 };
+
+// Map API typo classes/aliases to the standard rules
+TAJWEED_RULES.qalaqah = TAJWEED_RULES.qalpiala;
+TAJWEED_RULES.ikhafa_shafawi = TAJWEED_RULES.ikhfa_shafawi;
+TAJWEED_RULES.ikhafa = TAJWEED_RULES.ikhfa;
+TAJWEED_RULES.idgham_shafawi = TAJWEED_RULES.idghaam_shafawi;
+TAJWEED_RULES.idgham_ghunnah = TAJWEED_RULES.idghaam_ghunnah;
+TAJWEED_RULES.idgham_wo_ghunnah = TAJWEED_RULES.idghaam_no_ghunnah;
+TAJWEED_RULES.idgham_mutajanisayn = TAJWEED_RULES.idghaam_mutajanisayn;
+TAJWEED_RULES.idgham_mutaqaribayn = TAJWEED_RULES.idghaam_mutaqaribayn;
+TAJWEED_RULES.slnt = TAJWEED_RULES.silent;
 
 export default function TajweedTooltip() {
     const [tooltip, setTooltip] = useState(null); // { x, y, rule }
