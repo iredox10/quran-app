@@ -197,6 +197,39 @@ export default function Surah() {
         setShowAudioSetup(false);
     };
 
+    const handlePlayVerse = useCallback((verse) => {
+        const playlist = verses.map(v => {
+            let url = v.audio?.url ? `https://verses.quran.com/${v.audio.url}` : null;
+            const [surahNum, ayahNum] = v.verse_key.split(':');
+            const fileName = `${String(surahNum).padStart(3, '0')}${String(ayahNum).padStart(3, '0')}.mp3`;
+
+            if (localAudioDirHandle) {
+                url = `local-audio://${fileName}`;
+            } else if (customAudioBaseUrl) {
+                url = `${customAudioBaseUrl.replace(/\/$/, '')}/${fileName}`;
+            }
+
+            return { surahId: id, verseKey: v.verse_key, verseNumber: v.verse_number, url };
+        }).filter(v => v.url);
+
+        if (playlist.length === 0) return;
+
+        const startIndex = playlist.findIndex(p => p.verseKey === verse.verse_key);
+        const targetIndex = startIndex >= 0 ? startIndex : 0;
+
+        // If this verse is already the active one, toggle play/pause
+        if (isCurrentSurahPlaying && audioPlaylist[audioTrackIndex]?.verseKey === verse.verse_key) {
+            setIsPlaying(!isPlaying);
+            setIsPlayerVisible(true);
+            return;
+        }
+
+        setAudioPlaylist(playlist, targetIndex);
+        updateAudioSettings({ startRange: targetIndex, endRange: playlist.length - 1 });
+        setIsPlaying(true);
+        setIsPlayerVisible(true);
+    }, [verses, id, localAudioDirHandle, customAudioBaseUrl, isCurrentSurahPlaying, audioPlaylist, audioTrackIndex, isPlaying, setAudioPlaylist, updateAudioSettings, setIsPlaying, setIsPlayerVisible]);
+
     const isDownloaded = (downloadedSurahs || []).includes(id);
     const [isDownloading, setIsDownloading] = useState(false);
 
@@ -573,6 +606,7 @@ export default function Surah() {
                                         tafsirs={tafsirs}
                                         mushaf={mushaf}
                                         isAudioPlaying={activeAudioVerseKey === verse.verse_key}
+                                        onPlayVerse={handlePlayVerse}
                                     />
                                 );
                             })}

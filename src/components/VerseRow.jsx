@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useInView } from 'react-intersection-observer';
-import { Bookmark, Info, X, Plus, CheckCircle } from 'lucide-react';
+import { Bookmark, Info, X, Plus, Play, Pause } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../store/useAppStore';
 import { getVerseArabicText } from '../utils/quranText';
@@ -21,14 +21,15 @@ const VerseRow = ({
     fontSize, translationFontSize, arabicFont, tajweedEnabled, tajweedMap, activeTafsir,
     setActiveTafsir, isTafsirFetching, tafsirId, showPageDivider, tafsirs,
     isAudioPlaying,
-    mushaf
+    mushaf,
+    onPlayVerse
 }) => {
     const { ref, inView } = useInView({
         threshold: 0.5,
         triggerOnce: false,
     });
 
-    const { collections, addCollection, addToCollection, memorizedAyahs, toggleMemorizedAyah } = useAppStore();
+    const { collections, addCollection, addToCollection } = useAppStore();
     const [showCollectionModal, setShowCollectionModal] = useState(false);
     const [newCollectionName, setNewCollectionName] = useState('');
 
@@ -182,11 +183,20 @@ const VerseRow = ({
                         </button>
                         <button
                             className="btn-icon"
-                            style={{ color: (memorizedAyahs || []).includes(verse.verse_key) ? 'var(--status-success, #10b981)' : 'var(--text-muted)', width: '32px', height: '32px' }}
-                            title={(memorizedAyahs || []).includes(verse.verse_key) ? "Marked as Memorized" : "Mark as Memorized"}
-                            onClick={() => toggleMemorizedAyah(verse.verse_key)}
+                            style={{
+                                color: isAudioPlaying ? 'var(--accent-primary)' : 'var(--text-muted)',
+                                width: '32px', height: '32px',
+                                backgroundColor: isAudioPlaying ? 'var(--accent-light)' : 'transparent',
+                                borderRadius: '50%',
+                                transition: 'all 0.2s ease'
+                            }}
+                            title={isAudioPlaying ? "Playing" : "Play this Ayah"}
+                            onClick={() => onPlayVerse?.(verse)}
                         >
-                            <CheckCircle size={18} fill={(memorizedAyahs || []).includes(verse.verse_key) ? 'currentColor' : 'none'} color={(memorizedAyahs || []).includes(verse.verse_key) ? 'white' : 'currentColor'} />
+                            {isAudioPlaying
+                                ? <Pause size={18} fill="currentColor" />
+                                : <Play size={18} fill="currentColor" />
+                            }
                         </button>
                         <button
                             className="btn-icon"
