@@ -2,11 +2,34 @@ import { useCallback, useEffect, useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
 import { getLocalAudioDirHandle } from '../utils/localAudio';
-import { Moon, Sun, Settings, TrendingUp, LayoutDashboard, Bookmark, ArrowLeft, BookOpen, ChevronsDown, Volume2, ChevronDown } from 'lucide-react';
+import { Moon, Sun, Settings, TrendingUp, LayoutDashboard, Bookmark, ArrowLeft, BookOpen, ChevronsDown, Volume2, ChevronDown, Cloud, CloudOff, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { getSyncState, onSyncChange } from '../services/syncService';
+import { isAppwriteConfigured } from '../services/appwrite/client';
 import GlobalAudioPlayer from './GlobalAudioPlayer';
 import SettingsDrawer from './SettingsDrawer';
 import NavigationModal from './NavigationModal';
+
+const SYNC_ICONS = {
+    idle: CloudOff,
+    disabled: CloudOff,
+    initializing: Loader2,
+    pulling: Loader2,
+    pushing: Loader2,
+    syncing: Loader2,
+    synced: CheckCircle,
+    error: AlertCircle,
+};
+const SYNC_COLORS = {
+    idle: 'var(--text-muted)',
+    disabled: 'var(--text-muted)',
+    initializing: 'var(--accent-primary)',
+    pulling: 'var(--accent-primary)',
+    pushing: 'var(--accent-primary)',
+    syncing: 'var(--accent-primary)',
+    synced: '#22c55e',
+    error: '#ef4444',
+};
 
 export default function Layout() {
     const {
@@ -22,6 +45,10 @@ export default function Layout() {
     const [showHeader, setShowHeader] = useState(true);
     const [lastScrollY, setLastScrollY] = useState(0);
     const [isNavModalOpen, setIsNavModalOpen] = useState(false);
+    const [syncState, setSyncState] = useState(getSyncState());
+    const syncConfigured = isAppwriteConfigured();
+    const SyncIcon = SYNC_ICONS[syncState.syncStatus] || CloudOff;
+    const syncColor = SYNC_COLORS[syncState.syncStatus] || 'var(--text-muted)';
 
     const location = useLocation();
     const navigate = useNavigate();
@@ -60,6 +87,12 @@ export default function Layout() {
     useEffect(() => {
         document.documentElement.setAttribute('data-theme', theme);
     }, [theme]);
+
+    useEffect(() => {
+        if (!syncConfigured) return;
+        const unsub = onSyncChange((state) => setSyncState(state));
+        return unsub;
+    }, [syncConfigured]);
 
     useEffect(() => {
         // Load the local audio directory handle from IndexedDB if it exists
@@ -288,6 +321,18 @@ export default function Layout() {
                                     )}
                                 </button>
                             )}
+
+                        {/* Sync status indicator */}
+                        {syncConfigured && (
+                            <button
+                                className="btn-icon"
+                                onClick={() => navigate('/profile')}
+                                title={`Sync: ${syncState.syncStatus}`}
+                                style={{ color: syncColor }}
+                            >
+                                <SyncIcon size={18} />
+                            </button>
+                        )}
 
                         {/* Theme + Settings — always visible */}
                         <button className="btn-icon" onClick={toggleTheme} aria-label="Toggle Theme">

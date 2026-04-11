@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { HashRouter, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
 import BottomNav from './components/BottomNav';
 import Home from './pages/Home';
@@ -10,18 +10,14 @@ import Memorization from './pages/Memorization';
 import Library from './pages/Library';
 import Progress from './pages/Progress';
 import Planner from './pages/Planner';
-import OfflineLibrary from './pages/OfflineLibrary';
 import TajweedTooltip from './components/TajweedTooltip';
 import GlobalAudioPlayer from './components/GlobalAudioPlayer';
 import Profile from './pages/Profile';
 import FloatingPomodoro from './components/FloatingPomodoro';
-import CloudSync from './components/CloudSync';
 
 function App() {
   return (
-    <BrowserRouter>
-      {/* Headless cloud sync — runs silently in the background on every page */}
-      <CloudSync />
+    <HashRouter>
       <Routes>
         <Route element={<Layout />}>
           <Route path="/" element={<Home />} />
@@ -30,7 +26,6 @@ function App() {
           <Route path="/memorize/:id" element={<Memorization />} />
           <Route path="/library" element={<Library />} />
           <Route path="/planner" element={<Planner />} />
-          <Route path="/offline-library" element={<OfflineLibrary />} />
           <Route path="/progress" element={<Progress />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/surah/:id" element={<Surah />} />
@@ -40,7 +35,7 @@ function App() {
       <BottomNav />
       <FloatingPomodoro />
       <TajweedTooltip />
-    </BrowserRouter>
+    </HashRouter>
   );
 }
 

@@ -73,8 +73,8 @@ export const useAppStore = create(
             arabicFont: DEFAULT_ARABIC_FONT_FAMILY,
             tajweedEnabled: false, // Show tajweed color rules
             tafsirId: 169, // Default: Ibn Kathir (Abridged) English
-            offlineDataStatus: 'idle', // 'idle', 'syncing', 'completed', 'error'
-            downloadedSurahs: [], // Array of chapter IDs with offline audio
+            offlineDataStatus: 'idle',
+            downloadedSurahs: [],
             offlinePackStatus: {},
 
             isSettingsOpen: false, // Global settings state
@@ -106,9 +106,6 @@ export const useAppStore = create(
             toggleTheme: () => set((state) => ({
                 theme: state.theme === 'light' ? 'dark' : 'light'
             })),
-
-            currentUser: null,
-            setCurrentUser: (user) => set({ currentUser: user }),
 
             setTranslation: (id) => set({ translationId: id }),
             setReciter: (id) => set({ reciterId: id }),
@@ -554,17 +551,6 @@ export const useAppStore = create(
             // Trigger to tell Surah.jsx to start playing (cross-component signal)
             playTriggerCount: 0,
             incrementPlayTrigger: () => set((state) => ({ playTriggerCount: state.playTriggerCount + 1 })),
-
-            // Custom Offline Audio Base URL
-            customAudioBaseUrl: '',
-            setCustomAudioBaseUrl: (val) => set({ customAudioBaseUrl: val }),
-
-            // Native File System Handle for Offline Audio
-            localAudioDirHandle: null,
-            setLocalAudioDirHandle: (handle) => set({ localAudioDirHandle: handle }),
-
-            lastSyncAt: 0,
-            setLastSyncAt: (timestamp) => set({ lastSyncAt: timestamp }),
         }),
         {
             name: 'quran-app-storage',
@@ -625,12 +611,10 @@ export function getSyncableState(state) {
         offlineDataStatus: state.offlineDataStatus,
         offlinePackStatus: state.offlinePackStatus || {},
         downloadedSurahs: state.downloadedSurahs || [],
-        customAudioBaseUrl: state.customAudioBaseUrl || '',
         audioSettings: state.audioSettings || {
             startRange: null, endRange: null, reciterId: 7,
             repeatSelection: 1, repeatAya: 1, delayBetweenAyas: 0,
             playbackSpeed: 1.0, scrollWhilePlaying: true
         },
-        lastSyncAt: state.lastSyncAt || 0
     };
 }

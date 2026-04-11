@@ -31,6 +31,14 @@ export const OFFLINE_PACKS = {
     installMode: 'download-on-web-preinstalled-on-mobile',
     includes: ['Chapters', 'Surah pages', 'Mushaf-aware text', 'Page reader cache'],
   },
+  pagePack: {
+    id: 'pagePack',
+    title: 'Page Navigation Pack',
+    description: 'All 604 Mushaf pages cached for instant offline page-by-page navigation.',
+    tier: 'optional',
+    installMode: 'download-on-web',
+    includes: ['604 page verses', 'Page-based navigation'],
+  },
   tajweed: {
     id: 'tajweed',
     title: 'Tajweed Layer',
@@ -41,10 +49,11 @@ export const OFFLINE_PACKS = {
   },
 };
 
-export const OFFLINE_PACK_ORDER = ['coreQuran', 'quranText', 'tajweed'];
+export const OFFLINE_PACK_ORDER = ['coreQuran', 'quranText', 'pagePack', 'tajweed'];
 
 export const OFFLINE_EXPECTED_ENTRIES = {
   quranText: 1 + QURAN_TOTAL_CHAPTERS + QURAN_TEXT_CHAPTER_BATCHES + QURAN_TOTAL_PAGES + QURAN_TOTAL_CHAPTERS,
+  pagePack: QURAN_TOTAL_PAGES,
   tajweed: QURAN_TOTAL_CHAPTERS + QURAN_TOTAL_PAGES,
 };
 

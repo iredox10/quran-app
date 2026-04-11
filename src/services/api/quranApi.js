@@ -9,6 +9,22 @@ const api = axios.create({
   },
 });
 
+const STATIC_BASE = '/quran-data';
+
+async function loadStaticJson(path) {
+  try {
+    const res = await fetch(`${STATIC_BASE}${path}`);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+function hasStaticVerses(data) {
+  return data && data.verses && data.verses.length > 0 && !data._note;
+}
+
 const buildCacheKey = (path, params = {}) => {
   const normalizedParams = Object.entries(params)
     .filter(([, value]) => value !== undefined && value !== null)
@@ -30,7 +46,6 @@ const fetchWithOfflineCache = async (path, params = {}) => {
     if (offlineData) {
       return offlineData;
     }
-
     throw error;
   }
 };
@@ -65,24 +80,51 @@ const decorateVerses = (verses = [], mushaf) => verses.map((verse) => ({
 }));
 
 export const getChapters = async () => {
+  const staticData = await loadStaticJson('/chapters.json');
+  if (staticData) return staticData;
+
   const data = await fetchWithOfflineCache('/chapters', { language: 'en' });
   return data.chapters;
 };
 
 export const getChapter = async (id) => {
+  const staticData = await loadStaticJson('/chapters.json');
+  if (staticData) {
+    const chapter = staticData.find(c => c.id === Number(id));
+    if (chapter) return chapter;
+  }
+
   const data = await fetchWithOfflineCache(`/chapters/${id}`, { language: 'en' });
   return data.chapter;
 };
 
 export const getVerses = async (chapterId, translationId = 85, reciterId = 7, page = 1, mushafId = 'madani-standard', perPage = 50) => {
-  const { mushaf, fields, wordFields } = buildFieldsForMushaf(mushafId);
+  const { mushaf } = buildFieldsForMushaf(mushafId);
+
+  // Try static JSON first
+  const staticData = await loadStaticJson(`/verses/${mushafId}/${chapterId}.json`);
+  if (hasStaticVerses(staticData)) {
+    const startIdx = (page - 1) * perPage;
+    const endIdx = startIdx + perPage;
+    const pagedVerses = staticData.verses.slice(startIdx, endIdx);
+    return {
+      verses: decorateVerses(pagedVerses, mushaf),
+      pagination: {
+        current_page: page,
+        total_pages: Math.ceil(staticData.verses.length / perPage),
+        total_records: staticData.verses.length,
+      },
+    };
+  }
+
+  // Fallback to API
   const params = {
     language: 'en',
     words: true,
     translations: translationId,
     audio: reciterId,
-    fields,
-    word_fields: wordFields,
+    fields: buildFieldsForMushaf(mushafId).fields,
+    word_fields: buildFieldsForMushaf(mushafId).wordFields,
     mushaf: mushaf.apiMushafId,
     page,
     per_page: perPage,
@@ -95,14 +137,24 @@ export const getVerses = async (chapterId, translationId = 85, reciterId = 7, pa
 };
 
 export const getVersesByPage = async (pageNumber, translationId = 85, reciterId = 7, mushafId = 'madani-standard') => {
-  const { mushaf, fields, wordFields } = buildFieldsForMushaf(mushafId);
+  const { mushaf } = buildFieldsForMushaf(mushafId);
+
+  // Try static JSON first
+  const staticData = await loadStaticJson(`/verses-by-page/${mushafId}/${pageNumber}.json`);
+  if (hasStaticVerses(staticData)) {
+    return {
+      verses: decorateVerses(staticData.verses, mushaf),
+    };
+  }
+
+  // Fallback to API
   const params = {
     language: 'en',
     words: true,
     translations: translationId,
     audio: reciterId,
-    fields,
-    word_fields: wordFields,
+    fields: buildFieldsForMushaf(mushafId).fields,
+    word_fields: buildFieldsForMushaf(mushafId).wordFields,
     mushaf: mushaf.apiMushafId,
     per_page: 50,
   };
@@ -112,7 +164,6 @@ export const getVersesByPage = async (pageNumber, translationId = 85, reciterId 
     verses: decorateVerses(data.verses, mushaf),
   };
 };
-
 
 export const getChapterAudio = async (chapterId, reciterId = 7) => {
   const data = await fetchWithOfflineCache(`/chapter_recitations/${reciterId}/${chapterId}`);
@@ -125,11 +176,23 @@ export const getChapterTafsirs = async (chapterId, tafsirId = 169) => {
 };
 
 export const getTajweedVerses = async (chapterId) => {
+  // Try static JSON first
+  const staticData = await loadStaticJson('/tajweed.json');
+  if (staticData && staticData[chapterId]) {
+    return staticData[chapterId];
+  }
+
   const data = await fetchWithOfflineCache('/quran/verses/uthmani_tajweed', { chapter_number: chapterId });
-  return data.verses; // Array of { id, verse_key, text_uthmani_tajweed }
+  return data.verses;
 };
 
 export const getTajweedVersesByPage = async (pageNumber) => {
+  // Try static JSON first
+  const staticData = await loadStaticJson('/tajweed-by-page.json');
+  if (staticData && staticData[pageNumber]) {
+    return staticData[pageNumber];
+  }
+
   const data = await fetchWithOfflineCache('/quran/verses/uthmani_tajweed', { page_number: pageNumber });
   return data.verses;
 };

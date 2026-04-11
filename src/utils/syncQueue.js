@@ -103,3 +103,68 @@ export async function getSyncQueueSummary(type = null, userId = null) {
     failed: filtered.filter((job) => job.status === 'failed').length,
   };
 }
+
+export async function processSyncQueue(syncFn) {
+  const jobs = await listSyncQueueJobs();
+  const pendingJobs = jobs.filter((job) => job.status === 'pending');
+
+  const results = [];
+  for (const job of pendingJobs) {
+    try {
+      await syncFn(job);
+      await updateSyncQueueJob(job.id, { status: 'completed', updatedAt: Date.now() });
+      results.push({ jobId: job.id, status: 'completed' });
+    } catch (error) {
+      const attempts = (job.attempts || 0) + 1;
+      if (attempts >= 3) {
+        await updateSyncQueueJob(job.id, { status: 'failed', attempts, lastError: error.message, updatedAt: Date.now() });
+      } else {
+        await updateSyncQueueJob(job.id, { attempts, lastError: error.message, updatedAt: Date.now() });
+      }
+      results.push({ jobId: job.id, status: 'failed', error });
+    }
+  }
+
+  return results;
+}
+
+export function setupOfflineActionQueue(syncService) {
+  let isProcessing = false;
+
+  const queueAction = async (type, payload, dedupeKey = null) => {
+    await enqueueSyncQueueJob({ type, payload, dedupeKey });
+  };
+
+  const processQueue = async () => {
+    if (isProcessing) return;
+    isProcessing = true;
+
+    try {
+      await processSyncQueue(async (job) => {
+        if (job.type === 'bookmark') {
+          await syncService.pushBookmark(job.payload);
+        } else if (job.type === 'memorization') {
+          await syncService.pushMemorization(job.payload);
+        } else if (job.type === 'progress') {
+          await syncService.pushProgress(job.payload);
+        } else if (job.type === 'planner') {
+          await syncService.pushPlanner(job.payload);
+        }
+      });
+    } finally {
+      isProcessing = false;
+    }
+  };
+
+  const onOnline = () => {
+    processQueue();
+  };
+
+  window.addEventListener('online', onOnline);
+
+  return {
+    queueAction,
+    processQueue,
+    cleanup: () => window.removeEventListener('online', onOnline),
+  };
+}

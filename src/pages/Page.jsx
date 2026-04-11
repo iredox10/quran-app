@@ -61,8 +61,7 @@ export default function Page() {
         planner, markPlannerItemComplete, togglePlannerDayComplete,
         setIsPlaying, isPlaying, audioPlaylist, setAudioPlaylist,
         audioTrackIndex, audioSettings, updateAudioSettings,
-        isPlayerVisible, setIsPlayerVisible, playTriggerCount,
-        customAudioBaseUrl, localAudioDirHandle
+        isPlayerVisible, setIsPlayerVisible, playTriggerCount
     } = useAppStore();
     const mushaf = getMushafById(mushafId);
     const isTajweedActive = isTajweedEnabledForMushaf(mushafId, tajweedEnabled);
@@ -131,15 +130,8 @@ export default function Page() {
         } else {
             // Setup the playlist for this page's verses
             const playlist = verses.map(v => {
-                let url = v.audio?.url ? `https://verses.quran.com/${v.audio.url}` : null;
+                const url = v.audio?.url ? `https://verses.quran.com/${v.audio.url}` : null;
                 const [surahNum, ayahNum] = v.verse_key.split(':');
-                const fileName = `${String(surahNum).padStart(3, '0')}${String(ayahNum).padStart(3, '0')}.mp3`;
-
-                if (localAudioDirHandle) {
-                    url = `local-audio://${fileName}`;
-                } else if (customAudioBaseUrl) {
-                    url = `${customAudioBaseUrl.replace(/\/$/, '')}/${fileName}`;
-                }
 
                 return {
                     pageNumber: pageNumber,
@@ -156,7 +148,7 @@ export default function Page() {
                 setShowAudioSetup(true);
             }
         }
-    }, [verses, isCurrentPagePlaying, isPlaying, pageNumber, localAudioDirHandle, customAudioBaseUrl, setIsPlaying, setIsPlayerVisible, updateAudioSettings]);
+    }, [verses, isCurrentPagePlaying, isPlaying, pageNumber, setIsPlaying, setIsPlayerVisible, updateAudioSettings]);
 
     const handleStartPlaying = () => {
         if (pendingPlaylist.length === 0) return;

@@ -1,30 +1,24 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
 import { useAppStore } from '../store/useAppStore';
 import {
     ArrowLeft,
     Check,
-    CheckCircle,
     ChevronDown,
     ChevronRight,
-    FolderOpen,
-    HardDrive,
     Moon,
     Sun,
     Type,
+    HardDrive,
+    Trash2,
+    Download,
+    Wifi,
     WifiOff,
-    Cloud,
-    UploadCloud,
-    DownloadCloud,
-    LogOut,
-    RefreshCw,
 } from 'lucide-react';
 import { getMushafById, getMushafFontOptions, isTajweedEnabledForMushaf, MUSHAFS } from '../config/mushaf';
-import { saveLocalAudioDirHandle } from '../utils/localAudio';
-import { getOfflinePackStats } from '../utils/offlineLibrary';
-import { authService, syncService } from '../services/appwrite';
-import { getSyncableState } from '../store/useAppStore';
+import { getOfflinePackStats, deleteOfflinePack, syncQuranTextPack, syncTajweedPack, syncPagePack } from '../utils/offlineLibrary';
+import { getOfflineCacheStats, deleteOfflineCacheByPrefix } from '../utils/offlineCache';
+import { getSyncState } from '../services/syncService';
+import { isAppwriteConfigured } from '../services/appwrite/client';
 
 const RECITERS = [
     { id: 7, name: 'Mishary Rashid Alafasy' },
@@ -59,7 +53,6 @@ const DRAWER_VIEWS = {
     reciter: 'reciter',
     arabicFont: 'arabicFont',
     tafsir: 'tafsir',
-    sync: 'sync',
 };
 
 function sectionTitleStyle() {
@@ -216,261 +209,7 @@ function PickerOption({ title, subtitle, active, onClick, sampleStyle }) {
     );
 }
 
-function CloudSyncView({ currentUser, setCurrentUser }) {
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [name, setName] = useState('');
-    const [isLoginMode, setIsLoginMode] = useState(true);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
-    const [syncStatus, setSyncStatus] = useState('');
-    const [syncLoading, setSyncLoading] = useState(false);
-
-    const handleAuth = async (e) => {
-        e.preventDefault();
-        setLoading(true);
-        setError('');
-        try {
-            if (isLoginMode) {
-                await authService.login(email, password);
-            } else {
-                await authService.register(email, password, name);
-                await authService.login(email, password); // auto login after register
-            }
-            const user = await authService.getCurrentUser();
-            setCurrentUser(user);
-            setEmail('');
-            setPassword('');
-        } catch (err) {
-            setError(err.message || 'Authentication failed');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleLogout = async () => {
-        setLoading(true);
-        try {
-            await authService.logout();
-        } catch (err) {
-            console.error('Logout error:', err);
-        } finally {
-            setCurrentUser(null);
-            setLoading(false);
-        }
-    };
-
-    const handlePush = async () => {
-        if (!currentUser) return;
-        setSyncLoading(true);
-        setSyncStatus('Pushing to cloud...');
-        try {
-            const state = getSyncableState(useAppStore.getState());
-            const result = await syncService.pushState(currentUser.$id, state);
-            useAppStore.setState({ lastSyncAt: result.updatedAt });
-            setSyncStatus('Successfully backed up to cloud! ✅');
-            setTimeout(() => setSyncStatus(''), 3000);
-        } catch (err) {
-            console.error(err);
-            setSyncStatus('Failed to push data ❌');
-        } finally {
-            setSyncLoading(false);
-        }
-    };
-
-    const handlePull = async () => {
-        if (!currentUser) return;
-        if (!window.confirm("Warning: This will overwrite your local data with the cloud data. Proceed?")) return;
-        
-        setSyncLoading(true);
-        setSyncStatus('Pulling from cloud...');
-        try {
-            const remoteData = await syncService.pullState(currentUser.$id);
-            if (remoteData && remoteData.state) {
-                useAppStore.setState({ ...remoteData.state, lastSyncAt: remoteData.updatedAt });
-                setSyncStatus('Successfully restored from cloud! ✅');
-            } else {
-                setSyncStatus('No cloud backup found.');
-            }
-            setTimeout(() => setSyncStatus(''), 3000);
-        } catch (err) {
-            console.error(err);
-            setSyncStatus('Failed to pull data ❌');
-        } finally {
-            setSyncLoading(false);
-        }
-    };
-
-    if (currentUser) {
-        return (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <div style={{ ...cardStyle(), padding: '1rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'var(--accent-light)', color: 'var(--accent-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', fontWeight: 'bold' }}>
-                        {currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'U'}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{currentUser.name || 'User'}</div>
-                        <div style={{ color: 'var(--text-secondary)', fontSize: '0.84rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{currentUser.email}</div>
-                    </div>
-                    <button 
-                        type="button" 
-                        onClick={handleLogout} 
-                        disabled={loading}
-                        style={{ padding: '0.5rem', color: 'var(--text-muted)', background: 'transparent' }}
-                        aria-label="Logout"
-                    >
-                        <LogOut size={20} />
-                    </button>
-                </div>
-
-                <div style={{ ...cardStyle(), padding: '1rem' }}>
-                    <div style={{ marginBottom: '1rem' }}>
-                        <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>Cloud Backup</div>
-                        <div style={{ color: 'var(--text-secondary)', fontSize: '0.84rem' }}>
-                            Securely back up your bookmarks, memorization progress, planners, and reading history.
-                        </div>
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                        <button
-                            type="button"
-                            onClick={handlePush}
-                            disabled={syncLoading}
-                            style={{
-                                width: '100%',
-                                minHeight: '46px',
-                                borderRadius: '14px',
-                                background: 'var(--accent-primary)',
-                                color: '#fff',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '0.55rem',
-                                fontWeight: 600,
-                                opacity: syncLoading ? 0.7 : 1
-                            }}
-                        >
-                            <UploadCloud size={18} aria-hidden="true" />
-                            <span>{syncLoading ? 'Syncing...' : 'Backup to Cloud'}</span>
-                        </button>
-
-                        <button
-                            type="button"
-                            onClick={handlePull}
-                            disabled={syncLoading}
-                            style={{
-                                width: '100%',
-                                minHeight: '46px',
-                                borderRadius: '14px',
-                                border: '1px solid var(--accent-primary)',
-                                background: 'transparent',
-                                color: 'var(--accent-primary)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '0.55rem',
-                                fontWeight: 600,
-                                opacity: syncLoading ? 0.7 : 1
-                            }}
-                        >
-                            <DownloadCloud size={18} aria-hidden="true" />
-                            <span>Restore from Cloud</span>
-                        </button>
-                    </div>
-
-                    {syncStatus && (
-                        <div style={{ marginTop: '1rem', textAlign: 'center', fontSize: '0.84rem', color: syncStatus.includes('Failed') ? '#ef4444' : 'var(--text-secondary)' }}>
-                            {syncStatus}
-                        </div>
-                    )}
-                </div>
-            </div>
-        );
-    }
-
-    return (
-        <div style={{ ...cardStyle(), padding: '1.25rem 1rem' }}>
-            <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-                <div style={{ display: 'inline-flex', padding: '1rem', borderRadius: '50%', background: 'var(--accent-light)', color: 'var(--accent-primary)', marginBottom: '0.75rem' }}>
-                    <Cloud size={24} />
-                </div>
-                <h3 style={{ fontWeight: 600, fontSize: '1.1rem', marginBottom: '0.25rem' }}>Cloud Sync</h3>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '0.84rem', lineHeight: 1.4 }}>
-                    Create an account to securely back up and sync your reading progress across devices.
-                </p>
-            </div>
-
-            <form onSubmit={handleAuth} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-                {!isLoginMode && (
-                    <input
-                        type="text"
-                        placeholder="Your Name"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        required
-                        style={{ width: '100%', padding: '0.8rem 1rem', borderRadius: '12px', border: '1px solid rgba(0,0,0,0.1)', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
-                    />
-                )}
-                <input
-                    type="email"
-                    placeholder="Email Address"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    style={{ width: '100%', padding: '0.8rem 1rem', borderRadius: '12px', border: '1px solid rgba(0,0,0,0.1)', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
-                />
-                <input
-                    type="password"
-                    placeholder="Password (min 8 chars)"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    minLength={8}
-                    style={{ width: '100%', padding: '0.8rem 1rem', borderRadius: '12px', border: '1px solid rgba(0,0,0,0.1)', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
-                />
-
-                {error && (
-                    <div style={{ color: '#ef4444', fontSize: '0.84rem', textAlign: 'center' }}>
-                        {error}
-                    </div>
-                )}
-
-                <button
-                    type="submit"
-                    disabled={loading}
-                    style={{
-                        width: '100%',
-                        minHeight: '46px',
-                        borderRadius: '12px',
-                        background: 'var(--accent-primary)',
-                        color: '#fff',
-                        fontWeight: 600,
-                        marginTop: '0.5rem',
-                        opacity: loading ? 0.7 : 1
-                    }}
-                >
-                    {loading ? 'Processing...' : (isLoginMode ? 'Sign In' : 'Create Account')}
-                </button>
-
-                <div style={{ textAlign: 'center', marginTop: '0.5rem' }}>
-                    <button
-                        type="button"
-                        onClick={() => {
-                            setIsLoginMode(!isLoginMode);
-                            setError('');
-                        }}
-                        style={{ color: 'var(--text-secondary)', fontSize: '0.84rem', background: 'transparent', textDecoration: 'underline' }}
-                    >
-                        {isLoginMode ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
-                    </button>
-                </div>
-            </form>
-        </div>
-    );
-}
-
 export default function SettingsDrawer({ isOpen, onClose }) {
-    const navigate = useNavigate();
     const {
         theme, toggleTheme,
         fontSize, setFontSize,
@@ -481,8 +220,6 @@ export default function SettingsDrawer({ isOpen, onClose }) {
         arabicFontId, setArabicFont,
         tajweedEnabled, setTajweed,
         tafsirId, setTafsirId,
-        localAudioDirHandle, setLocalAudioDirHandle,
-        currentUser, setCurrentUser
     } = useAppStore();
 
     const mushaf = getMushafById(mushafId);
@@ -491,6 +228,13 @@ export default function SettingsDrawer({ isOpen, onClose }) {
 
     const [activeView, setActiveView] = useState(DRAWER_VIEWS.root);
     const [showAdvanced, setShowAdvanced] = useState(false);
+    const [offlinePacks, setOfflinePacks] = useState({});
+    const [cacheStats, setCacheStats] = useState({ count: 0, approximateBytes: 0 });
+    const [downloadingPack, setDownloadingPack] = useState(null);
+    const [downloadProgress, setDownloadProgress] = useState(null);
+    const [isOnline, setIsOnline] = useState(navigator.onLine);
+    const syncState = getSyncState();
+    const syncConfigured = isAppwriteConfigured();
 
     useEffect(() => {
         let isMounted = true;
@@ -500,6 +244,37 @@ export default function SettingsDrawer({ isOpen, onClose }) {
             }, 0);
         }
         return () => { isMounted = false; };
+    }, [isOpen]);
+
+    useEffect(() => {
+        if (!isOpen) return;
+        let isMounted = true;
+
+        async function loadStats() {
+            try {
+                const { mushafId, translationId, reciterId } = useAppStore.getState();
+                const packs = await getOfflinePackStats({ translationId, reciterId, mushafId });
+                const cache = await getOfflineCacheStats();
+                if (isMounted) {
+                    setOfflinePacks(packs);
+                    setCacheStats(cache);
+                }
+            } catch (e) {
+                console.warn('Failed to load offline stats:', e);
+            }
+        }
+        loadStats();
+
+        const handleOnline = () => setIsOnline(true);
+        const handleOffline = () => setIsOnline(false);
+        window.addEventListener('online', handleOnline);
+        window.addEventListener('offline', handleOffline);
+
+        return () => {
+            isMounted = false;
+            window.removeEventListener('online', handleOnline);
+            window.removeEventListener('offline', handleOffline);
+        };
     }, [isOpen]);
 
     const selectedTranslation = useMemo(
@@ -519,26 +294,56 @@ export default function SettingsDrawer({ isOpen, onClose }) {
         [arabicFontId, mushafFonts]
     );
 
-    const { data: offlineStats } = useQuery({
-        queryKey: ['offline-pack-stats', translationId, reciterId, mushafId],
-        queryFn: () => getOfflinePackStats({ translationId, reciterId, mushafId }),
-        enabled: isOpen,
-    });
-
-    const handleSelectAudioFolder = async () => {
+    async function handleDownloadPack(packId) {
+        if (!isOnline || downloadingPack) return;
+        setDownloadingPack(packId);
+        setDownloadProgress({ current: 0, total: 1, label: 'Starting...' });
         try {
-            if (!('showDirectoryPicker' in window)) {
-                alert('Your browser does not support local folder selection.');
-                return;
-            }
-
-            const handle = await window.showDirectoryPicker({ mode: 'read' });
-            await saveLocalAudioDirHandle(handle);
-            setLocalAudioDirHandle(handle);
-        } catch (error) {
-            console.error('Failed to get directory', error);
+            const { mushafId, translationId, reciterId } = useAppStore.getState();
+            const onProgress = (p) => setDownloadProgress(p);
+            if (packId === 'quranText') await syncQuranTextPack({ translationId, reciterId, mushafId, onProgress });
+            else if (packId === 'tajweed') await syncTajweedPack({ onProgress });
+            else if (packId === 'pagePack') await syncPagePack({ onProgress });
+            const packs = await getOfflinePackStats({ translationId, reciterId, mushafId });
+            setOfflinePacks(packs);
+        } catch (e) {
+            console.error('Failed to download pack:', e);
         }
-    };
+        setDownloadingPack(null);
+        setDownloadProgress(null);
+    }
+
+    async function handleDeletePack(packId) {
+        try {
+            await deleteOfflinePack(packId);
+            const { mushafId, translationId, reciterId } = useAppStore.getState();
+            const packs = await getOfflinePackStats({ translationId, reciterId, mushafId });
+            setOfflinePacks(packs);
+        } catch (e) {
+            console.error('Failed to delete pack:', e);
+        }
+    }
+
+    async function handleClearCache() {
+        try {
+            await deleteOfflineCacheByPrefix('');
+            setCacheStats({ count: 0, approximateBytes: 0 });
+        } catch (e) {
+            console.error('Failed to clear cache:', e);
+        }
+    }
+
+    function formatBytes(bytes) {
+        if (!bytes) return '0 B';
+        const units = ['B', 'KB', 'MB', 'GB'];
+        let value = bytes;
+        let unitIndex = 0;
+        while (value >= 1024 && unitIndex < units.length - 1) {
+            value /= 1024;
+            unitIndex += 1;
+        }
+        return `${value.toFixed(value >= 10 || unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
+    }
 
     const closeLabel = activeView === DRAWER_VIEWS.root ? 'Close settings' : 'Back to settings';
 
@@ -652,13 +457,6 @@ export default function SettingsDrawer({ isOpen, onClose }) {
             };
         }
 
-        if (activeView === DRAWER_VIEWS.sync) {
-            return {
-                title: 'Cloud Sync',
-                content: <CloudSyncView currentUser={currentUser} setCurrentUser={setCurrentUser} />
-            };
-        }
-
         return null;
     };
 
@@ -764,11 +562,6 @@ export default function SettingsDrawer({ isOpen, onClose }) {
                                     <SelectionRow label="Mushaf" value={mushaf.name} onClick={() => setActiveView(DRAWER_VIEWS.mushaf)} />
                                     <SelectionRow label="Translation" value={selectedTranslation?.name} onClick={() => setActiveView(DRAWER_VIEWS.translation)} />
                                     <SelectionRow label="Reciter" value={selectedReciter?.name} onClick={() => setActiveView(DRAWER_VIEWS.reciter)} />
-                                    <SelectionRow 
-                                        label="Cloud Sync" 
-                                        hint={currentUser ? `Signed in as ${currentUser.name || currentUser.email}` : "Backup your reading progress"} 
-                                        onClick={() => setActiveView(DRAWER_VIEWS.sync)} 
-                                    />
                                     <div style={{ padding: '1rem 1.05rem' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '0.65rem' }}>
                                             <div>
@@ -855,98 +648,83 @@ export default function SettingsDrawer({ isOpen, onClose }) {
                                                     aria-label="Translation font size"
                                                     style={{ width: '100%' }}
                                                 />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <div style={sectionTitleStyle()}>Offline & Storage</div>
+                                <div style={cardStyle()}>
+                                    <div style={{ padding: '1rem 1.05rem', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                {isOnline ? <Wifi size={16} color="#22c55e" /> : <WifiOff size={16} color="var(--text-muted)" />}
+                                                <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{isOnline ? 'Online' : 'Offline'}</span>
                                             </div>
+                                            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                                                {cacheStats.count} cached · {formatBytes(cacheStats.approximateBytes)}
+                                            </span>
                                         </div>
+                                        {syncConfigured && (
+                                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
+                                                Sync: {syncState.syncStatus}
+                                            </div>
+                                        )}
+                                        <button
+                                            onClick={handleClearCache}
+                                            style={{ width: '100%', padding: '0.5rem', background: 'transparent', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                                        >
+                                            <Trash2 size={12} /> Clear API Cache
+                                        </button>
                                     </div>
 
-                                    <div>
-                                        <div style={sectionTitleStyle()}>Audio</div>
-                                        <div style={{ ...cardStyle(), padding: '1rem 1.05rem' }}>
-                                            <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>Local Offline Audio</div>
-                                            <div style={{ color: 'var(--text-secondary)', fontSize: '0.84rem', marginBottom: '0.95rem' }}>
-                                                Connect a folder of ayah MP3 files for native offline playback.
-                                            </div>
-                                            <button
-                                                type="button"
-                                                onClick={handleSelectAudioFolder}
-                                                style={{
-                                                    width: '100%',
-                                                    minHeight: '46px',
-                                                    borderRadius: '14px',
-                                                    border: localAudioDirHandle ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(0,0,0,0.06)',
-                                                    background: localAudioDirHandle ? 'rgba(34, 197, 94, 0.1)' : 'var(--bg-secondary)',
-                                                    color: localAudioDirHandle ? '#22c55e' : 'var(--text-primary)',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                    gap: '0.55rem',
-                                                    fontWeight: 600,
-                                                }}
-                                            >
-                                                {localAudioDirHandle ? <CheckCircle size={18} aria-hidden="true" /> : <FolderOpen size={18} aria-hidden="true" />}
-                                                <span>{localAudioDirHandle ? 'Folder Connected' : 'Choose Audio Folder'}</span>
-                                            </button>
-                                        </div>
-                                    </div>
+                                    {['quranText', 'tajweed', 'pagePack'].map((packId) => {
+                                        const pack = offlinePacks[packId];
+                                        if (!pack) return null;
+                                        const isDownloading = downloadingPack === packId;
+                                        const progress = isDownloading ? downloadProgress : null;
 
-                                    <div>
-                                        <div style={sectionTitleStyle()}>Offline</div>
-                                        <div style={{ ...cardStyle(), padding: '1rem 1.05rem' }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', alignItems: 'flex-start', marginBottom: '0.95rem' }}>
-                                                <div>
-                                                    <div style={{ fontWeight: 600, marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
-                                                        <HardDrive size={16} aria-hidden="true" />
-                                                        <span>Offline Library</span>
+                                        return (
+                                            <div key={packId} style={{ padding: '0.85rem 1.05rem', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
+                                                    <div>
+                                                        <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{pack.title || packId}</div>
+                                                        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                                                            {pack.downloaded ? `${pack.entryCount} items · ${pack.sizeLabel}` : 'Not downloaded'}
+                                                        </div>
                                                     </div>
-                                                    <div style={{ color: 'var(--text-secondary)', fontSize: '0.84rem' }}>
-                                                        Manage downloadable Quran packs and keep your reading setup available offline.
+                                                    <div style={{ display: 'flex', gap: '4px' }}>
+                                                        {pack.downloaded && (
+                                                            <button
+                                                                onClick={() => handleDeletePack(packId)}
+                                                                style={{ padding: '0.35rem 0.6rem', background: 'transparent', border: '1px solid #ef4444', borderRadius: '4px', color: '#ef4444', fontSize: '0.72rem', fontWeight: 600, cursor: 'pointer' }}
+                                                            >
+                                                                Remove
+                                                            </button>
+                                                        )}
+                                                        <button
+                                                            onClick={() => handleDownloadPack(packId)}
+                                                            disabled={!isOnline || isDownloading}
+                                                            style={{ padding: '0.35rem 0.6rem', background: isOnline ? 'var(--accent-primary)' : 'var(--text-muted)', border: 'none', borderRadius: '4px', color: 'white', fontSize: '0.72rem', fontWeight: 600, cursor: isOnline ? 'pointer' : 'default', display: 'flex', alignItems: 'center', gap: '3px' }}
+                                                        >
+                                                            {isDownloading ? <Download size={11} className="spin" /> : <Download size={11} />}
+                                                            {isDownloading ? '...' : 'Download'}
+                                                        </button>
                                                     </div>
                                                 </div>
-                                                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.35rem 0.65rem', borderRadius: '999px', background: navigator.onLine ? 'var(--bg-secondary)' : 'rgba(239, 68, 68, 0.12)', color: navigator.onLine ? 'var(--text-secondary)' : '#ef4444', fontWeight: 700, fontSize: '0.76rem', whiteSpace: 'nowrap' }}>
-                                                    <WifiOff size={13} aria-hidden="true" />
-                                                    {navigator.onLine ? 'Online' : 'Offline'}
-                                                </div>
+                                                {progress && (
+                                                    <div style={{ marginTop: '0.35rem' }}>
+                                                        <div style={{ height: '3px', background: 'rgba(0,0,0,0.08)', borderRadius: '2px', overflow: 'hidden' }}>
+                                                            <div style={{ height: '100%', width: `${(progress.current / progress.total) * 100}%`, background: 'var(--accent-primary)', transition: 'width 0.2s' }} />
+                                                        </div>
+                                                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '2px' }}>{progress.label}</div>
+                                                    </div>
+                                                )}
                                             </div>
-
-                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.75rem', marginBottom: '0.95rem' }}>
-                                                <div style={{ padding: '0.9rem', borderRadius: '14px', background: 'var(--bg-secondary)' }}>
-                                                    <div style={{ color: 'var(--text-muted)', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700, marginBottom: '0.25rem' }}>Quran text</div>
-                                                    <div style={{ color: 'var(--text-primary)', fontWeight: 800, fontSize: '0.92rem' }}>
-                                                        {offlineStats?.quranText?.downloaded ? offlineStats.quranText.sizeLabel : 'Not downloaded'}
-                                                    </div>
-                                                </div>
-                                                <div style={{ padding: '0.9rem', borderRadius: '14px', background: 'var(--bg-secondary)' }}>
-                                                    <div style={{ color: 'var(--text-muted)', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700, marginBottom: '0.25rem' }}>Tajweed</div>
-                                                    <div style={{ color: 'var(--text-primary)', fontWeight: 800, fontSize: '0.92rem' }}>
-                                                        {offlineStats?.tajweed?.downloaded ? offlineStats.tajweed.sizeLabel : 'Not downloaded'}
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    onClose();
-                                                    navigate('/offline-library');
-                                                }}
-                                                style={{
-                                                    width: '100%',
-                                                    minHeight: '46px',
-                                                    borderRadius: '14px',
-                                                    background: 'var(--accent-primary)',
-                                                    color: '#fff',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                    gap: '0.55rem',
-                                                    fontWeight: 600,
-                                                }}
-                                            >
-                                                <CheckCircle size={18} aria-hidden="true" />
-                                                <span>Open Offline Library</span>
-                                            </button>
-                                        </div>
-                                    </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
                                 </section>
                             )}
 

@@ -4,7 +4,7 @@ import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useInView } from 'react-intersection-observer';
 import { getChapter, getVerses, getChapterAudio, getChapterTafsirs, getTajweedVerses } from '../services/api/quranApi';
 import { useAppStore } from '../store/useAppStore';
-import { ArrowLeft, ArrowRight, Play, Pause, BookOpen, Bookmark, Info, X, Download, CloudCheck, RefreshCw, ChevronsDown, Minus, Plus, Settings2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Play, Pause, BookOpen, Bookmark, Info, X, Minus, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Helmet } from 'react-helmet-async';
 import { useSwipeable } from 'react-swipeable';
@@ -32,14 +32,11 @@ export default function Surah() {
         mushafId,
         arabicFont, tajweedEnabled,
         tafsirId,
-        downloadedSurahs, addDownloadedSurah,
         setNavHeaderTitle,
         autoScroll, setAutoScroll, autoScrollSpeed, setAutoScrollSpeed,
         isAutoScrollPaused, setIsAutoScrollPaused,
         isPlayerVisible, setIsPlayerVisible,
         playTriggerCount,
-        customAudioBaseUrl,
-        localAudioDirHandle,
         logReadingSession
     } = useAppStore();
     const mushaf = getMushafById(mushafId);
@@ -162,15 +159,7 @@ export default function Surah() {
         } else {
             // Build the playlist and show the setup modal
             const playlist = verses.map(v => {
-                let url = v.audio?.url ? `https://verses.quran.com/${v.audio.url}` : null;
-                const [surahNum, ayahNum] = v.verse_key.split(':');
-                const fileName = `${String(surahNum).padStart(3, '0')}${String(ayahNum).padStart(3, '0')}.mp3`;
-
-                if (localAudioDirHandle) {
-                    url = `local-audio://${fileName}`;
-                } else if (customAudioBaseUrl) {
-                    url = `${customAudioBaseUrl.replace(/\/$/, '')}/${fileName}`;
-                }
+                const url = v.audio?.url ? `https://verses.quran.com/${v.audio.url}` : null;
 
                 return {
                     surahId: id,
@@ -199,16 +188,7 @@ export default function Surah() {
 
     const handlePlayVerse = useCallback((verse) => {
         const playlist = verses.map(v => {
-            let url = v.audio?.url ? `https://verses.quran.com/${v.audio.url}` : null;
-            const [surahNum, ayahNum] = v.verse_key.split(':');
-            const fileName = `${String(surahNum).padStart(3, '0')}${String(ayahNum).padStart(3, '0')}.mp3`;
-
-            if (localAudioDirHandle) {
-                url = `local-audio://${fileName}`;
-            } else if (customAudioBaseUrl) {
-                url = `${customAudioBaseUrl.replace(/\/$/, '')}/${fileName}`;
-            }
-
+            const url = v.audio?.url ? `https://verses.quran.com/${v.audio.url}` : null;
             return { surahId: id, verseKey: v.verse_key, verseNumber: v.verse_number, url };
         }).filter(v => v.url);
 
@@ -228,38 +208,16 @@ export default function Surah() {
         updateAudioSettings({ startRange: targetIndex, endRange: playlist.length - 1 });
         setIsPlaying(true);
         setIsPlayerVisible(true);
-    }, [verses, id, localAudioDirHandle, customAudioBaseUrl, isCurrentSurahPlaying, audioPlaylist, audioTrackIndex, isPlaying, setAudioPlaylist, updateAudioSettings, setIsPlaying, setIsPlayerVisible]);
+    }, [verses, id, isCurrentSurahPlaying, audioPlaylist, audioTrackIndex, isPlaying, setAudioPlaylist, updateAudioSettings, setIsPlaying, setIsPlayerVisible]);
 
-    const isDownloaded = (downloadedSurahs || []).includes(id);
-    const [isDownloading, setIsDownloading] = useState(false);
-
-    // Listen for the navbar audio button — fire handlePlayClick ONLY when count truly increments
-    // Store the initial value at mount time; any change after that is a real user press.
+    // Listen for the navbar audio button
     const mountPlayTriggerRef = React.useRef(playTriggerCount);
     useEffect(() => {
-        // Ignore the initial render and any re-mount that happens with the same count
         if (playTriggerCount === mountPlayTriggerRef.current) return;
         handlePlayClick();
         mountPlayTriggerRef.current = playTriggerCount;
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [playTriggerCount]);
-
-
-    const handleDownloadSurah = async () => {
-        if (!audioData?.audio_url || isDownloading) return;
-
-        try {
-            setIsDownloading(true);
-            const response = await fetch(audioData.audio_url);
-            if (response.ok) {
-                addDownloadedSurah(id);
-            }
-        } catch (error) {
-            console.error("Audio download failed", error);
-        } finally {
-            setIsDownloading(false);
-        }
-    };
 
     // Auto-scroll logic
     const scrollRafRef = useRef(null);
@@ -539,22 +497,6 @@ export default function Surah() {
                                 >
                                     {isCurrentAudio && isPlaying ? <Pause size={18} /> : <Play size={18} />}
                                     {isCurrentAudio && isPlaying ? 'Pause Audio' : 'Play Audio'}
-                                </button>
-                                <button
-                                    className="btn-primary"
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '8px',
-                                        backgroundColor: isDownloaded ? 'var(--accent-light)' : 'var(--bg-primary)',
-                                        color: isDownloaded ? 'var(--accent-primary)' : 'var(--text-primary)',
-                                        border: '1px solid var(--border-color)',
-                                        opacity: isDownloading ? 0.7 : 1
-                                    }}
-                                    onClick={handleDownloadSurah}
-                                    disabled={isDownloading || isDownloaded}
-                                >
-                                    {isDownloading ? 'Downloading...' : isDownloaded ? 'Offline Ready' : 'Download for Offline'}
                                 </button>
                             </div>
                         </div>

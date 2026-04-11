@@ -1,4 +1,4 @@
-import { buildOfflineCacheKey, getChapters, getTajweedVerses, getVerses } from '../services/api/quranApi';
+import { buildOfflineCacheKey, getChapters, getTajweedVerses, getVerses, getVersesByPage } from '../services/api/quranApi';
 import { deleteOfflineCacheByPrefix, getOfflineCacheStats } from './offlineCache';
 
 export const OFFLINE_PACKS = {
@@ -89,9 +89,22 @@ export async function syncTajweedPack({ onProgress }) {
   }
 }
 
+export async function syncPagePack({ onProgress }) {
+  const totalPages = 604;
+  for (let page = 1; page <= totalPages; page += 1) {
+    await getVersesByPage(page);
+    onProgress?.({ current: page, total: totalPages, label: `Caching page ${page}` });
+  }
+}
+
 export async function deleteOfflinePack(packId) {
   if (packId === 'tajweed') {
     await deleteOfflineCacheByPrefix('/quran/verses/uthmani_tajweed');
+    return;
+  }
+
+  if (packId === 'pagePack') {
+    await deleteOfflineCacheByPrefix('/verses/by_page/');
     return;
   }
 

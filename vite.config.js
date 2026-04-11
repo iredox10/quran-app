@@ -40,8 +40,10 @@ export default defineConfig({
         ]
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2,json}'],
+        globDirectory: 'dist',
         navigateFallback: '/index.html',
+        maximumFileSizeToCacheInBytes: 50 * 1024 * 1024, // 50MB to allow large JSON verse files
         runtimeCaching: [
           {
             urlPattern: ({ url }) => url.origin === 'https://api.quran.com',

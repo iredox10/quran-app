@@ -1,6 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { useAppStore } from '../store/useAppStore';
-import { getLocalAudioUrl } from '../utils/localAudio';
 import { Play, Pause, X, Music, SkipBack, SkipForward, Square, Settings2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -13,7 +12,6 @@ export default function GlobalAudioPlayer() {
         currentAudioUrl, audioPlaylist, audioTrackIndex, isPlaying, audioSettings,
         setAudioTrackIndex, updateAudioSettings, setIsPlaying, stopAudio,
         isPlayerVisible, setIsPlayerVisible,
-        localAudioDirHandle
     } = useAppStore();
 
     const audioRef = useRef(null);
@@ -54,28 +52,10 @@ export default function GlobalAudioPlayer() {
 
     const [resolvedAudioUrl, setResolvedAudioUrl] = useState(null);
 
-    // Resolve local-audio:// to object URL if needed
+    // Resolve audio URL
     useEffect(() => {
-        if (!activeUrl) {
-            setResolvedAudioUrl(null);
-            return;
-        }
-
-        if (activeUrl.startsWith('local-audio://') && localAudioDirHandle) {
-            const fileName = activeUrl.replace('local-audio://', '');
-            getLocalAudioUrl(localAudioDirHandle, fileName).then(url => {
-                setResolvedAudioUrl(url || activeUrl); // Fallback to activeUrl if fail (will probably break but keeps ref alive)
-            });
-        } else {
-            setResolvedAudioUrl(activeUrl);
-        }
-
-        // Cleanup blob URLs to prevent memory leaks cross-renders
-        return () => {
-            // We can't cleanup in return easily without keeping track if it is a blob, but getLocalAudioUrl returns a blob.
-            // Revoking it immediately ruins the play if we aren't careful, so we rely on garbage collection or explicit cleanup if possible.
-        };
-    }, [activeUrl, localAudioDirHandle]);
+        setResolvedAudioUrl(activeUrl || null);
+    }, [activeUrl]);
 
     // Sync with audio element
     useEffect(() => {

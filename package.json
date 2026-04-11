@@ -6,8 +6,12 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "prebuild": "node scripts/export-quran-json.js",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "generate:data": "node scripts/generate-quran-data.js",
+    "export:data": "node scripts/export-quran-json.js",
+    "setup:appwrite": "node scripts/setup-appwrite.js"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.90.21",

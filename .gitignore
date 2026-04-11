@@ -26,3 +26,10 @@ dist-ssr
 
 # Local Netlify folder
 .netlify
+
+# Generated Quran data (exported during build)
+public/quran-data/verses/
+public/quran-data/verses-by-page/
+public/quran-data/tajweed.json
+public/quran-data/tajweed-by-page.json
+public/quran-data/.export-timestamp
