@@ -30,9 +30,20 @@ export function setSyncUserId(userId) {
     notifySyncChange();
 }
 
+function isOnline() {
+    return navigator.onLine;
+}
+
+function isAuthError(error) {
+    return error?.message?.includes('401') ||
+           error?.message?.includes('not authorized') ||
+           error?.message?.includes('Unauthorized') ||
+           error?.code === 401;
+}
+
 export async function pullUserData() {
-    if (!isAppwriteConfigured() || !currentUserId) {
-        syncStatus = 'disabled';
+    if (!isAppwriteConfigured() || !currentUserId || !isOnline()) {
+        syncStatus = isOnline() ? 'idle' : 'offline';
         notifySyncChange();
         return null;
     }
@@ -67,17 +78,23 @@ export async function pullUserData() {
 
         return cloudData;
     } catch (error) {
+        if (isAuthError(error)) {
+            syncStatus = 'idle';
+            syncError = null;
+            notifySyncChange();
+            return null;
+        }
         syncError = error.message;
         syncStatus = 'error';
         notifySyncChange();
-        console.error('Failed to pull user data:', error);
+        console.warn('Failed to pull user data:', error.message);
         return null;
     }
 }
 
 export async function pushFullState() {
-    if (!isAppwriteConfigured() || !currentUserId) {
-        syncStatus = 'disabled';
+    if (!isAppwriteConfigured() || !currentUserId || !isOnline()) {
+        syncStatus = isOnline() ? 'idle' : 'offline';
         notifySyncChange();
         return false;
     }
@@ -100,17 +117,24 @@ export async function pushFullState() {
 
         return true;
     } catch (error) {
+        if (isAuthError(error)) {
+            syncStatus = 'idle';
+            syncError = null;
+            isSyncing = false;
+            notifySyncChange();
+            return false;
+        }
         syncError = error.message;
         syncStatus = 'error';
         isSyncing = false;
         notifySyncChange();
-        console.error('Failed to push full state:', error);
+        console.warn('Failed to push full state:', error.message);
         return false;
     }
 }
 
 export async function processPendingJobs() {
-    if (!isAppwriteConfigured() || !currentUserId) return [];
+    if (!isAppwriteConfigured() || !currentUserId || !isOnline()) return [];
 
     const jobs = await listSyncQueueJobs();
     const pendingJobs = jobs.filter(j => j.status === 'pending');
@@ -152,11 +176,18 @@ export async function processPendingJobs() {
 
         return results;
     } catch (error) {
+        if (isAuthError(error)) {
+            syncStatus = 'idle';
+            syncError = null;
+            isSyncing = false;
+            notifySyncChange();
+            return [];
+        }
         syncError = error.message;
         syncStatus = 'error';
         isSyncing = false;
         notifySyncChange();
-        console.error('Failed to process sync queue:', error);
+        console.warn('Failed to process sync queue:', error.message);
         return [];
     }
 }
@@ -189,6 +220,13 @@ export async function initializeSync(userId) {
     }
 
     currentUserId = userId;
+
+    if (!isOnline()) {
+        syncStatus = 'offline';
+        notifySyncChange();
+        return;
+    }
+
     syncStatus = 'initializing';
     notifySyncChange();
 
