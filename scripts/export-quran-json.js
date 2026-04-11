@@ -4,317 +4,191 @@ import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const OUTPUT_DIR = path.join(__dirname, '../public/quran-data');
 
 const API_BASE = 'https://api.quran.com/api/v4';
-const OUTPUT_DIR = path.join(__dirname, '../public/quran-data');
-const MUSHAF_MAP = {
-  'madani-standard': { apiMushafId: 5, verseField: 'text_qpc_hafs', wordField: 'text_qpc_hafs' },
-  'madani-tajweed': { apiMushafId: 19, verseField: 'text_qpc_hafs', wordField: 'text_qpc_hafs' },
-  'indopak': { apiMushafId: 3, verseField: 'text_indopak', wordField: 'text_indopak' },
-};
-const TRANSLATION_ID = 85;
-const RECITER_ID = 7;
-const PER_PAGE = 50;
+const QURAN_API = 'https://api.quran.com/api/v4/quran';
 
 function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function fetchJson(url, retries = 3) {
+async function fetchJson(url, retries = 5) {
   for (let i = 0; i < retries; i++) {
     try {
-      const res = await fetch(url);
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15000);
+      const res = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeout);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return await res.json();
     } catch (e) {
       if (i === retries - 1) throw e;
-      console.log(`  Retry ${i + 1}/${retries} for ${url}`);
-      await delay(2000 * (i + 1));
+      const waitMs = 3000 * (i + 1);
+      console.log(`  Retry ${i + 1}/${retries} in ${waitMs}ms...`);
+      await delay(waitMs);
     }
   }
-}
-
-async function fetchWithPagination(url) {
-  let page = 1;
-  let allResults = [];
-  while (true) {
-    const separator = url.includes('?') ? '&' : '?';
-    const data = await fetchJson(`${url}${separator}page=${page}&per_page=${PER_PAGE}`);
-    const key = Object.keys(data).find(k => Array.isArray(data[k]));
-    const items = data[key] || [];
-    allResults = allResults.concat(items);
-    console.log(`  Fetched page ${page}, got ${items.length} items (total: ${allResults.length})`);
-    if (data.pagination && page >= data.pagination.total_pages) break;
-    if (items.length < PER_PAGE) break;
-    page++;
-    await delay(300);
-  }
-  return allResults;
 }
 
 async function main() {
   console.log('=== Quran Data Export Script ===\n');
 
-  // Allow skipping export (useful for local dev when data already exists)
   if (process.env.SKIP_QURAN_EXPORT === '1' || process.env.SKIP_QURAN_EXPORT === 'true') {
-    console.log('SKIP_QURAN_EXPORT is set. Skipping data export.');
-    if (!fs.existsSync(OUTPUT_DIR)) {
-      console.log('No existing data found. Running generate:data to create placeholders...');
-      return;
-    }
-    console.log('Existing data found at:', OUTPUT_DIR);
+    console.log('SKIP_QURAN_EXPORT is set. Skipping.');
     return;
   }
 
-  // Check if data already exists and is recent (within 30 days)
   const forceFlag = process.argv.includes('--force');
   const markerFile = path.join(OUTPUT_DIR, '.export-timestamp');
   if (!forceFlag && fs.existsSync(markerFile)) {
-    const timestamp = parseInt(fs.readFileSync(markerFile, 'utf-8'), 10);
-    const ageDays = (Date.now() - timestamp) / (1000 * 60 * 60 * 24);
+    const ageDays = (Date.now() - parseInt(fs.readFileSync(markerFile, 'utf-8'), 10)) / (1000 * 60 * 60 * 24);
     if (ageDays < 30) {
-      console.log(`Data is ${Math.round(ageDays)} days old (fresh enough). Skipping export.`);
-      console.log('Use --force to re-download: node scripts/export-quran-json.js --force');
+      console.log(`Data is ${Math.round(ageDays)} days old. Skipping. Use --force to re-download.`);
       return;
     }
   }
 
-  if (!fs.existsSync(OUTPUT_DIR)) {
-    fs.mkdirSync(OUTPUT_DIR, { recursive: true });
-  }
+  if (!fs.existsSync(OUTPUT_DIR)) fs.mkdirSync(OUTPUT_DIR, { recursive: true });
 
-  // 1. Fetch chapters (surahs) metadata
-  console.log('[1/5] Fetching chapters metadata...');
-  const chaptersData = await fetchJson(`${API_BASE}/chapters?language=en`);
-  const chapters = chaptersData.chapters;
-  fs.writeFileSync(
-    path.join(OUTPUT_DIR, 'chapters.json'),
-    JSON.stringify(chapters, null, 2)
-  );
+  // 1. Chapters
+  console.log('[1/6] Fetching chapters...');
+  const chapters = (await fetchJson(`${API_BASE}/chapters?language=en`)).chapters;
+  fs.writeFileSync(path.join(OUTPUT_DIR, 'chapters.json'), JSON.stringify(chapters, null, 2));
   console.log(`  Saved ${chapters.length} chapters\n`);
 
-  // 2. Fetch tajweed verses for all surahs
-  console.log('[2/5] Fetching tajweed verses...');
-  const allTajweed = {};
-  for (const chapter of chapters) {
-    const data = await fetchJson(`${API_BASE}/quran/verses/uthmani_tajweed?chapter_number=${chapter.id}`);
-    allTajweed[chapter.id] = data.verses;
-    console.log(`  Surah ${chapter.id} (${chapter.name_simple}): ${data.verses.length} verses`);
-    await delay(200);
+  // 2. Tajweed (all surahs, one call each)
+  console.log('[2/6] Fetching tajweed...');
+  const tajweedFile = path.join(OUTPUT_DIR, 'tajweed.json');
+  let allTajweed = {};
+  if (fs.existsSync(tajweedFile)) {
+    allTajweed = JSON.parse(fs.readFileSync(tajweedFile, 'utf-8'));
+    console.log(`  Loaded existing tajweed for ${Object.keys(allTajweed).length} surahs`);
   }
-  fs.writeFileSync(
-    path.join(OUTPUT_DIR, 'tajweed.json'),
-    JSON.stringify(allTajweed, null, 2)
-  );
-  console.log(`  Saved tajweed for ${Object.keys(allTajweed).length} surahs\n`);
+  for (const ch of chapters) {
+    if (allTajweed[ch.id]) continue;
+    const data = await fetchJson(`${QURAN_API}/verses/uthmani_tajweed?chapter_number=${ch.id}`);
+    allTajweed[ch.id] = data.verses;
+    if (ch.id % 20 === 0 || ch.id === 114) console.log(`  Surah ${ch.id}/114`);
+    await delay(100);
+  }
+  fs.writeFileSync(tajweedFile, JSON.stringify(allTajweed, null, 2));
+  console.log('  Done\n');
 
-  // 3. Fetch verses for each mushaf (by chapter, paginated)
-  for (const [mushafId, mushafConfig] of Object.entries(MUSHAF_MAP)) {
-    const mushafDir = path.join(OUTPUT_DIR, 'verses', mushafId);
-    if (!fs.existsSync(mushafDir)) {
-      fs.mkdirSync(mushafDir, { recursive: true });
+  // 3. Tajweed by page
+  console.log('[3/6] Fetching tajweed by page...');
+  const tajweedPageFile = path.join(OUTPUT_DIR, 'tajweed-by-page.json');
+  let tajweedByPage = {};
+  if (fs.existsSync(tajweedPageFile)) {
+    tajweedByPage = JSON.parse(fs.readFileSync(tajweedPageFile, 'utf-8'));
+    console.log(`  Loaded existing tajweed-by-page for ${Object.keys(tajweedByPage).length} pages`);
+  }
+  for (let p = 1; p <= 604; p++) {
+    if (tajweedByPage[p]) continue;
+    const data = await fetchJson(`${QURAN_API}/verses/uthmani_tajweed?page_number=${p}`);
+    tajweedByPage[p] = data.verses;
+    if (p % 100 === 0 || p === 604) console.log(`  Page ${p}/604`);
+    await delay(100);
+  }
+  fs.writeFileSync(tajweedPageFile, JSON.stringify(tajweedByPage, null, 2));
+  console.log('  Done\n');
+
+  // 4. Verses by chapter (madani-standard) — bulk endpoint, no pagination
+  console.log('[4/6] Fetching verses by chapter (madani-standard)...');
+  const verseDir = path.join(OUTPUT_DIR, 'verses', 'madani-standard');
+  if (!fs.existsSync(verseDir)) fs.mkdirSync(verseDir, { recursive: true });
+
+  for (const ch of chapters) {
+    const outFile = path.join(verseDir, `${ch.id}.json`);
+    if (fs.existsSync(outFile)) {
+      if (ch.id % 20 === 0 || ch.id === 114) console.log(`  Surah ${ch.id}/114 (skipped, exists)`);
+      continue;
     }
-
-    console.log(`[3/5] Fetching verses for mushaf: ${mushafId}...`);
-
-    // Fetch chapter info for verse counts
-    for (const chapter of chapters) {
-      const totalPages = Math.ceil(chapter.verses_count / PER_PAGE);
-      const chapterVerses = [];
-
-      for (let page = 1; page <= totalPages; page++) {
-        const params = new URLSearchParams({
-          language: 'en',
-          words: 'true',
-          translations: TRANSLATION_ID,
-          audio: RECITER_ID,
-          fields: `${mushafConfig.verseField},page_number`,
-          word_fields: `${mushafConfig.wordField},page_number,line_number`,
-          mushaf: mushafConfig.apiMushafId,
-          page: page,
-          per_page: PER_PAGE,
-        });
-
-        const data = await fetchJson(`${API_BASE}/verses/by_chapter/${chapter.id}?${params}`);
-        chapterVerses.push(...(data.verses || []));
-        console.log(`  Surah ${chapter.id} page ${page}/${totalPages}`);
-        await delay(300);
-      }
-
-      // Decorate verses with arabic_text field (matching quranApi.js logic)
-      const decorated = chapterVerses.map(v => ({
-        ...v,
-        arabic_text: v[mushafConfig.verseField] || v.text_uthmani || v.text_indopak || v.text_qpc_hafs || '',
-      }));
-
-      fs.writeFileSync(
-        path.join(mushafDir, `${chapter.id}.json`),
-        JSON.stringify({
-          chapterId: chapter.id,
-          mushaf: mushafId,
-          pagination: { current_page: 1, total_pages: totalPages, total_verses: decorated.length },
-          verses: decorated,
-        }, null, 2)
-      );
-      console.log(`  Saved Surah ${chapter.id}: ${decorated.length} verses\n`);
-    }
-  }
-
-  // 4. Fetch verses by page (for page view) — using madani-standard as default
-  console.log('[4/5] Fetching verses by page (madani-standard)...');
-  const pageDir = path.join(OUTPUT_DIR, 'verses-by-page', 'madani-standard');
-  if (!fs.existsSync(pageDir)) {
-    fs.mkdirSync(pageDir, { recursive: true });
-  }
-
-  const mushafConfig = MUSHAF_MAP['madani-standard'];
-  for (let pageNum = 1; pageNum <= 604; pageNum++) {
-    const params = new URLSearchParams({
-      language: 'en',
-      words: 'true',
-      translations: TRANSLATION_ID,
-      audio: RECITER_ID,
-      fields: `${mushafConfig.verseField},page_number`,
-      word_fields: `${mushafConfig.wordField},page_number,line_number`,
-      mushaf: mushafConfig.apiMushafId,
-      per_page: PER_PAGE,
-    });
-
-    const data = await fetchJson(`${API_BASE}/verses/by_page/${pageNum}?${params}`);
+    const data = await fetchJson(
+      `${API_BASE}/verses/by_chapter/${ch.id}?language=en&words=true&translations=85&audio=7&fields=text_qpc_hafs,page_number&word_fields=text_qpc_hafs,page_number,line_number&mushaf=5&per_page=${ch.verses_count}`
+    );
     const decorated = (data.verses || []).map(v => ({
       ...v,
-      arabic_text: v[mushafConfig.verseField] || v.text_uthmani || v.text_indopak || v.text_qpc_hafs || '',
+      arabic_text: v.text_qpc_hafs || v.text_uthmani || '',
     }));
-
     fs.writeFileSync(
-      path.join(pageDir, `${pageNum}.json`),
+      outFile,
       JSON.stringify({
-        pageNumber: pageNum,
+        chapterId: ch.id,
         mushaf: 'madani-standard',
+        pagination: { current_page: 1, total_pages: 1, total_verses: decorated.length },
         verses: decorated,
       }, null, 2)
     );
+    if (ch.id % 20 === 0 || ch.id === 114) console.log(`  Surah ${ch.id}/114`);
+    await delay(250);
+  }
+  console.log('  Done\n');
 
-    if (pageNum % 50 === 0 || pageNum === 604) {
-      console.log(`  Fetched page ${pageNum}/604`);
+  // 5. Verses by page (madani-standard)
+  console.log('[5/6] Fetching verses by page...');
+  const pageDir = path.join(OUTPUT_DIR, 'verses-by-page', 'madani-standard');
+  if (!fs.existsSync(pageDir)) fs.mkdirSync(pageDir, { recursive: true });
+
+  for (let p = 1; p <= 604; p++) {
+    const outFile = path.join(pageDir, `${p}.json`);
+    if (fs.existsSync(outFile)) {
+      if (p % 100 === 0 || p === 604) console.log(`  Page ${p}/604 (skipped)`);
+      continue;
     }
+    const data = await fetchJson(
+      `${API_BASE}/verses/by_page/${p}?language=en&words=true&translations=85&audio=7&fields=text_qpc_hafs,page_number&word_fields=text_qpc_hafs,page_number,line_number&mushaf=5&per_page=1000`
+    );
+    const decorated = (data.verses || []).map(v => ({
+      ...v,
+      arabic_text: v.text_qpc_hafs || v.text_uthmani || '',
+    }));
+    fs.writeFileSync(
+      outFile,
+      JSON.stringify({ pageNumber: p, mushaf: 'madani-standard', verses: decorated }, null, 2)
+    );
+    if (p % 100 === 0 || p === 604) console.log(`  Page ${p}/604`);
     await delay(200);
   }
-  console.log('  Saved all 604 pages\n');
+  console.log('  Done\n');
 
-  // 5. Fetch tajweed by page
-  console.log('[5/7] Fetching tajweed by page...');
-  const tajweedByPage = {};
-  for (let pageNum = 1; pageNum <= 604; pageNum++) {
-    const data = await fetchJson(`${API_BASE}/quran/verses/uthmani_tajweed?page_number=${pageNum}`);
-    tajweedByPage[pageNum] = data.verses;
-    if (pageNum % 100 === 0 || pageNum === 604) {
-      console.log(`  Fetched tajweed page ${pageNum}/604`);
+  // 6. Translations (default: 85)
+  console.log('[6/6] Fetching translations (ID: 85)...');
+  const transDir = path.join(OUTPUT_DIR, 'translations', '85');
+  if (!fs.existsSync(transDir)) fs.mkdirSync(transDir, { recursive: true });
+
+  for (const ch of chapters) {
+    const outFile = path.join(transDir, `${ch.id}.json`);
+    if (fs.existsSync(outFile)) {
+      if (ch.id % 20 === 0 || ch.id === 114) console.log(`  Surah ${ch.id}/114 (skipped)`);
+      continue;
     }
-    await delay(200);
+    const data = await fetchJson(
+      `${QURAN_API}/translations/85?chapter_number=${ch.id}`
+    );
+    fs.writeFileSync(
+      outFile,
+      JSON.stringify({ chapterId: ch.id, translationId: 85, translations: data.translations || [] }, null, 2)
+    );
+    if (ch.id % 20 === 0 || ch.id === 114) console.log(`  Surah ${ch.id}/114`);
+    await delay(150);
   }
-  fs.writeFileSync(
-    path.join(OUTPUT_DIR, 'tajweed-by-page.json'),
-    JSON.stringify(tajweedByPage, null, 2)
-  );
-  console.log('  Saved tajweed by page\n');
-
-  // 6. Fetch translations for all surahs
-  const TRANSLATION_IDS = [85, 20, 22, 84, 32, 234];
-  for (const translationId of TRANSLATION_IDS) {
-    const translationDir = path.join(OUTPUT_DIR, 'translations', String(translationId));
-    if (!fs.existsSync(translationDir)) {
-      fs.mkdirSync(translationDir, { recursive: true });
-    }
-
-    console.log(`[6/7] Fetching translation ${translationId}...`);
-    for (const chapter of chapters) {
-      const totalPages = Math.ceil(chapter.verses_count / PER_PAGE);
-      const allTranslations = [];
-
-      for (let page = 1; page <= totalPages; page++) {
-        const params = new URLSearchParams({
-          language: 'en',
-          page: page,
-          per_page: PER_PAGE,
-        });
-
-        const data = await fetchJson(`${API_BASE}/quran/translations/${translationId}?chapter_number=${chapter.id}&${params}`);
-        allTranslations.push(...(data.translations || []));
-        await delay(150);
-      }
-
-      fs.writeFileSync(
-        path.join(translationDir, `${chapter.id}.json`),
-        JSON.stringify({
-          chapterId: chapter.id,
-          translationId,
-          translations: allTranslations,
-        }, null, 2)
-      );
-      console.log(`  Surah ${chapter.id}: ${allTranslations.length} verses`);
-    }
-    console.log('');
-  }
-
-  // 7. Fetch tafsir for all surahs
-  const TAFSIR_IDS = [169, 168, 817, 16, 14, 15, 93];
-  for (const tafsirId of TAFSIR_IDS) {
-    const tafsirDir = path.join(OUTPUT_DIR, 'tafsir', String(tafsirId));
-    if (!fs.existsSync(tafsirDir)) {
-      fs.mkdirSync(tafsirDir, { recursive: true });
-    }
-
-    console.log(`[7/7] Fetching tafsir ${tafsirId}...`);
-    for (const chapter of chapters) {
-      const totalPages = Math.ceil(chapter.verses_count / PER_PAGE);
-      const allTafsirs = [];
-
-      for (let page = 1; page <= totalPages; page++) {
-        const params = new URLSearchParams({
-          page: page,
-          per_page: PER_PAGE,
-        });
-
-        const data = await fetchJson(`${API_BASE}/quran/tafsirs/${tafsirId}?chapter_number=${chapter.id}&${params}`);
-        allTafsirs.push(...(data.tafsirs || []));
-        await delay(150);
-      }
-
-      fs.writeFileSync(
-        path.join(tafsirDir, `${chapter.id}.json`),
-        JSON.stringify({
-          chapterId: chapter.id,
-          tafsirId,
-          tafsirs: allTafsirs,
-        }, null, 2)
-      );
-      console.log(`  Surah ${chapter.id}: ${allTafsirs.length} verses`);
-    }
-    console.log('');
-  }
+  console.log('  Done\n');
 
   // Summary
   const totalSize = getDirSize(OUTPUT_DIR);
   console.log('=== Export Complete ===');
-  console.log(`Output directory: ${OUTPUT_DIR}`);
-  console.log(`Total size: ${(totalSize / 1024 / 1024).toFixed(2)} MB`);
-
-  // Write timestamp marker so future builds can skip if data is fresh
+  console.log(`Output: ${OUTPUT_DIR}`);
+  console.log(`Size: ${(totalSize / 1024 / 1024).toFixed(2)} MB`);
   fs.writeFileSync(markerFile, Date.now().toString());
 }
 
 function getDirSize(dir) {
   let size = 0;
-  const items = fs.readdirSync(dir);
-  for (const item of items) {
-    const fullPath = path.join(dir, item);
-    const stat = fs.statSync(fullPath);
-    if (stat.isDirectory()) {
-      size += getDirSize(fullPath);
-    } else {
-      size += stat.size;
-    }
+  for (const item of fs.readdirSync(dir)) {
+    const full = path.join(dir, item);
+    const stat = fs.statSync(full);
+    size += stat.isDirectory() ? getDirSize(full) : stat.size;
   }
   return size;
 }
