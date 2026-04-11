@@ -1,17 +1,16 @@
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=Geist+Mono:wght@400&family=Piazzolla:wght@400&family=Scheherazade+New:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=Geist+Mono:wght@400&family=Piazzolla:wght@400&family=Scheherazade+New:wght@400;700&family=Amiri:wght@400;700&family=Noto+Naskh+Arabic:wght@400;500;600;700&display=swap');
 
 @font-face {
-  font-family: 'KFGQPC Uthman Taha Naskh';
-  src: url('https://raw.githubusercontent.com/quranwbw/qpc-fonts/master/qpc_uthman_taha_naskh.ttf') format('truetype');
+  font-family: 'KFGQPC Hafs Uthmanic Script';
+  src: url('/fonts/KFGQPCHafsUthmanic.woff2') format('woff2');
   font-weight: normal;
   font-style: normal;
   font-display: swap;
 }
 
 @font-face {
-  font-family: 'KFGQPC Hafs Uthmanic Script';
-   src: url('https://verses.quran.foundation/fonts/quran/hafs/uthmanic_hafs/UthmanicHafs1Ver18.woff2') format('woff2'),
-        url('https://verses.quran.foundation/fonts/quran/hafs/uthmanic_hafs/UthmanicHafs1Ver18.ttf') format('truetype');
+  font-family: 'KFGQPC Uthman Taha Naskh';
+  src: url('https://raw.githubusercontent.com/quranwbw/qpc-fonts/master/qpc_uthman_taha_naskh.ttf') format('truetype');
   font-weight: normal;
   font-style: normal;
   font-display: swap;

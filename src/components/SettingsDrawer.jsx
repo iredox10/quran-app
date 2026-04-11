@@ -299,11 +299,13 @@ export default function SettingsDrawer({ isOpen, onClose }) {
         setDownloadingPack(packId);
         setDownloadProgress({ current: 0, total: 1, label: 'Starting...' });
         try {
-            const { mushafId, translationId, reciterId } = useAppStore.getState();
+            const { mushafId, translationId, reciterId, tafsirId } = useAppStore.getState();
             const onProgress = (p) => setDownloadProgress(p);
             if (packId === 'quranText') await syncQuranTextPack({ translationId, reciterId, mushafId, onProgress });
             else if (packId === 'tajweed') await syncTajweedPack({ onProgress });
             else if (packId === 'pagePack') await syncPagePack({ onProgress });
+            else if (packId === 'translation') await syncTranslationPack({ translationId, onProgress });
+            else if (packId === 'tafsir') await syncTafsirPack({ tafsirId, onProgress });
             const packs = await getOfflinePackStats({ translationId, reciterId, mushafId });
             setOfflinePacks(packs);
         } catch (e) {
@@ -678,7 +680,7 @@ export default function SettingsDrawer({ isOpen, onClose }) {
                                         </button>
                                     </div>
 
-                                    {['quranText', 'tajweed', 'pagePack'].map((packId) => {
+                                    {['quranText', 'tajweed', 'pagePack', 'translation', 'tafsir'].map((packId) => {
                                         const pack = offlinePacks[packId];
                                         if (!pack) return null;
                                         const isDownloading = downloadingPack === packId;

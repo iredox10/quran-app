@@ -8,7 +8,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['logo-192.png', 'logo-512.png', 'vite.svg'],
+      includeAssets: ['logo-192.png', 'logo-512.png', 'vite.svg', 'fonts/*.woff2', 'fonts/*.ttf', 'fonts/*.otf', 'fonts/*.css'],
       devOptions: {
         enabled: true
       },
@@ -40,7 +40,7 @@ export default defineConfig({
         ]
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2,json}'],
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2,ttf,otf,json}'],
         globDirectory: 'dist',
         navigateFallback: '/index.html',
         maximumFileSizeToCacheInBytes: 50 * 1024 * 1024, // 50MB to allow large JSON verse files
@@ -100,6 +100,20 @@ export default defineConfig({
                 statuses: [0, 200],
               },
               rangeRequests: true, // Crucial for audio/video playback
+            },
+          },
+          {
+            urlPattern: ({ url }) => url.hostname === 'raw.githubusercontent.com',
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'github-fonts-cache',
+              expiration: {
+                maxEntries: 10,
+                maxAgeSeconds: 60 * 60 * 24 * 365,
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
             },
           }
         ]

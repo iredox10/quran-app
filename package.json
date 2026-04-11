@@ -11,6 +11,7 @@
     "preview": "vite preview",
     "generate:data": "node scripts/generate-quran-data.js",
     "export:data": "node scripts/export-quran-json.js",
+    "download:fonts": "node scripts/download-fonts.js",
     "setup:appwrite": "node scripts/setup-appwrite.js"
   },
   "dependencies": {

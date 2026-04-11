@@ -107,8 +107,21 @@ export const getVerses = async (chapterId, translationId = 85, reciterId = 7, pa
     const startIdx = (page - 1) * perPage;
     const endIdx = startIdx + perPage;
     const pagedVerses = staticData.verses.slice(startIdx, endIdx);
+
+    // Merge bundled translation if available
+    const translationData = await loadStaticJson(`/translations/${translationId}/${chapterId}.json`);
+    const mergedVerses = pagedVerses.map(v => {
+      if (translationData?.translations) {
+        const translation = translationData.translations.find(t => t.verse_key === v.verse_key);
+        if (translation) {
+          return { ...v, translations: [{ text: translation.text, resource_name: translation.resource_name || '' }] };
+        }
+      }
+      return v;
+    });
+
     return {
-      verses: decorateVerses(pagedVerses, mushaf),
+      verses: decorateVerses(mergedVerses, mushaf),
       pagination: {
         current_page: page,
         total_pages: Math.ceil(staticData.verses.length / perPage),
@@ -142,8 +155,25 @@ export const getVersesByPage = async (pageNumber, translationId = 85, reciterId 
   // Try static JSON first
   const staticData = await loadStaticJson(`/verses-by-page/${mushafId}/${pageNumber}.json`);
   if (hasStaticVerses(staticData)) {
+    // Merge bundled translations
+    const chapterIds = [...new Set(staticData.verses.map(v => v.chapter_id || v.verse_key?.split(':')[0]))];
+    let mergedVerses = staticData.verses;
+
+    for (const chapterId of chapterIds) {
+      const translationData = await loadStaticJson(`/translations/${translationId}/${chapterId}.json`);
+      if (translationData?.translations) {
+        mergedVerses = mergedVerses.map(v => {
+          const translation = translationData.translations.find(t => t.verse_key === v.verse_key);
+          if (translation) {
+            return { ...v, translations: [{ text: translation.text, resource_name: translation.resource_name || '' }] };
+          }
+          return v;
+        });
+      }
+    }
+
     return {
-      verses: decorateVerses(staticData.verses, mushaf),
+      verses: decorateVerses(mergedVerses, mushaf),
     };
   }
 
@@ -171,6 +201,12 @@ export const getChapterAudio = async (chapterId, reciterId = 7) => {
 };
 
 export const getChapterTafsirs = async (chapterId, tafsirId = 169) => {
+  // Try static JSON first
+  const staticData = await loadStaticJson(`/tafsir/${tafsirId}/${chapterId}.json`);
+  if (staticData && staticData.tafsirs && staticData.tafsirs.length > 0) {
+    return staticData.tafsirs;
+  }
+
   const data = await fetchWithOfflineCache(`/tafsirs/${tafsirId}/by_chapter/${chapterId}`);
   return data.tafsirs;
 };

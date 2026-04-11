@@ -203,7 +203,7 @@ async function main() {
   console.log('  Saved all 604 pages\n');
 
   // 5. Fetch tajweed by page
-  console.log('[5/5] Fetching tajweed by page...');
+  console.log('[5/7] Fetching tajweed by page...');
   const tajweedByPage = {};
   for (let pageNum = 1; pageNum <= 604; pageNum++) {
     const data = await fetchJson(`${API_BASE}/quran/verses/uthmani_tajweed?page_number=${pageNum}`);
@@ -218,6 +218,81 @@ async function main() {
     JSON.stringify(tajweedByPage, null, 2)
   );
   console.log('  Saved tajweed by page\n');
+
+  // 6. Fetch translations for all surahs
+  const TRANSLATION_IDS = [85, 20, 22, 84, 32, 234];
+  for (const translationId of TRANSLATION_IDS) {
+    const translationDir = path.join(OUTPUT_DIR, 'translations', String(translationId));
+    if (!fs.existsSync(translationDir)) {
+      fs.mkdirSync(translationDir, { recursive: true });
+    }
+
+    console.log(`[6/7] Fetching translation ${translationId}...`);
+    for (const chapter of chapters) {
+      const totalPages = Math.ceil(chapter.verses_count / PER_PAGE);
+      const allTranslations = [];
+
+      for (let page = 1; page <= totalPages; page++) {
+        const params = new URLSearchParams({
+          language: 'en',
+          page: page,
+          per_page: PER_PAGE,
+        });
+
+        const data = await fetchJson(`${API_BASE}/quran/translations/${translationId}?chapter_number=${chapter.id}&${params}`);
+        allTranslations.push(...(data.translations || []));
+        await delay(150);
+      }
+
+      fs.writeFileSync(
+        path.join(translationDir, `${chapter.id}.json`),
+        JSON.stringify({
+          chapterId: chapter.id,
+          translationId,
+          translations: allTranslations,
+        }, null, 2)
+      );
+      console.log(`  Surah ${chapter.id}: ${allTranslations.length} verses`);
+    }
+    console.log('');
+  }
+
+  // 7. Fetch tafsir for all surahs
+  const TAFSIR_IDS = [169, 168, 817, 16, 14, 15, 93];
+  for (const tafsirId of TAFSIR_IDS) {
+    const tafsirDir = path.join(OUTPUT_DIR, 'tafsir', String(tafsirId));
+    if (!fs.existsSync(tafsirDir)) {
+      fs.mkdirSync(tafsirDir, { recursive: true });
+    }
+
+    console.log(`[7/7] Fetching tafsir ${tafsirId}...`);
+    for (const chapter of chapters) {
+      const totalPages = Math.ceil(chapter.verses_count / PER_PAGE);
+      const allTafsirs = [];
+
+      for (let page = 1; page <= totalPages; page++) {
+        const params = new URLSearchParams({
+          page: page,
+          per_page: PER_PAGE,
+        });
+
+        const data = await fetchJson(`${API_BASE}/quran/tafsirs/${tafsirId}?chapter_number=${chapter.id}&${params}`);
+        allTafsirs.push(...(data.tafsirs || []));
+        await delay(150);
+      }
+
+      fs.writeFileSync(
+        path.join(tafsirDir, `${chapter.id}.json`),
+        JSON.stringify({
+          chapterId: chapter.id,
+          tafsirId,
+          tafsirs: allTafsirs,
+        }, null, 2)
+      );
+      console.log(`  Surah ${chapter.id}: ${allTafsirs.length} verses`);
+    }
+    console.log('');
+  }
 
   // Summary
   const totalSize = getDirSize(OUTPUT_DIR);

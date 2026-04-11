@@ -1,4 +1,4 @@
-import { buildOfflineCacheKey, getChapters, getTajweedVerses, getVerses, getVersesByPage } from '../services/api/quranApi';
+import { buildOfflineCacheKey, getChapters, getTajweedVerses, getVerses, getVersesByPage, getChapterTafsirs } from '../services/api/quranApi';
 import { deleteOfflineCacheByPrefix, getOfflineCacheStats } from './offlineCache';
 
 export const OFFLINE_PACKS = {
@@ -11,6 +11,16 @@ export const OFFLINE_PACKS = {
     id: 'tajweed',
     title: 'Tajweed Pack',
     description: 'Color-coded tajweed markup for every Surah in the Quran.',
+  },
+  translation: {
+    id: 'translation',
+    title: 'Translation Pack',
+    description: 'English translations for all 114 Surahs.',
+  },
+  tafsir: {
+    id: 'tafsir',
+    title: 'Tafsir Pack',
+    description: 'Ibn Kathir tafsir for all 114 Surahs.',
   },
 };
 
@@ -108,6 +118,40 @@ export async function deleteOfflinePack(packId) {
     return;
   }
 
+  if (packId === 'translation') {
+    await deleteOfflineCacheByPrefix('/quran/translations/');
+    return;
+  }
+
+  if (packId === 'tafsir') {
+    await deleteOfflineCacheByPrefix('/quran/tafsirs/');
+    return;
+  }
+
   const prefixes = ['/chapters', '/chapters/', '/verses/by_chapter/', '/verses/by_page/', '/chapter_recitations/'];
   await Promise.all(prefixes.map((prefix) => deleteOfflineCacheByPrefix(prefix)));
+}
+
+export async function syncTranslationPack({ translationId = 85, onProgress }) {
+  const chapters = await getChapters();
+  const totalUnits = chapters.length;
+
+  for (let index = 0; index < chapters.length; index += 1) {
+    const chapter = chapters[index];
+    const totalPages = Math.ceil(chapter.verses_count / 50);
+    for (let page = 1; page <= totalPages; page += 1) {
+      await getVerses(chapter.id, translationId, 7, page, 'madani-standard');
+    }
+    onProgress?.({ current: index + 1, total: totalUnits, label: `Caching ${chapter.name_simple} translation` });
+  }
+}
+
+export async function syncTafsirPack({ tafsirId = 169, onProgress }) {
+  const chapters = await getChapters();
+
+  for (let index = 0; index < chapters.length; index += 1) {
+    const chapter = chapters[index];
+    await getChapterTafsirs(chapter.id, tafsirId);
+    onProgress?.({ current: index + 1, total: chapters.length, label: `Caching ${chapter.name_simple} tafsir` });
+  }
 }
