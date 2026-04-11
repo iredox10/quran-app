@@ -79,7 +79,7 @@ define(['./workbox-fec5aa16'], (function (workbox) { 'use strict';
    */
   workbox.precacheAndRoute([{
     "url": "/index.html",
-    "revision": "0.rss452ahmhg"
+    "revision": "0.kdqh88pqkj8"
   }], {});
   workbox.cleanupOutdatedCaches();
   workbox.registerRoute(new workbox.NavigationRoute(workbox.createHandlerBoundToURL("/index.html"), {
@@ -128,6 +128,17 @@ define(['./workbox-fec5aa16'], (function (workbox) { 'use strict';
     }), new workbox.CacheableResponsePlugin({
       statuses: [0, 200]
     }), new workbox.RangeRequestsPlugin()]
+  }), 'GET');
+  workbox.registerRoute(({
+    url
+  }) => url.hostname === "raw.githubusercontent.com", new workbox.CacheFirst({
+    "cacheName": "github-fonts-cache",
+    plugins: [new workbox.ExpirationPlugin({
+      maxEntries: 10,
+      maxAgeSeconds: 31536000
+    }), new workbox.CacheableResponsePlugin({
+      statuses: [0, 200]
+    })]
   }), 'GET');
 
 }));
