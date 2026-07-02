@@ -4,12 +4,21 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getVerses, getChapter, getTajweedVerses } from '../services/api/quranApi';
 import { useAppStore } from '../store/useAppStore';
-import { EyeOff, Eye, Repeat, ArrowLeft, ArrowRight, X, Play, Pause, ShieldAlert, Award, Languages, Layers, RefreshCw, Clock, Bookmark, FolderPlus, Plus, Folder, Settings2, CheckCircle, ChevronLeft, ChevronRight, Type, MousePointer, Mic } from 'lucide-react';
+import { Brain, EyeOff, Eye, Repeat, ArrowLeft, ArrowRight, X, Play, Pause, ShieldAlert, Award, Languages, Layers, RefreshCw, Clock, Bookmark, FolderPlus, Plus, Folder, Settings2, CheckCircle, ChevronLeft, ChevronRight, Type, MousePointer, Mic } from 'lucide-react';
 import { getMushafById, isTajweedEnabledForMushaf } from '../config/mushaf';
 import { getVerseArabicText, sanitizeTajweedHtml } from '../utils/quranText';
 import { getLocalAudioUrl } from '../utils/localAudio';
+import { saukaService } from '../services/saukaService';
 import confetti from 'canvas-confetti';
+import PageTourModal from '../components/ui/PageTourModal';
+import GestureTip from '../components/ui/GestureTip';
 
+const memorizationTourSteps = [
+    { title: "Hifdh Mode", description: "This distraction-free view is designed specifically for memorization.", icon: Brain },
+    { title: "Hide Text", target: "#hide-text-btn", description: "Use the Eye icon at the bottom to hide text, show word-by-word hints, or only show the first letters.", icon: EyeOff, action: { type: 'click', target: '#hide-text-btn' } },
+    { title: "Audio Loop", target: "#audio-settings-btn", description: "Use the Settings icon to configure ayah looping and ranges for repeated listening.", icon: Settings2 },
+    { title: "Mark Memorized", target: "#mark-memorized-btn", description: "Tap the checkmark next to an ayah to log it as memorized in your progress.", icon: CheckCircle }
+];
 
 const DELAY_OPTIONS = [0, 1, 2, 3, 5, 10];
 const RANGE_LOOP_OPTIONS = [1, 2, 3, 5, 10, -1];
@@ -484,6 +493,13 @@ export default function Memorization() {
 
     return (
         <div className="relative flex min-h-[80vh] flex-col">
+            <PageTourModal tourId="memorization-tour" steps={memorizationTourSteps} />
+            <GestureTip 
+                id="hifdh-swipe" 
+                title="Swipe to Navigate" 
+                description="Swipe left or right anywhere to quickly move through ayahs." 
+                animation="swipe-left" 
+            />
             <div className="fixed left-0 right-0 top-0 z-50 h-[3px] bg-[var(--mem-bone-dark)]">
                 <div className="h-full rounded-r-sm bg-gradient-to-r from-[var(--mem-teal)] to-[var(--mem-green)] transition-all duration-[0.4s]" style={{ width: `${sessionPct}%` }} />
             </div>
@@ -513,7 +529,7 @@ export default function Memorization() {
                                             title="Bookmark">
                                             <Bookmark size={20} fill={bookmarks?.find(b => b.verseKey === verse.verse_key) ? 'currentColor' : 'none'} />
                                         </button>
-                                        <button className="cursor-pointer border-none bg-transparent p-2 transition-colors duration-150" onClick={(e) => { e.stopPropagation(); toggleMemorizedAyah(verse.verse_key); }}
+                                        <button id={idx === 0 ? "mark-memorized-btn" : undefined} className="cursor-pointer border-none bg-transparent p-2 transition-colors duration-150" onClick={(e) => { e.stopPropagation(); toggleMemorizedAyah(verse.verse_key); }}
                                             style={{ color: (memorizedAyahs || []).includes(verse.verse_key) ? 'var(--mem-green)' : 'var(--mem-ink-muted)' }}
                                             title="Mark Memorized">
                                             <CheckCircle size={20} fill={(memorizedAyahs || []).includes(verse.verse_key) ? 'currentColor' : 'none'}
@@ -560,7 +576,7 @@ export default function Memorization() {
             <div className={`fixed bottom-0 left-0 right-0 z-40 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] transition-all duration-[400ms] ${showUI ? '' : 'pointer-events-none translate-y-[10px] opacity-0'}`}>
                 <div className="mx-auto flex w-full max-w-[480px] overflow-x-auto no-scrollbar scroll-smooth items-center justify-start sm:justify-center gap-[0.35rem] rounded-[20px] border-[1.5px] border-[var(--mem-bone-dark)] bg-[var(--mem-white)] px-[0.85rem] py-[0.65rem] shadow-[0_-4px_30px_rgba(0,0,0,0.08),0_0_0_1px_rgba(0,0,0,0.03)]" style={{ position: 'relative' }}>
                     <button className="flex h-[42px] w-[42px] shrink-0 cursor-pointer items-center justify-center rounded-xl border-none bg-transparent text-[var(--mem-ink-mid)] transition-all duration-150 hover:bg-[var(--mem-bone)] disabled:cursor-default disabled:opacity-25" onClick={handlePrev} disabled={currentVerseIndex === 0}><ChevronLeft size={20} /></button>
-                    <button className={`flex h-[42px] w-[42px] shrink-0 cursor-pointer items-center justify-center rounded-xl border-none bg-transparent text-[var(--mem-ink-mid)] transition-all duration-150 hover:bg-[var(--mem-bone)] ${hideMode !== 'visible' ? 'bg-[var(--mem-teal-soft)] text-[var(--mem-teal)]' : ''}`} onClick={cycleHideMode}
+                    <button id="hide-text-btn" className={`flex h-[42px] w-[42px] shrink-0 cursor-pointer items-center justify-center rounded-xl border-none bg-transparent text-[var(--mem-ink-mid)] transition-all duration-150 hover:bg-[var(--mem-bone)] ${hideMode !== 'visible' ? 'bg-[var(--mem-teal-soft)] text-[var(--mem-teal)]' : ''}`} onClick={cycleHideMode}
                         title={hideMode === 'visible' ? 'Hide Text' : hideMode === 'blur' ? 'Word-by-Word' : hideMode === 'word' ? 'First Letter Hints' : 'Show All'}>
                         {hideMode === 'visible' ? <EyeOff size={18} /> : hideMode === 'blur' ? <MousePointer size={18} /> : hideMode === 'word' ? <Type size={18} /> : <Eye size={18} />}
                     </button>
@@ -634,7 +650,7 @@ export default function Memorization() {
                     </div>
 
                     <div style={{ position: 'relative' }}>
-                        <button className={`flex h-[42px] w-[42px] shrink-0 cursor-pointer items-center justify-center rounded-xl border-none bg-transparent text-[var(--mem-ink-mid)] transition-all duration-150 hover:bg-[var(--mem-bone)] ${hasNonDefaultAudio ? 'bg-[var(--mem-teal-soft)] text-[var(--mem-teal)]' : ''}`} onClick={() => setIsAudioSettingsOpen(!isAudioSettingsOpen)}>
+                        <button id="audio-settings-btn" className={`flex h-[42px] w-[42px] shrink-0 cursor-pointer items-center justify-center rounded-xl border-none bg-transparent text-[var(--mem-ink-mid)] transition-all duration-150 hover:bg-[var(--mem-bone)] ${hasNonDefaultAudio ? 'bg-[var(--mem-teal-soft)] text-[var(--mem-teal)]' : ''}`} onClick={() => setIsAudioSettingsOpen(!isAudioSettingsOpen)}>
                             <Settings2 size={18} />
                         </button>
                         <AnimatePresence>

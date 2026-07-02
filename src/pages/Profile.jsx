@@ -6,7 +6,7 @@ import {
     User, Settings, Bookmark, Folder, Moon, Sun,
     ChevronRight, HardDrive, LogOut, CloudUpload, CloudDownload,
     Loader2, Mic, Languages, TrendingUp, CalendarDays, BookOpen, Brain, ChevronDown, Users,
-    Clock, Shield
+    Clock, Shield, RotateCcw, Compass
 } from 'lucide-react';
 import { authService, syncService } from '../services/appwrite';
 import { RECITERS } from '../config/reciters';
@@ -44,6 +44,7 @@ export default function Profile() {
         setNavHeaderTitle, setIsSettingsOpen, bookmarks, collections,
         theme, toggleTheme, readingSessions, lastSyncAt,
         reciterId, translationId, dailyReadingGoal, setDailyReadingGoal,
+        completedTours, resetAllTours
     } = store;
 
     const [user, setUser] = useState(null);
@@ -263,6 +264,26 @@ export default function Profile() {
                                 </div>
                             </button>
                         ))}
+                    </div>
+                </div>
+
+                {/* ═══ ONBOARDING & TOURS ═══ */}
+                <div className="mb-6">
+                    <h2 className="mb-2 pl-2 font-mono text-[0.6rem] uppercase tracking-[0.15em] text-[var(--text-secondary)]">Onboarding & Tours</h2>
+                    <div className="overflow-hidden rounded-[24px] border-[1.5px] border-[var(--h-bone-dark)] bg-[var(--h-cream)]">
+                        <button onClick={() => resetAllTours()}
+                            className={`flex w-full items-center justify-between bg-transparent px-5 py-4 text-left transition-colors hover:bg-[var(--bg-surface)]`}>
+                            <div className="flex items-center gap-4">
+                                <div className="flex h-10 w-10 items-center justify-center rounded-[12px] bg-[var(--accent-primary)]/10 text-[var(--accent-primary)]"><RotateCcw size={18} /></div>
+                                <span className="text-[0.95rem] font-bold text-[var(--text-primary)]">Replay All Tours</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="max-w-[120px] truncate font-mono text-[0.65rem] text-[var(--text-secondary)] uppercase">
+                                    {Math.min(completedTours?.length || 0, 5)} / 5 Completed
+                                </span>
+                                <ChevronRight size={16} className="text-[var(--text-secondary)] opacity-50" />
+                            </div>
+                        </button>
                     </div>
                 </div>
 

@@ -14,6 +14,14 @@ import AutoScroller from '../components/AutoScroller';
 import { getMushafById, isTajweedEnabledForMushaf } from '../config/mushaf';
 import { sanitizeTajweedHtml } from '../utils/quranText';
 import { saukaService } from '../services/saukaService';
+import PageTourModal from '../components/ui/PageTourModal';
+import GestureTip from '../components/ui/GestureTip';
+
+const surahTourSteps = [
+    { title: "Read & Listen", target: "#verses-container", description: "Read the ayahs and tap the play icon on any ayah to start listening from there.", icon: Play },
+    { title: "Tafsir & Translations", target: "#verses-container", description: "Tap the info icon on any ayah to read its Tafsir. Change translation languages in the settings.", icon: Info },
+    { title: "Offline Access", target: "#download-audio-btn", description: "Use the Download button at the top to save this Surah's audio for offline listening.", icon: Download, action: { type: 'click', target: '#download-audio-btn' } }
+];
 
 const surahScrollPositions = {};
 
@@ -394,6 +402,13 @@ export default function Surah() {
             className="container overflow-hidden"
             {...swipeHandlers}
         >
+            <PageTourModal tourId="surah-tour" steps={surahTourSteps} />
+            <GestureTip 
+                id="surah-swipe" 
+                title="Swipe to Navigate" 
+                description="Swipe left or right anywhere on the page to quickly move between Surahs." 
+                animation="swipe-left" 
+            />
             {/* Subtle refetch indicator — only shows when re-loading in background (not initial load) */}
             {isVersesFetching && !isVersesLoading && (
                 <div className="fixed top-0 left-0 right-0 h-[3px] z-[2000] overflow-hidden pointer-events-none">
@@ -466,6 +481,7 @@ export default function Surah() {
                                     {isCurrentAudio && isPlaying ? 'Pause Audio' : 'Play Audio'}
                                 </button>
                                 <button
+                                    id="download-audio-btn"
                                     className="btn-primary flex items-center gap-2 border border-[var(--border-color)]"
                                     style={{
                                         backgroundColor: isDownloaded ? 'var(--accent-light)' : 'var(--bg-primary)',
@@ -513,7 +529,7 @@ export default function Surah() {
                         </div>
                     )}
 
-                    <div className="px-4 flex-col" style={{ display: readingMode ? 'block' : 'flex' }}>
+                    <div id="verses-container" className="px-4 flex-col" style={{ display: readingMode ? 'block' : 'flex' }}>
                         {/* Bismillah before Surah text (except Fatiha and Tawbah) */}
                         {chapter?.id !== 1 && chapter?.id !== 9 && (
                             <div

@@ -3,6 +3,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../store/useAppStore';
 import { Folder, Trash2, ArrowRight, Bookmark, BookOpen, X, Library as LibraryIcon, FolderPlus, Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import PageTourModal from '../components/ui/PageTourModal';
+
+const libraryTourSteps = [
+    { title: "Your Library", description: "This is where your personalized Quran content lives.", icon: LibraryIcon },
+    { title: "Bookmarks", target: "#bookmarks-section", description: "Quickly access specific ayahs you've bookmarked while reading.", icon: Bookmark },
+    { title: "Collections", target: "#collections-section", description: "Group specific verses together into custom collections for focused Hifdh or study.", icon: Folder }
+];
 
 export default function Library() {
     const { collections, bookmarks, deleteCollection, removeFromCollection, setNavHeaderTitle, toggleBookmark, addCollection } = useAppStore();
@@ -13,12 +20,15 @@ export default function Library() {
         return () => setNavHeaderTitle(null);
     }, [setNavHeaderTitle]);
 
+    const hasContent = (bookmarks && bookmarks.length > 0) || (collections && collections.length > 0);
+
     return (
         <div className="container pb-16">
+            {hasContent && <PageTourModal tourId="library-tour" steps={libraryTourSteps} />}
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
 
                 {/* Bookmarks Section */}
-                <section className="mb-16">
+                <section id="bookmarks-section" className="mb-16">
                     <div className="flex items-center gap-3 mb-6">
                         <Bookmark size={24} className="text-accent" />
                         <h2 className="font-ui text-3xl font-bold text-[var(--text-primary)]">Bookmarks</h2>
@@ -56,7 +66,7 @@ export default function Library() {
                 </section>
 
                 {/* Collections Section */}
-                <section>
+                <section id="collections-section">
                     <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
                         <div className="flex items-center gap-3">
                             <Folder size={24} className="text-accent" />

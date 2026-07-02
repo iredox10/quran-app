@@ -13,6 +13,7 @@ import { saveLocalAudioDirHandle } from '../utils/localAudio';
 import { getOfflinePackStats } from '../utils/offlineLibrary';
 import { authService, syncService } from '../services/appwrite';
 import { getSyncableState } from '../store/useAppStore';
+import Coachmark from './ui/Coachmark';
 
 import { RECITERS } from '../config/reciters';
 
@@ -470,13 +471,15 @@ export default function SettingsDrawer({ isOpen, onClose }) {
                                         <div className="overflow-hidden rounded-[12px] border border-[var(--border-color)] bg-[var(--bg-primary)]">
                                             <SelectionRow label="Arabic Font" value={selectedFont?.name || 'Default'} onClick={() => setActiveView(VIEWS.arabicFont)} />
                                             <SelectionRow label="Tafsir" value={selectedTafsir ? `${selectedTafsir.name}` : ''} onClick={() => setActiveView(VIEWS.tafsir)} />
-                                            <ToggleRow
-                                                label="Tajweed"
-                                                hint={mushaf.supportsTajweedToggle ? 'Color cues for pronunciation' : 'Not available for this Mushaf'}
-                                                checked={isTajweedActive}
-                                                disabled={!mushaf.supportsTajweedToggle}
-                                                onToggle={() => setTajweed(!tajweedEnabled)}
-                                            />
+                                            <Coachmark id="tajweed-toggle" label="Try Tajweed" className="block w-full" position="top-left">
+                                                <ToggleRow
+                                                    label="Tajweed"
+                                                    hint={mushaf.supportsTajweedToggle ? 'Color cues for pronunciation' : 'Not available for this Mushaf'}
+                                                    checked={isTajweedActive}
+                                                    disabled={!mushaf.supportsTajweedToggle}
+                                                    onToggle={() => setTajweed(!tajweedEnabled)}
+                                                />
+                                            </Coachmark>
                                             <div className="border-t border-[var(--border-color)] px-4 py-3">
                                                 <div className="mb-2 text-[0.9rem] font-medium text-[var(--text-primary)]">Word Hover Action</div>
                                                 <div className="flex overflow-hidden rounded-lg border border-[var(--border-color)] bg-[var(--bg-secondary)]">

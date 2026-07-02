@@ -131,6 +131,34 @@ export const useAppStore = create(
                 theme: state.theme === 'light' ? 'dark' : 'light'
             })),
 
+            completedTours: [],
+            completeTour: (tourId) => set((state) => ({
+                completedTours: state.completedTours.includes(tourId) ? state.completedTours : [...state.completedTours, tourId]
+            })),
+            resetAllTours: () => set({ completedTours: [] }),
+            resetTour: (tourId) => set((state) => ({
+                completedTours: state.completedTours.filter(id => id !== tourId)
+            })),
+
+            dismissedCoachmarks: [],
+            dismissCoachmark: (id) => set((state) => ({
+                dismissedCoachmarks: state.dismissedCoachmarks.includes(id) ? state.dismissedCoachmarks : [...state.dismissedCoachmarks, id]
+            })),
+
+            dismissedGestureTips: [],
+            dismissGestureTip: (id) => set((state) => ({
+                dismissedGestureTips: state.dismissedGestureTips.includes(id) ? state.dismissedGestureTips : [...state.dismissedGestureTips, id]
+            })),
+
+            pageVisitCounts: {},
+            incrementPageVisit: (pageId) => set((state) => ({
+                pageVisitCounts: {
+                    ...state.pageVisitCounts,
+                    [pageId]: (state.pageVisitCounts[pageId] || 0) + 1
+                }
+            })),
+
+
             currentUser: null,
             setCurrentUser: (user) => set({ currentUser: user }),
 
@@ -905,6 +933,10 @@ export function getSyncableState(state) {
         plannerReflections: state.plannerReflections || {},
         plannerBookmarks: state.plannerBookmarks || {},
         plannerSessionTimers: state.plannerSessionTimers || {},
-        saukaProgress: state.saukaProgress || {}
+        saukaProgress: state.saukaProgress || {},
+        completedTours: state.completedTours || [],
+        dismissedCoachmarks: state.dismissedCoachmarks || [],
+        dismissedGestureTips: state.dismissedGestureTips || [],
+        pageVisitCounts: state.pageVisitCounts || {}
     };
 }

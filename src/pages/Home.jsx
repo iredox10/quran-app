@@ -4,9 +4,27 @@ import { getChapters } from '../services/api/quranApi';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../store/useAppStore';
-import { BookOpen, Search, Bookmark, DownloadCloud, X, Hash, Layers3, LibraryBig, Rows3, ArrowRight, Flame, Clock, BarChart3, Sparkles, Share2, Copy, Check } from 'lucide-react';
+import { BookOpen, Search, Bookmark, DownloadCloud, X, Hash, Layers3, LibraryBig, Rows3, ArrowRight, Flame, Clock, BarChart3, Sparkles, Share2, Copy, Check, CalendarDays, Brain } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
 import { HIZB_STARTS, JUZ_STARTS, PAGE_GROUPS } from '../data/quranNavigation';
+import PageTourModal from '../components/ui/PageTourModal';
+import Coachmark from '../components/ui/Coachmark';
+import OnboardingProgress from '../components/ui/OnboardingProgress';
+
+const homeTourSteps = [
+    { title: "Welcome to Quran App", description: "This is your personal companion for reading, memorizing, and studying the Quran.", icon: Sparkles },
+    { title: "Daily Progress", target: "#daily-progress", description: "Track your reading streak, daily minutes, and total hours right from the dashboard.", icon: Flame },
+    { title: "Verse of the Day", target: "#verse-of-the-day", description: "Start your day with a selected Ayah. You can copy or share it easily.", icon: BookOpen },
+    { title: "Resume Reading", target: "#resume-reading", description: "Pick up exactly where you left off last time.", icon: ArrowRight },
+    { title: "Browse the Quran", target: "#browse-quran", description: "Navigate quickly to any Surah, Juz, or Page.", icon: Search },
+    { title: "Set a Reading Goal 📅", description: "Head to the Planner tab to create a personalized Khatm plan with daily assignments.", icon: CalendarDays, link: '/planner' },
+    { title: "Start Memorizing 🧠", description: "Use the Memorize tab to practice Hifdh with spaced repetition and word-by-word reveal.", icon: Brain, link: '/memorize/1' }
+];
+
+const homeAdvancedTourSteps = [
+    { title: "Swipe Between Surahs", description: "While reading, try swiping left or right to quickly jump between Surahs.", icon: ArrowRight },
+    { title: "Create a Habit", description: "Consistency is key. Use the Planner to build a daily reading habit.", icon: CalendarDays, link: '/planner' }
+];
 
 // ─── Curated Verses of the Day ───
 const DAILY_VERSES = [
@@ -81,7 +99,12 @@ function formatDate() {
 }
 
 export default function Home() {
-    const { recentlyRead, bookmark, readingSessions } = useAppStore();
+    const { recentlyRead, bookmark, readingSessions, incrementPageVisit } = useAppStore();
+    
+    useEffect(() => {
+        incrementPageVisit('home');
+    }, [incrementPageVisit]);
+    
     const location = useLocation();
     const navigate = useNavigate();
     const [searchQuery, setSearchQuery] = useState('');
@@ -235,6 +258,9 @@ export default function Home() {
                 <meta name="description" content="A beautiful web application for reading and studying the Noble Qur'an." />
             </Helmet>
 
+            <PageTourModal tourId="home-tour" pageId="home" steps={homeTourSteps} />
+            <PageTourModal tourId="home-tour-advanced" pageId="home" visitThreshold={3} steps={homeAdvancedTourSteps} />
+
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
 
                 {/* Offline Banner */}
@@ -283,24 +309,29 @@ export default function Home() {
                     )}
                 </div>
 
+                {/* ─── Onboarding Progress ─── */}
+                <OnboardingProgress />
+
                 {/* ─── Stats Row ─── */}
-                <div className="mb-7 flex gap-2">
-                    <div className="flex-1 rounded-[14px] border-[1.5px] border-[var(--h-bone-dark)] bg-[var(--h-cream)] px-3 py-[0.85rem] text-center transition-colors duration-200">
-                        <div className="mb-1"><Flame size={18} color={streak > 0 ? '#ef4444' : 'var(--h-ink-muted)'} /></div>
-                        <div className="font-ui text-2xl font-bold leading-[1.2] text-[var(--h-ink)]">{streak}<small className="text-[0.7rem] font-normal text-[var(--h-ink-muted)]"> days</small></div>
-                        <div className="mt-0.5 font-mono text-[0.58rem] uppercase tracking-[0.1em] text-[var(--h-ink-muted)]">Streak</div>
+                <section id="daily-progress" className="mb-10">
+                    <div className="mb-7 flex gap-2">
+                        <div className="flex-1 rounded-[14px] border-[1.5px] border-[var(--h-bone-dark)] bg-[var(--h-cream)] px-3 py-[0.85rem] text-center transition-colors duration-200">
+                            <div className="mb-1"><Flame size={18} color={streak > 0 ? '#ef4444' : 'var(--h-ink-muted)'} /></div>
+                            <div className="font-ui text-2xl font-bold leading-[1.2] text-[var(--h-ink)]">{streak}<small className="text-[0.7rem] font-normal text-[var(--h-ink-muted)]"> days</small></div>
+                            <div className="mt-0.5 font-mono text-[0.58rem] uppercase tracking-[0.1em] text-[var(--h-ink-muted)]">Streak</div>
+                        </div>
+                        <div className="flex-1 rounded-[14px] border-[1.5px] border-[var(--h-bone-dark)] bg-[var(--h-cream)] px-3 py-[0.85rem] text-center transition-colors duration-200">
+                            <div className="mb-1"><Clock size={18} color="var(--h-teal)" /></div>
+                            <div className="font-ui text-2xl font-bold leading-[1.2] text-[var(--h-ink)]">{todayMinutes}<small className="text-[0.7rem] font-normal text-[var(--h-ink-muted)]"> min</small></div>
+                            <div className="mt-0.5 font-mono text-[0.58rem] uppercase tracking-[0.1em] text-[var(--h-ink-muted)]">Today</div>
+                        </div>
+                        <div className="flex-1 rounded-[14px] border-[1.5px] border-[var(--h-bone-dark)] bg-[var(--h-cream)] px-3 py-[0.85rem] text-center transition-colors duration-200">
+                            <div className="mb-1"><BarChart3 size={18} color="var(--h-gold)" /></div>
+                            <div className="font-ui text-2xl font-bold leading-[1.2] text-[var(--h-ink)]">{totalHours}<small className="text-[0.7rem] font-normal text-[var(--h-ink-muted)]"> hrs</small></div>
+                            <div className="mt-0.5 font-mono text-[0.58rem] uppercase tracking-[0.1em] text-[var(--h-ink-muted)]">Total</div>
+                        </div>
                     </div>
-                    <div className="flex-1 rounded-[14px] border-[1.5px] border-[var(--h-bone-dark)] bg-[var(--h-cream)] px-3 py-[0.85rem] text-center transition-colors duration-200">
-                        <div className="mb-1"><Clock size={18} color="var(--h-teal)" /></div>
-                        <div className="font-ui text-2xl font-bold leading-[1.2] text-[var(--h-ink)]">{todayMinutes}<small className="text-[0.7rem] font-normal text-[var(--h-ink-muted)]"> min</small></div>
-                        <div className="mt-0.5 font-mono text-[0.58rem] uppercase tracking-[0.1em] text-[var(--h-ink-muted)]">Today</div>
-                    </div>
-                    <div className="flex-1 rounded-[14px] border-[1.5px] border-[var(--h-bone-dark)] bg-[var(--h-cream)] px-3 py-[0.85rem] text-center transition-colors duration-200">
-                        <div className="mb-1"><BarChart3 size={18} color="var(--h-gold)" /></div>
-                        <div className="font-ui text-2xl font-bold leading-[1.2] text-[var(--h-ink)]">{totalHours}<small className="text-[0.7rem] font-normal text-[var(--h-ink-muted)]"> hrs</small></div>
-                        <div className="mt-0.5 font-mono text-[0.58rem] uppercase tracking-[0.1em] text-[var(--h-ink-muted)]">Total</div>
-                    </div>
-                </div>
+                </section>
 
                 {/* ─── Verse of the Day ─── */}
                 <div className="relative mb-7 overflow-hidden rounded-[18px] border-[1.5px] border-[var(--h-bone-dark)] bg-[var(--h-cream)] p-6">
@@ -312,9 +343,11 @@ export default function Home() {
                     <div className="mb-4 text-center text-[0.9rem] italic leading-[1.6] text-[var(--h-ink-mid)]">{verse.translation}</div>
                     <div className="mb-4 text-center font-mono text-[0.7rem] text-[var(--h-ink-muted)]">— {verse.ref}</div>
                     <div className="flex justify-center gap-2">
-                        <button className={`flex cursor-pointer items-center gap-1.5 rounded-[20px] border-[1.5px] border-[var(--h-bone-dark)] bg-transparent px-3 py-1.5 text-xs font-semibold text-[var(--h-ink-mid)] transition-all duration-150 hover:border-[var(--h-teal)] hover:bg-[var(--h-teal-soft)] hover:text-[var(--h-teal)] ${copied ? 'border-[var(--h-green)] bg-[var(--h-green-soft)] text-[var(--h-green)]' : ''}`} onClick={copyVerse}>
-                            {copied ? <Check size={14} /> : <Copy size={14} />} {copied ? 'Copied' : 'Copy'}
-                        </button>
+                        <Coachmark id="home-copy-verse" label="Share the Ayah">
+                            <button className={`flex cursor-pointer items-center gap-1.5 rounded-[20px] border-[1.5px] border-[var(--h-bone-dark)] bg-transparent px-3 py-1.5 text-xs font-semibold text-[var(--h-ink-mid)] transition-all duration-150 hover:border-[var(--h-teal)] hover:bg-[var(--h-teal-soft)] hover:text-[var(--h-teal)] ${copied ? 'border-[var(--h-green)] bg-[var(--h-green-soft)] text-[var(--h-green)]' : ''}`} onClick={copyVerse}>
+                                {copied ? <Check size={14} /> : <Copy size={14} />} {copied ? 'Copied' : 'Copy'}
+                            </button>
+                        </Coachmark>
                         <button className="flex cursor-pointer items-center gap-1.5 rounded-[20px] border-[1.5px] border-[var(--h-bone-dark)] bg-transparent px-3 py-1.5 text-xs font-semibold text-[var(--h-ink-mid)] transition-all duration-150 hover:border-[var(--h-teal)] hover:bg-[var(--h-teal-soft)] hover:text-[var(--h-teal)]" onClick={shareVerse}><Share2 size={14} /> Share</button>
                     </div>
                 </div>
@@ -366,7 +399,7 @@ export default function Home() {
 
                 {/* ─── Recently Read ─── */}
                 {recentlyRead?.length > 0 && (
-                    <>
+                    <section id="resume-reading" className="mb-12">
                         <div className="mb-3 flex items-center justify-between">
                             <h2 className="flex items-center gap-1.5 font-ui text-lg font-semibold text-[var(--h-ink)]"><BookOpen size={16} /> Recently Read</h2>
                         </div>
@@ -381,11 +414,11 @@ export default function Home() {
                                 </Link>
                             ))}
                         </div>
-                    </>
+                    </section>
                 )}
 
                 {/* ─── Browse the Quran ─── */}
-                <section>
+                <section id="browse-quran">
                     <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
                         <div>
                             <h2 className="flex items-center gap-2 font-ui text-[1.35rem] font-bold text-[var(--h-ink)]"><BookOpen size={20} /> Browse the Quran</h2>

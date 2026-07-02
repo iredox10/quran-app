@@ -3,8 +3,20 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
 
-import { MapPin, CalendarPlus } from 'lucide-react';
+import { MapPin, CalendarPlus, CalendarDays, CheckCircle, Settings2 } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
+import PageTourModal from '../components/ui/PageTourModal';
+
+const plannerTourSteps = [
+    { title: "Your Planner", description: "Create a reading or memorization plan tailored to your pace.", icon: CalendarDays },
+    { title: "Daily Assignments", target: "#daily-assignments", description: "Your plan is broken down into daily tasks. Check them off as you complete them.", icon: CheckCircle },
+    { title: "Adjust Pace", target: "#adjust-pace-btn", description: "Falling behind or going too fast? Use the options to adjust your pace or rebalance your plan.", icon: Settings2 }
+];
+
+const plannerAdvancedTourSteps = [
+    { title: "Smart Rebalancing", description: "If you miss a few days, the app can automatically redistribute your remaining reading to keep your end date.", icon: CalendarPlus },
+    { title: "Progress Visualization", description: "Your heatmap and progress bar show how far you've come. Keep the streak alive!", icon: MapPin }
+];
 import {
     PLANNER_UNITS,
     buildReadingPlanner,
@@ -845,7 +857,7 @@ function ActiveView({ planner, planners, activePlannerId, onSwitchPlan, onDelete
                                     </div>
                                 </div>
 
-                                <div className="flex-1 w-full">
+                                <div id="daily-assignments" className="flex-1 w-full">
                                     <div className="mb-5 flex items-center justify-between">
                                         <h2 className="font-ui text-[1.5rem] font-bold tracking-tight text-[var(--text-primary)] flex items-center gap-2">
                                             <span className="w-2 h-6 rounded-full bg-[var(--accent-primary)] inline-block shadow-[0_0_8px_var(--accent-primary)]" />
@@ -953,7 +965,7 @@ function ActiveView({ planner, planners, activePlannerId, onSwitchPlan, onDelete
                                         <div className="flex items-center gap-3">
                                             <span className="font-mono text-[0.7rem] uppercase tracking-[0.05em] text-[var(--text-muted)] hidden md:inline-block">({completedDays}/{planner.durationDays} done)</span>
                                             <button onClick={() => setShowRebalanceModal(true)} className="cursor-pointer border-[1.5px] border-[var(--h-bone-dark)] bg-[var(--h-white)] px-3 py-1.5 rounded-full text-[0.75rem] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--h-bone)] shadow-sm transition-all duration-200 flex items-center gap-1.5"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg> Rebalance</button>
-                                            <button onClick={() => setShowAdjustPace(true)} className="cursor-pointer border-[1.5px] border-[var(--h-bone-dark)] bg-[var(--h-white)] px-3 py-1.5 rounded-full text-[0.75rem] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--h-bone)] shadow-sm transition-all duration-200 flex items-center gap-1.5"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg> Adjust</button>
+                                            <button id="adjust-pace-btn" onClick={() => setShowAdjustPace(true)} className="cursor-pointer border-[1.5px] border-[var(--h-bone-dark)] bg-[var(--h-white)] px-3 py-1.5 rounded-full text-[0.75rem] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--h-bone)] shadow-sm transition-all duration-200 flex items-center gap-1.5"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg> Adjust</button>
                                         </div>
                                     </div>
                                     <div className="flex flex-wrap gap-[8px] rounded-[24px] border border-white/5 bg-[rgba(255,255,255,0.02)] p-6 shadow-inner backdrop-blur-xl md:gap-[10px]">
@@ -1379,6 +1391,7 @@ export default function Planner() {
         setNavHeaderTitle, planner, planners, activePlannerId,
         setPlanner, setActivePlanner, deletePlanner,
         setPlannerAssignmentProgress, togglePlannerDayComplete,
+        incrementPageVisit
     } = useAppStore();
 
     const { data: chapters = [] } = useQuery({ queryKey: ['chapters'], queryFn: getChapters, staleTime: Infinity });
@@ -1392,8 +1405,9 @@ export default function Planner() {
 
     useEffect(() => {
         setNavHeaderTitle('Planner');
+        incrementPageVisit('planner');
         return () => setNavHeaderTitle(null);
-    }, [setNavHeaderTitle]);
+    }, [setNavHeaderTitle, incrementPageVisit]);
 
     const handleBegin = (built) => {
         const existing = (planners || []).find(p => p.title && built.title && p.title === built.title);
@@ -1425,6 +1439,9 @@ export default function Planner() {
 
     return (
         <>
+            <PageTourModal tourId="planner-tour" pageId="planner" steps={plannerTourSteps} />
+            <PageTourModal tourId="planner-tour-advanced" pageId="planner" visitThreshold={3} steps={plannerAdvancedTourSteps} />
+
             <AnimatePresence mode="wait">
                 {view === 'active' && planner ? (
                     <motion.div key="active" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
