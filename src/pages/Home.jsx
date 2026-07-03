@@ -10,6 +10,7 @@ import { HIZB_STARTS, JUZ_STARTS, PAGE_GROUPS } from '../data/quranNavigation';
 import PageTourModal from '../components/ui/PageTourModal';
 import Coachmark from '../components/ui/Coachmark';
 import OnboardingProgress from '../components/ui/OnboardingProgress';
+import ShareModal from '../components/ui/ShareModal';
 
 const homeTourSteps = [
     { title: "Welcome to Quran App", description: "This is your personal companion for reading, memorizing, and studying the Quran.", icon: Sparkles },
@@ -111,6 +112,8 @@ export default function Home() {
     const [isOnline, setIsOnline] = useState(navigator.onLine);
     const [browseMode, setBrowseMode] = useState('surah');
     const [copied, setCopied] = useState(false);
+    const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+    const [shareModalType, setShareModalType] = useState('verse');
 
     useEffect(() => {
         if (!location.state?.scrollToTop) return;
@@ -233,10 +236,29 @@ export default function Home() {
 
     // Share verse
     const shareVerse = useCallback(() => {
+        setShareModalType('verse');
+        setIsShareModalOpen(true);
+    }, []);
+
+    // Share progress
+    const shareProgress = useCallback(() => {
+        setShareModalType('progress');
+        setIsShareModalOpen(true);
+    }, []);
+
+    // Invite friend
+    const inviteFriend = useCallback(() => {
         if (navigator.share) {
-            navigator.share({ title: `Verse of the Day — ${verse.ref}`, text: `${verse.arabic}\n\n${verse.translation}\n— ${verse.ref}` });
-        } else copyVerse();
-    }, [verse, copyVerse]);
+            navigator.share({
+                title: 'Join me on Quran App',
+                text: 'I\'m using Quran App to build my daily reading habit. Join me!',
+                url: 'https://quranapp.com'
+            }).catch(console.error);
+        } else {
+            navigator.clipboard.writeText('I\'m using Quran App to build my daily reading habit. Join me! https://quranapp.com');
+            alert('Invite link copied to clipboard!');
+        }
+    }, []);
 
     if (isLoading) return (
         <div className="mx-auto max-w-[1200px] px-4 pb-20">
@@ -260,6 +282,13 @@ export default function Home() {
 
             <PageTourModal tourId="home-tour" pageId="home" steps={homeTourSteps} />
             <PageTourModal tourId="home-tour-advanced" pageId="home" visitThreshold={3} steps={homeAdvancedTourSteps} />
+
+            <ShareModal 
+                isOpen={isShareModalOpen} 
+                onClose={() => setIsShareModalOpen(false)} 
+                type={shareModalType} 
+                data={shareModalType === 'verse' ? verse : { streak, todayMinutes, totalHours }} 
+            />
 
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
 
@@ -331,6 +360,14 @@ export default function Home() {
                             <div className="mt-0.5 font-mono text-[0.58rem] uppercase tracking-[0.1em] text-[var(--h-ink-muted)]">Total</div>
                         </div>
                     </div>
+                    <div className="flex justify-center mt-3">
+                        <button 
+                            onClick={shareProgress}
+                            className="flex cursor-pointer items-center gap-1.5 rounded-[20px] bg-[var(--h-teal)] px-4 py-2 text-xs font-semibold text-white transition-all duration-150 hover:bg-[var(--h-teal-mid)] hover:shadow-[0_4px_12px_rgba(46,79,74,0.2)]"
+                        >
+                            <Share2 size={14} /> Share Progress
+                        </button>
+                    </div>
                 </section>
 
                 {/* ─── Verse of the Day ─── */}
@@ -381,6 +418,29 @@ export default function Home() {
                                 </div>
                             );
                         })}
+                    </div>
+                </div>
+
+                {/* ─── Invite Friends ─── */}
+                <div className="mb-7 rounded-2xl bg-gradient-to-r from-[var(--h-teal)] to-[var(--h-teal-mid)] p-6 text-white shadow-lg relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-5 rounded-full -mr-10 -mt-10 blur-xl"></div>
+                    <div className="absolute bottom-0 left-0 w-24 h-24 bg-[var(--h-gold)] opacity-10 rounded-full -ml-8 -mb-8 blur-lg"></div>
+                    
+                    <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div>
+                            <h3 className="font-ui text-xl font-bold mb-1 flex items-center gap-2">
+                                <Sparkles size={18} className="text-[var(--h-gold)]" /> Invite Friends
+                            </h3>
+                            <p className="text-sm opacity-90 max-w-sm font-body leading-relaxed">
+                                Inspire others to build a daily Quran habit. Share the app and grow together!
+                            </p>
+                        </div>
+                        <button 
+                            onClick={inviteFriend}
+                            className="flex shrink-0 w-full md:w-auto cursor-pointer items-center justify-center gap-2 rounded-xl bg-white text-[var(--h-teal)] px-5 py-2.5 text-sm font-semibold transition-all duration-200 hover:bg-[var(--h-cream)] shadow-md"
+                        >
+                            <Share2 size={16} /> Send Invite
+                        </button>
                     </div>
                 </div>
 

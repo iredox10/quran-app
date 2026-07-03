@@ -32,7 +32,7 @@ export default function Memorization() {
         bookmarks, toggleBookmark, collections, addCollection, addToCollection,
         tajweedEnabled, logReadingSession,
         memorizedAyahs, memorizedSurahs, toggleMemorizedAyah, toggleMemorizedSurah,
-        customAudioBaseUrl, localAudioDirHandle
+        customAudioBaseUrl, localAudioDirHandle, completedTours
     } = useAppStore();
     const mushaf = getMushafById(mushafId);
     const isTajweedActive = isTajweedEnabledForMushaf(mushafId, tajweedEnabled);

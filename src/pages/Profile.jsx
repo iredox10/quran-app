@@ -6,7 +6,7 @@ import {
     User, Settings, Bookmark, Folder, Moon, Sun,
     ChevronRight, HardDrive, LogOut, CloudUpload, CloudDownload,
     Loader2, Mic, Languages, TrendingUp, CalendarDays, BookOpen, Brain, ChevronDown, Users,
-    Clock, Shield, RotateCcw, Compass
+    Clock, Shield, RotateCcw, Compass, Share2
 } from 'lucide-react';
 import { authService, syncService } from '../services/appwrite';
 import { RECITERS } from '../config/reciters';
@@ -281,6 +281,35 @@ export default function Profile() {
                                 <span className="max-w-[120px] truncate font-mono text-[0.65rem] text-[var(--text-secondary)] uppercase">
                                     {Math.min(completedTours?.length || 0, 5)} / 5 Completed
                                 </span>
+                                <ChevronRight size={16} className="text-[var(--text-secondary)] opacity-50" />
+                            </div>
+                        </button>
+                    </div>
+                </div>
+
+                {/* ═══ COMMUNITY ═══ */}
+                <div className="mb-6">
+                    <h2 className="mb-2 pl-2 font-mono text-[0.6rem] uppercase tracking-[0.15em] text-[var(--text-secondary)]">Community</h2>
+                    <div className="overflow-hidden rounded-[24px] border-[1.5px] border-[var(--h-bone-dark)] bg-[var(--h-cream)]">
+                        <button onClick={() => {
+                            if (navigator.share) {
+                                navigator.share({
+                                    title: 'Join me on Quran App',
+                                    text: 'I\'m using Quran App to build my daily reading habit. Join me!',
+                                    url: 'https://quranapp.com'
+                                }).catch(console.error);
+                            } else {
+                                navigator.clipboard.writeText('I\'m using Quran App to build my daily reading habit. Join me! https://quranapp.com');
+                                alert('Invite link copied to clipboard!');
+                            }
+                        }}
+                            className={`flex w-full items-center justify-between bg-transparent px-5 py-4 text-left transition-colors hover:bg-[var(--bg-surface)]`}>
+                            <div className="flex items-center gap-4">
+                                <div className="flex h-10 w-10 items-center justify-center rounded-[12px] bg-[var(--accent-primary)]/10 text-[var(--accent-primary)]"><Share2 size={18} /></div>
+                                <span className="text-[0.95rem] font-bold text-[var(--text-primary)]">Invite Friends</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="max-w-[120px] truncate font-mono text-[0.65rem] text-[var(--text-secondary)] uppercase">Share App</span>
                                 <ChevronRight size={16} className="text-[var(--text-secondary)] opacity-50" />
                             </div>
                         </button>
