@@ -523,7 +523,7 @@ export default function Memorization() {
                             <div key={verse.id} className="relative w-full">
                                 <div className="relative flex w-full items-center justify-center min-h-[64px]">
                                     {renderVerseText(verse, idx)}
-                                    <div className={`absolute left-0 top-0 flex flex-col gap-2 transition-opacity duration-300 ${hideMode === 'blur' ? 'opacity-0 pointer-events-none' : ''}`}>
+                                    <div className={`absolute left-0 top-0 flex flex-col gap-2 transition-opacity duration-300 ${hideMode === 'blur' && (completedTours || []).includes('memorization-tour') ? 'opacity-0 pointer-events-none' : ''}`}>
                                         <button className="cursor-pointer border-none bg-transparent p-2 transition-colors duration-150" onClick={(e) => { e.stopPropagation(); toggleBookmark(verse.verse_key, chapter?.name_simple, chapter?.id); }}
                                             style={{ color: bookmarks?.find(b => b.verseKey === verse.verse_key) ? 'var(--mem-teal)' : 'var(--mem-ink-muted)' }}
                                             title="Bookmark">
