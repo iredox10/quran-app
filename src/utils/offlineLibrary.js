@@ -36,9 +36,11 @@ export async function getOfflinePackStats({ translationId, reciterId, mushafId }
   ];
   const tajweedPrefix = '/quran/verses/uthmani_tajweed';
 
-  const [quranStats, tajweedStats] = await Promise.all([
+  const [quranStats, tajweedStats, quranCompleteFlag, tajweedCompleteFlag] = await Promise.all([
     getOfflineCacheStats(),
     getOfflineCacheStats(tajweedPrefix),
+    getOfflineCacheData('PACK_SYNC_QURAN_TEXT'),
+    getOfflineCacheData('PACK_SYNC_TAJWEED'),
   ]);
 
   const quranEntryCount = quranStats.count - tajweedStats.count;
@@ -46,7 +48,7 @@ export async function getOfflinePackStats({ translationId, reciterId, mushafId }
 
   return {
     quranText: {
-      downloaded: quranEntryCount > 0,
+      downloaded: !!quranCompleteFlag,
       entryCount: quranEntryCount,
       sizeLabel: formatBytes(quranBytes),
       translationId,
@@ -55,7 +57,7 @@ export async function getOfflinePackStats({ translationId, reciterId, mushafId }
       prefixes: quranPrefixes,
     },
     tajweed: {
-      downloaded: tajweedStats.count > 0,
+      downloaded: !!tajweedCompleteFlag,
       entryCount: tajweedStats.count,
       sizeLabel: formatBytes(tajweedStats.approximateBytes),
       prefixes: [tajweedPrefix],
@@ -78,6 +80,9 @@ export async function syncQuranTextPack({ translationId, reciterId, mushafId, on
       onProgress?.({ current: completedUnits, total: totalUnits, label: `Caching ${chapter.name_simple} · page ${page}` });
     }
   }
+
+  const { setOfflineCacheEntry } = await import('./offlineCache');
+  await setOfflineCacheEntry('PACK_SYNC_QURAN_TEXT', { completedAt: Date.now() });
 }
 
 export async function syncTajweedPack({ onProgress }) {
@@ -87,14 +92,22 @@ export async function syncTajweedPack({ onProgress }) {
     await getTajweedVerses(chapter.id);
     onProgress?.({ current: index + 1, total: chapters.length, label: `Caching ${chapter.name_simple}` });
   }
+
+  const { setOfflineCacheEntry } = await import('./offlineCache');
+  await setOfflineCacheEntry('PACK_SYNC_TAJWEED', { completedAt: Date.now() });
 }
 
 export async function deleteOfflinePack(packId) {
   if (packId === 'tajweed') {
     await deleteOfflineCacheByPrefix('/quran/verses/uthmani_tajweed');
+    const { deleteOfflineCacheByPrefix: deleteExact } = await import('./offlineCache');
+    await deleteExact('PACK_SYNC_TAJWEED');
     return;
   }
 
   const prefixes = ['/chapters', '/chapters/', '/verses/by_chapter/', '/verses/by_page/', '/chapter_recitations/'];
   await Promise.all(prefixes.map((prefix) => deleteOfflineCacheByPrefix(prefix)));
+  
+  const { deleteOfflineCacheByPrefix: deleteExact } = await import('./offlineCache');
+  await deleteExact('PACK_SYNC_QURAN_TEXT');
 }

@@ -17,6 +17,8 @@
     "axios": "^1.13.6",
     "canvas-confetti": "^1.9.4",
     "clsx": "^2.1.1",
+    "dexie": "^4.4.4",
+    "dexie-react-hooks": "^4.4.0",
     "framer-motion": "^12.35.0",
     "html-to-image": "^1.11.13",
     "lucide-react": "^0.577.0",

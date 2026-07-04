@@ -1,45 +1,24 @@
-const DB_NAME = 'quran-offline-db';
-const DB_VERSION = 1;
+import { db } from './db';
+
 const STORE_NAME = 'api-responses';
 
-function openOfflineDb() {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
-
-    request.onupgradeneeded = () => {
-      const db = request.result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME, { keyPath: 'key' });
-      }
-    };
-
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
-}
-
 export async function getOfflineCacheEntry(key) {
-  const db = await openOfflineDb();
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction(STORE_NAME, 'readonly');
-    const store = transaction.objectStore(STORE_NAME);
-    const request = store.get(key);
-
-    request.onsuccess = () => resolve(request.result || null);
-    request.onerror = () => reject(request.error);
-  });
+  try {
+    const entry = await db.table(STORE_NAME).get(key);
+    return entry || null;
+  } catch (error) {
+    console.error('Dexie getOfflineCacheEntry error:', error);
+    return null;
+  }
 }
 
 export async function setOfflineCacheEntry(key, data) {
-  const db = await openOfflineDb();
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction(STORE_NAME, 'readwrite');
-    const store = transaction.objectStore(STORE_NAME);
-    store.put({ key, data, updatedAt: Date.now() });
-
-    transaction.oncomplete = () => resolve();
-    transaction.onerror = () => reject(transaction.error);
-  });
+  try {
+    await db.table(STORE_NAME).put({ key, data, updatedAt: Date.now() });
+  } catch (error) {
+    console.error('Dexie setOfflineCacheEntry error:', error);
+    throw error;
+  }
 }
 
 export async function getOfflineCacheData(key) {
@@ -48,45 +27,47 @@ export async function getOfflineCacheData(key) {
 }
 
 export async function getAllOfflineCacheEntries() {
-  const db = await openOfflineDb();
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction(STORE_NAME, 'readonly');
-    const store = transaction.objectStore(STORE_NAME);
-    const request = store.getAll();
-
-    request.onsuccess = () => resolve(request.result || []);
-    request.onerror = () => reject(request.error);
-  });
+  try {
+    const entries = await db.table(STORE_NAME).toArray();
+    return entries;
+  } catch (error) {
+    console.error('Dexie getAllOfflineCacheEntries error:', error);
+    return [];
+  }
 }
 
 export async function getOfflineCacheStats(prefix = '') {
-  const entries = await getAllOfflineCacheEntries();
-  const filtered = prefix ? entries.filter((entry) => entry.key.startsWith(prefix)) : entries;
-  const approximateBytes = filtered.reduce((sum, entry) => {
-    try {
-      return sum + new Blob([JSON.stringify(entry.data)]).size;
-    } catch {
-      return sum;
+  try {
+    let query = db.table(STORE_NAME);
+    if (prefix) {
+      query = query.where('key').startsWith(prefix);
     }
-  }, 0);
+    const entries = await query.toArray();
 
-  return {
-    count: filtered.length,
-    approximateBytes,
-  };
+    const approximateBytes = entries.reduce((sum, entry) => {
+      try {
+        return sum + new Blob([JSON.stringify(entry.data)]).size;
+      } catch {
+        return sum;
+      }
+    }, 0);
+
+    return {
+      count: entries.length,
+      approximateBytes,
+    };
+  } catch (error) {
+    console.error('Dexie getOfflineCacheStats error:', error);
+    return { count: 0, approximateBytes: 0 };
+  }
 }
 
 export async function deleteOfflineCacheByPrefix(prefix) {
-  const db = await openOfflineDb();
-  const entries = await getAllOfflineCacheEntries();
-  const keys = entries.filter((entry) => entry.key.startsWith(prefix)).map((entry) => entry.key);
-
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction(STORE_NAME, 'readwrite');
-    const store = transaction.objectStore(STORE_NAME);
-    keys.forEach((key) => store.delete(key));
-
-    transaction.oncomplete = () => resolve(keys.length);
-    transaction.onerror = () => reject(transaction.error);
-  });
+  try {
+    const count = await db.table(STORE_NAME).where('key').startsWith(prefix).delete();
+    return count;
+  } catch (error) {
+    console.error('Dexie deleteOfflineCacheByPrefix error:', error);
+    throw error;
+  }
 }

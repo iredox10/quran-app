@@ -70,8 +70,20 @@ export const getChapters = async () => {
 };
 
 export const getChapter = async (id) => {
-  const data = await fetchWithOfflineCache(`/chapters/${id}`, { language: 'en' });
-  return data.chapter;
+  try {
+    const data = await fetchWithOfflineCache(`/chapters/${id}`, { language: 'en' });
+    return data.chapter;
+  } catch (error) {
+    // If individual chapter fetch fails (e.g. offline and not cached), fallback to the full chapters list
+    try {
+      const chapters = await getChapters();
+      const chapter = chapters.find((c) => String(c.id) === String(id));
+      if (chapter) return chapter;
+    } catch (e) {
+      // ignore nested error
+    }
+    throw error;
+  }
 };
 
 export const getVerses = async (chapterId, translationId = 85, reciterId = 7, page = 1, mushafId = 'madani-standard', perPage = 50) => {
