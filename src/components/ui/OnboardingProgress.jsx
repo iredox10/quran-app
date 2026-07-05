@@ -47,7 +47,7 @@ export default function OnboardingProgress() {
                 
                 <div className="flex items-center gap-3 mb-4">
                     <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-[#C6A87C]/20 flex items-center justify-center text-emerald-600 dark:text-[#C6A87C]">
-                        <Trophy size={20} />
+                        <img src="/logo-192.png" alt="Quran App Logo" className="w-6 h-6 object-contain" />
                     </div>
                     <div>
                         <h3 className="font-bold text-slate-900 dark:text-[#EFECE4] text-base leading-tight">Getting Started</h3>

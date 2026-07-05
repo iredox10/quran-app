@@ -9,7 +9,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['logo-192.png', 'logo-512.png', 'vite.svg'],
+      includeAssets: ['logo-192.png', 'logo-512.png', 'favicon.ico', 'apple-touch-icon.png'],
       devOptions: {
         enabled: true
       },

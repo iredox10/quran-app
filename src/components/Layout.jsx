@@ -229,7 +229,8 @@ export default function Layout() {
                                 </>
                             ) : (
                                 <>
-                                    <Link to="/" className="no-underline">
+                                    <Link to="/" className="no-underline flex items-center gap-2">
+                                        <img src="/logo-192.png" alt="Quran Logo" className="w-6 h-6 object-contain" />
                                         <span className="font-[var(--font-ui)] text-[1.35rem] font-bold tracking-tight text-[var(--h-ink)]">
                                             Qur'an
                                         </span>

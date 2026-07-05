@@ -141,9 +141,7 @@ export default function ShareModal({ isOpen, onClose, type, data }) {
                         {/* Footer / Branding */}
                         <div className="mt-8 pt-4 border-t border-[#DDD7C7] flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                                <div className="w-6 h-6 rounded-md bg-[#2E4F4A] flex items-center justify-center">
-                                    <BookOpen size={12} color="white" />
-                                </div>
+                                <img src="/logo-192.png" alt="Quran App Logo" className="w-6 h-6 object-contain" />
                                 <span className="font-ui font-bold text-[#2B3F3C] text-sm">Quran App</span>
                             </div>
                             <span className="font-mono text-[0.6rem] text-[#8E9B97]">quranapp.com</span>
