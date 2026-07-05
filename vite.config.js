@@ -15,8 +15,8 @@ export default defineConfig({
       },
       manifest: {
         name: 'Quran Nur',
-        short_name: 'Quran',
-        description: 'Read and listen to the Holy Quran with translations and tajweed.',
+        short_name: 'Quran Nur',
+        description: 'Quran Nur — Illuminate your heart. A beautifully designed companion for reading, listening, and studying the Quran.',
         theme_color: '#004d40',
         background_color: '#ffffff',
         display: 'standalone',

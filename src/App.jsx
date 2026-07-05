@@ -21,7 +21,12 @@ import SaukaIndex from './pages/SaukaIndex';
 import SaukaGroup from './pages/SaukaGroup';
 import CloudSync from './components/CloudSync';
 
+import React, { useState } from 'react';
+import SplashScreen from './components/ui/SplashScreen';
+
 function App() {
+  const [showSplash, setShowSplash] = useState(true);
+
   useEffect(() => {
     async function requestPersistentStorage() {
       if (navigator.storage && navigator.storage.persist) {
@@ -53,6 +58,8 @@ function App() {
 
   return (
     <BrowserRouter>
+      {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
+      
       {/* Headless cloud sync — runs silently in the background on every page */}
       <CloudSync />
       <Routes>

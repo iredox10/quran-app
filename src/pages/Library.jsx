@@ -36,8 +36,10 @@ export default function Library() {
 
                     <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-5">
                         {bookmarks.length === 0 ? (
-                            <div className="col-span-full p-12 text-center bg-[var(--bg-surface)] rounded-3xl border border-dashed border-[var(--border-color)]">
-                                <Bookmark size={48} className="text-[var(--text-muted)] mb-4 opacity-30" />
+                            <div className="col-span-full p-12 text-center bg-[var(--bg-surface)] rounded-3xl border border-dashed border-[var(--border-color)] flex flex-col items-center">
+                                <div className="mb-4 opacity-20">
+                                    <img src="/logo-192.png" className="w-16 h-16 object-contain" alt="" />
+                                </div>
                                 <p className="text-[var(--text-muted)]">No bookmarks yet. Save your favorite ayahs to see them here.</p>
                             </div>
                         ) : (
