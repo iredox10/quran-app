@@ -592,12 +592,8 @@ function buildPrayerSlots(planner, todayAssignment, prayerTimes, prayerSettings)
             timeLabel = timeStr;
         }
 
-        return { name, time: timeLabel, count, doneInSlot, completedUpTo: slotEnd, slotStartCount: slotStart, slotRoute, status: count === 0 ? 'empty' : isComplete ? 'completed' : isCurrent ? 'current' : 'upcoming' };
+        return { name, time: timeLabel, count, doneInSlot, completedUpTo: slotEnd, slotStartCount: slotStart, slotRoute, status: count === 0 ? 'empty' : isComplete ? 'completed' : 'current' };
     });
-    const firstIncomplete = slots.findIndex(s => s.status !== 'completed' && s.status !== 'empty');
-    if (firstIncomplete !== -1 && slots[firstIncomplete].status === 'upcoming') {
-        slots[firstIncomplete] = { ...slots[firstIncomplete], status: 'current' };
-    }
     return slots;
 }
 
