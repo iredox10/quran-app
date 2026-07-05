@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { authService, syncService } from '../services/appwrite';
 import { RECITERS } from '../config/reciters';
+import { APP_CONFIG } from '../config/constants';
 
 const TRANSLATIONS = [
     { id: 85, name: 'English - M.A.S. Abdel Haleem' },
@@ -294,12 +295,12 @@ export default function Profile() {
                         <button onClick={() => {
                             if (navigator.share) {
                                 navigator.share({
-                                    title: 'Join me on Quran Nur',
-                                    text: 'I\'m using Quran Nur to build my daily reading habit. Join me!',
-                                    url: 'https://quranapp.com'
+                                    title: APP_CONFIG.SHARE_TITLE,
+                                    text: APP_CONFIG.SHARE_DESCRIPTION,
+                                    url: APP_CONFIG.APP_URL
                                 }).catch(console.error);
                             } else {
-                                navigator.clipboard.writeText('I\'m using Quran Nur to build my daily reading habit. Join me! https://quranapp.com');
+                                navigator.clipboard.writeText(`${APP_CONFIG.SHARE_DESCRIPTION} ${APP_CONFIG.APP_URL}`);
                                 alert('Invite link copied to clipboard!');
                             }
                         }}

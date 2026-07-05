@@ -7,6 +7,7 @@ import { useAppStore } from '../store/useAppStore';
 import { BookOpen, Search, Bookmark, DownloadCloud, X, Hash, Layers3, LibraryBig, Rows3, ArrowRight, Flame, Clock, BarChart3, Sparkles, Share2, Copy, Check, CalendarDays, Brain } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
 import { HIZB_STARTS, JUZ_STARTS, PAGE_GROUPS } from '../data/quranNavigation';
+import { APP_CONFIG } from '../config/constants';
 import PageTourModal from '../components/ui/PageTourModal';
 import Coachmark from '../components/ui/Coachmark';
 import OnboardingProgress from '../components/ui/OnboardingProgress';
@@ -250,12 +251,12 @@ export default function Home() {
     const inviteFriend = useCallback(async () => {
         if (navigator.share) {
             await navigator.share({
-                title: 'Join me on Quran Nur',
-                text: 'I\'m using Quran Nur to build my daily reading habit. Join me!',
-                url: 'https://quranapp.com'
+                title: APP_CONFIG.SHARE_TITLE,
+                text: APP_CONFIG.SHARE_DESCRIPTION,
+                url: APP_CONFIG.APP_URL
             });
         } else {
-            navigator.clipboard.writeText('I\'m using Quran Nur to build my daily reading habit. Join me! https://quranapp.com');
+            navigator.clipboard.writeText(`${APP_CONFIG.SHARE_DESCRIPTION} ${APP_CONFIG.APP_URL}`);
             alert('Invite link copied to clipboard!');
         }
     }, []);
