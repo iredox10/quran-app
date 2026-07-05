@@ -106,13 +106,31 @@ export default function PlannerReader() {
 
     const currentChapter = useMemo(() => {
         if (!chapters || !pageNumber) return null;
-        return chapters.find(c => {
+        
+        // Find all chapters that span this page
+        const matchingChapters = chapters.filter(c => {
             if (!c.pages || !c.pages.length) return false;
             const start = c.pages[0];
             const end = c.pages[1] || start;
             return pageNumber >= start && pageNumber <= end;
         });
-    }, [chapters, pageNumber]);
+
+        if (matchingChapters.length === 0) return null;
+        if (matchingChapters.length === 1) return matchingChapters[0];
+
+        // If multiple chapters share this page, try to match with the planner assignment
+        if (planner && assignment && planner.unitType === 'surah') {
+            const assignedIds = assignment.items.map(item => item.rangeValue);
+            const assignedMatch = matchingChapters.find(c => assignedIds.includes(c.id));
+            if (assignedMatch) return assignedMatch;
+        }
+
+        // Default to the chapter that starts on this page (users usually care about the new Surah)
+        const startingHere = matchingChapters.find(c => c.pages[0] === pageNumber);
+        if (startingHere) return startingHere;
+
+        return matchingChapters[matchingChapters.length - 1]; // Return the last one as fallback
+    }, [chapters, pageNumber, planner, assignment]);
 
     const [activeTafsir, setActiveTafsir] = useState(null); // stores { verse_key, text }
 

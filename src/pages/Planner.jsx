@@ -193,6 +193,29 @@ function IntentionView({ onBegin, onViewActive, chapters, hasExistingPlan, plann
         }
     };
 
+    const handleTemplateSelect = (tmpl) => {
+        const sUnit = tmpl.startUnit;
+        const eUnit = tmpl.endUnit;
+        const totalUnits = Math.max(eUnit - sUnit + 1, 1);
+        const durationDays = Math.ceil(totalUnits / Math.max(tmpl.recommendedPace, 1));
+
+        try {
+            const built = buildReadingPlanner({
+                unitType: tmpl.unitType,
+                durationDays,
+                startDate, // User's currently selected startDate (which defaults to today)
+                startUnit: sUnit,
+                endUnit: eUnit,
+                customTitle: tmpl.title,
+                excludeDays: []
+            }, chapters || []);
+            onBegin(built);
+        } catch (e) {
+            console.error('Planner build failed from template:', e);
+            alert(`Could not build template plan: ${e.message}`);
+        }
+    };
+
     const activeDays = showCustom ? computedDuration : PACES.find(p => p.id === selected)?.durationDays || 60;
     const activeStats = getPaceStats(activeDays, showCustom ? excludeDays : [], showCustom ? startDate : undefined);
 
@@ -343,14 +366,7 @@ function IntentionView({ onBegin, onViewActive, chapters, hasExistingPlan, plann
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {PLAN_TEMPLATES.map((tmpl) => (
                         <div key={tmpl.id} className="group relative flex cursor-pointer flex-col overflow-hidden rounded-[16px] border-[1.5px] border-[var(--plr-bone-dark)] bg-[var(--plr-cream)] p-5 transition-all duration-200 hover:-translate-y-1 hover:border-[var(--plr-teal)] hover:shadow-[0_8px_24px_rgba(46,79,74,0.08)]"
-                            onClick={() => {
-                                setUnitType(tmpl.unitType);
-                                setCustomTitle(tmpl.title);
-                                setStartPage(tmpl.startUnit);
-                                setEndPage(tmpl.endUnit);
-                                setPagesPerDay(tmpl.recommendedPace);
-                                setShowCustom(true);
-                            }}>
+                            onClick={() => handleTemplateSelect(tmpl)}>
                             <div className="absolute -right-4 -top-4 opacity-[0.03] transition-opacity duration-300 group-hover:opacity-[0.08]">
                                 <BookIcon size={80} />
                             </div>
