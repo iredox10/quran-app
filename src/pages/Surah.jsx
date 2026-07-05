@@ -322,17 +322,17 @@ export default function Surah() {
     const swipeDirectionRef = React.useRef(0); // -1 = going back (right swipe), 1 = going forward (left swipe)
 
     const swipeHandlers = useSwipeable({
-        onSwipedLeft: () => {
+        onSwipedRight: () => {
             if (!backToSauka && parseInt(id) < 114) {
                 surahScrollPositions[id] = window.scrollY;
-                swipeDirectionRef.current = 1; // forward
+                swipeDirectionRef.current = -1; // forward (next surah, page enters from left in RTL)
                 navigate(`/surah/${parseInt(id) + 1}`);
             }
         },
-        onSwipedRight: () => {
+        onSwipedLeft: () => {
             if (!backToSauka && parseInt(id) > 1) {
                 surahScrollPositions[id] = window.scrollY;
-                swipeDirectionRef.current = -1; // backward
+                swipeDirectionRef.current = 1; // backward (prev surah, page enters from right in RTL)
                 navigate(`/surah/${parseInt(id) - 1}`);
             }
         },
