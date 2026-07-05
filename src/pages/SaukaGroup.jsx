@@ -202,9 +202,9 @@ export default function SaukaGroup() {
             ctx.fillText(`" ${group.intention.substring(0, 50)}${group.intention.length > 50 ? '...' : ''} "`, 540, 650);
         }
 
-        ctx.fillStyle = 'rgba(255,255,255,0.6)';
+        ctx.fillStyle = '#8E9B97';
         ctx.font = '30px sans-serif';
-        ctx.fillText('Read on Quran App', 540, 950);
+        ctx.fillText('Read on Quran Nur', 540, 950);
 
         // Download
         const link = document.createElement('a');

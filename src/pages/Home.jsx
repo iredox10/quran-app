@@ -13,7 +13,7 @@ import OnboardingProgress from '../components/ui/OnboardingProgress';
 import ShareModal from '../components/ui/ShareModal';
 
 const homeTourSteps = [
-    { title: "Welcome to Quran App", description: "This is your personal companion for reading, memorizing, and studying the Quran.", icon: Sparkles },
+    { title: "Welcome to Quran Nur", description: "This is your personal companion for reading, memorizing, and studying the Quran.", icon: Sparkles },
     { title: "Daily Progress", target: "#daily-progress", description: "Track your reading streak, daily minutes, and total hours right from the dashboard.", icon: Flame },
     { title: "Verse of the Day", target: "#verse-of-the-day", description: "Start your day with a selected Ayah. You can copy or share it easily.", icon: BookOpen },
     { title: "Resume Reading", target: "#resume-reading", description: "Pick up exactly where you left off last time.", icon: ArrowRight },
@@ -247,15 +247,15 @@ export default function Home() {
     }, []);
 
     // Invite friend
-    const inviteFriend = useCallback(() => {
+    const inviteFriend = useCallback(async () => {
         if (navigator.share) {
-            navigator.share({
-                title: 'Join me on Quran App',
-                text: 'I\'m using Quran App to build my daily reading habit. Join me!',
+            await navigator.share({
+                title: 'Join me on Quran Nur',
+                text: 'I\'m using Quran Nur to build my daily reading habit. Join me!',
                 url: 'https://quranapp.com'
-            }).catch(console.error);
+            });
         } else {
-            navigator.clipboard.writeText('I\'m using Quran App to build my daily reading habit. Join me! https://quranapp.com');
+            navigator.clipboard.writeText('I\'m using Quran Nur to build my daily reading habit. Join me! https://quranapp.com');
             alert('Invite link copied to clipboard!');
         }
     }, []);

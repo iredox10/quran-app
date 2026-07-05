@@ -294,12 +294,12 @@ export default function Profile() {
                         <button onClick={() => {
                             if (navigator.share) {
                                 navigator.share({
-                                    title: 'Join me on Quran App',
-                                    text: 'I\'m using Quran App to build my daily reading habit. Join me!',
+                                    title: 'Join me on Quran Nur',
+                                    text: 'I\'m using Quran Nur to build my daily reading habit. Join me!',
                                     url: 'https://quranapp.com'
                                 }).catch(console.error);
                             } else {
-                                navigator.clipboard.writeText('I\'m using Quran App to build my daily reading habit. Join me! https://quranapp.com');
+                                navigator.clipboard.writeText('I\'m using Quran Nur to build my daily reading habit. Join me! https://quranapp.com');
                                 alert('Invite link copied to clipboard!');
                             }
                         }}

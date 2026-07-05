@@ -14,7 +14,7 @@ export default defineConfig({
         enabled: true
       },
       manifest: {
-        name: 'The Noble Quran',
+        name: 'Quran Nur',
         short_name: 'Quran',
         description: 'Read and listen to the Holy Quran with translations and tajweed.',
         theme_color: '#004d40',

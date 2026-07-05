@@ -705,9 +705,9 @@ function ActiveView({ planner, planners, activePlannerId, onSwitchPlan, onDelete
         }
         try {
             await navigator.share({
-                title: 'My Quran Reading Plan',
-                text: `I've completed ${completedDays} days of my ${planner.durationDays}-day Quran reading plan on the Quran App! I'm currently on Day ${currentDay}.`,
-                url: window.location.href,
+                title: 'My Quran Reading Progress',
+                text: `I've completed ${completedDays} days of my ${planner.durationDays}-day Quran reading plan on Quran Nur! I'm currently on Day ${currentDay}.`,
+                url: 'https://quranapp.com'
             });
         } catch (e) {
             console.error('Share failed', e);

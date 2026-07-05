@@ -28,8 +28,8 @@ export default function ShareModal({ isOpen, onClose, type, data }) {
                 if (navigator.canShare({ files: [file] })) {
                     await navigator.share({
                         files: [file],
-                        title: 'Quran App',
-                        text: type === 'verse' ? 'Verse of the Day from the Quran App' : "My Quran Reading Progress!"
+                        title: 'Quran Nur',
+                        text: type === 'verse' ? 'Verse of the Day from Quran Nur' : "My Quran Reading Progress!"
                     });
                 } else {
                     downloadBlob(blob);
@@ -141,8 +141,8 @@ export default function ShareModal({ isOpen, onClose, type, data }) {
                         {/* Footer / Branding */}
                         <div className="mt-8 pt-4 border-t border-[#DDD7C7] flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                                <img src="/logo-192.png" alt="Quran App Logo" className="w-6 h-6 object-contain" />
-                                <span className="font-ui font-bold text-[#2B3F3C] text-sm">Quran App</span>
+                                <img src="/logo-192.png" alt="Quran Nur Logo" className="w-6 h-6 object-contain" />
+                                <span className="font-ui font-bold text-[#2B3F3C] text-sm">Quran Nur</span>
                             </div>
                             <span className="font-mono text-[0.6rem] text-[#8E9B97]">quranapp.com</span>
                         </div>
