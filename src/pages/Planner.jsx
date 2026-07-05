@@ -196,8 +196,7 @@ function IntentionView({ onBegin, onViewActive, chapters, hasExistingPlan, plann
     const handleTemplateSelect = (tmpl) => {
         const sUnit = tmpl.startUnit;
         const eUnit = tmpl.endUnit;
-        const totalUnits = Math.max(eUnit - sUnit + 1, 1);
-        const durationDays = Math.ceil(totalUnits / Math.max(tmpl.recommendedPace, 1));
+        const durationDays = tmpl.durationDays;
 
         try {
             const built = buildReadingPlanner({

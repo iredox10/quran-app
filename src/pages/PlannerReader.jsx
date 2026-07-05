@@ -182,6 +182,29 @@ export default function PlannerReader() {
     }, [tajweedData]);
 
     const verses = pageData?.verses || [];
+    
+    // Filter verses to only include those that are part of the current assignment
+    const assignedVerses = useMemo(() => {
+        if (!verses.length || !planner || !assignment) return verses;
+        
+        if (planner.unitType === 'surah') {
+            const assignedSurahIds = assignment.items.map(item => Number(item.rangeValue));
+            return verses.filter(v => assignedSurahIds.includes(Number(v.verse_key.split(':')[0])));
+        }
+        
+        if (planner.unitType === 'juz') {
+            const assignedJuzIds = assignment.items.map(item => Number(item.rangeValue));
+            return verses.filter(v => {
+                if (v.juz_number) return assignedJuzIds.includes(Number(v.juz_number));
+                return true;
+            });
+        }
+        
+        return verses;
+    }, [verses, planner, assignment]);
+
+    const assignedVerseKeys = useMemo(() => new Set(assignedVerses.map(v => v.verse_key)), [assignedVerses]);
+
     const maxPageNumber = assignment?.pageEnd || 604;
     const minPageNumber = assignment?.pageStart || 1;
 
@@ -319,9 +342,9 @@ export default function PlannerReader() {
         if (progress?.isComplete && !prevIsCompleteRef.current) {
             setShowConfetti(true);
             
-            if (verses && verses.length > 0) {
-                const randIdx = Math.floor(Math.random() * verses.length);
-                setInsightVerse(verses[randIdx]);
+            if (assignedVerses && assignedVerses.length > 0) {
+                const randIdx = Math.floor(Math.random() * assignedVerses.length);
+                setInsightVerse(assignedVerses[randIdx]);
             }
 
             const duration = 3000;
@@ -362,13 +385,13 @@ export default function PlannerReader() {
         : null;
 
     const handlePlayClick = useCallback(() => {
-        if (!verses || verses.length === 0) return;
+        if (!assignedVerses || assignedVerses.length === 0) return;
 
         if (isCurrentPagePlaying) {
             setIsPlaying(!isPlaying);
             setIsPlayerVisible(true);
         } else {
-            const playlist = verses.map(v => {
+            const playlist = assignedVerses.map(v => {
                 let url = v.audio?.url ? (v.audio.url.startsWith('http') ? v.audio.url : `https://verses.quran.com/${v.audio.url}`) : null;
                 const [surahNum, ayahNum] = v.verse_key.split(':');
                 const fileName = `${String(surahNum).padStart(3, '0')}${String(ayahNum).padStart(3, '0')}.mp3`;
@@ -397,7 +420,7 @@ export default function PlannerReader() {
     }, [verses, isCurrentPagePlaying, isPlaying, pageNumber, localAudioDirHandle, customAudioBaseUrl, setIsPlaying, setIsPlayerVisible, updateAudioSettings]);
 
     const handlePlayVerse = useCallback((verse) => {
-        const playlist = verses.map(v => {
+        const playlist = assignedVerses.map(v => {
             let url = v.audio?.url ? (v.audio.url.startsWith('http') ? v.audio.url : `https://verses.quran.com/${v.audio.url}`) : null;
             const [surahNum, ayahNum] = v.verse_key.split(':');
             const fileName = `${String(surahNum).padStart(3, '0')}${String(ayahNum).padStart(3, '0')}.mp3`;
@@ -465,9 +488,9 @@ export default function PlannerReader() {
     }, [isPlaying, isCurrentPagePlaying, audioTrackIndex, audioSettings.endRange, audioPlaylist, pageNumber, maxPageNumber]);
 
     useEffect(() => {
-        if (shouldAutoPlayNextRef.current && verses.length > 0 && !isPageLoading) {
+        if (shouldAutoPlayNextRef.current && assignedVerses.length > 0 && !isPageLoading) {
             shouldAutoPlayNextRef.current = false;
-            const playlist = verses.map(v => {
+            const playlist = assignedVerses.map(v => {
                 let url = v.audio?.url ? (v.audio.url.startsWith('http') ? v.audio.url : `https://verses.quran.com/${v.audio.url}`) : null;
                 const [surahNum, ayahNum] = v.verse_key.split(':');
                 const fileName = `${String(surahNum).padStart(3, '0')}${String(ayahNum).padStart(3, '0')}.mp3`;
@@ -711,6 +734,7 @@ export default function PlannerReader() {
                                     arabicFont={arabicFont}
                                     fontSize={fontSize}
                                     activeAudioVerseKey={activeAudioVerseKey}
+                                    assignedVerseKeys={assignedVerseKeys}
                                 />
                             )
                         ) : (
@@ -724,7 +748,7 @@ export default function PlannerReader() {
                                         <span className="ui-text">Loading page {pageNumber}...</span>
                                     </div>
                                 ) : (
-                                    verses.map((verse) => {
+                                    assignedVerses.map((verse) => {
                                         const chId = verse.verse_key.split(':')[0];
                                         const chapterContext = chapters?.find(c => c.id.toString() === chId) || { id: parseInt(chId), name_simple: `Surah ${chId}` };
 

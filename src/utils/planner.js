@@ -8,8 +8,8 @@ export const PLANNER_UNITS = {
 };
 
 export const PLAN_TEMPLATES = [
-  { id: 'ramadan-last-10', title: 'Ramadan Last 10', durationDays: 10, unitType: 'juz', startUnit: 28, endUnit: 30, description: 'Complete the last 3 Ajza in the last 10 days' },
-  { id: 'juz-amma', title: 'Juz Amma Focus', durationDays: 15, unitType: 'juz', startUnit: 30, endUnit: 30, description: 'Take 15 days to master the 30th Juz' },
+  { id: 'ramadan-last-10', title: 'Ramadan Last 10', durationDays: 10, unitType: 'page', startUnit: 542, endUnit: 604, description: 'Complete the last 3 Ajza in the last 10 days' },
+  { id: 'juz-amma', title: 'Juz Amma Focus', durationDays: 15, unitType: 'page', startUnit: 582, endUnit: 604, description: 'Take 15 days to master the 30th Juz' },
   { id: 'al-kahf', title: 'Surah Al-Kahf Weekly', durationDays: 1, unitType: 'surah', startUnit: 18, endUnit: 18, description: 'The recommended Friday reading' },
   { id: 'tafsir-deep-dive', title: 'Tafsir Deep Dive', durationDays: 114, unitType: 'surah', startUnit: 1, endUnit: 114, description: 'One Surah per week (requires manually setting days off)' },
   { id: 'monthly-juz', title: 'Monthly Juz', durationDays: 30, unitType: 'juz', startUnit: 1, endUnit: 30, description: 'One Juz per month (set custom duration when creating)' },
