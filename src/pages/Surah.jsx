@@ -272,14 +272,29 @@ export default function Surah() {
 
 
     const handleDownloadSurah = async () => {
-        if (!audioData?.audio_url || isDownloading) return;
+        if (!verses || verses.length === 0 || isDownloading) return;
 
         try {
             setIsDownloading(true);
-            const response = await fetch(audioData.audio_url);
-            if (response.ok) {
-                addDownloadedSurah(id);
+            
+            // Collect the exact verse-by-verse URLs the player uses
+            const urlsToCache = verses.map(v => {
+                return v.audio?.url ? (v.audio.url.startsWith('http') ? v.audio.url : `https://verses.quran.com/${v.audio.url}`) : null;
+            }).filter(Boolean);
+
+            // Fetch in small chunks to avoid overwhelming the network/browser
+            const chunkSize = 5;
+            for (let i = 0; i < urlsToCache.length; i += chunkSize) {
+                const chunk = urlsToCache.slice(i, i + chunkSize);
+                await Promise.all(chunk.map(url => fetch(url, { mode: 'cors' }).catch(e => console.warn("Verse audio cache failed:", url, e))));
             }
+
+            // Also fetch the full surah audio just in case
+            if (audioData?.audio_url) {
+                await fetch(audioData.audio_url, { mode: 'cors' }).catch(() => {});
+            }
+
+            addDownloadedSurah(id);
         } catch (error) {
             console.error("Audio download failed", error);
         } finally {
@@ -468,24 +483,24 @@ export default function Surah() {
                                 {isCurrentAudio && isPlaying ? <Pause size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" className="ml-0.5" />}
                             </button>
                             
-                            <button
-                                id="download-audio-btn"
-                                onClick={handleDownloadSurah}
-                                disabled={isDownloading || isDownloaded}
-                                className={`flex items-center justify-center h-10 w-10 rounded-full transition-all duration-300
-                                    ${isDownloaded ? 'text-[var(--accent-primary)] bg-[var(--accent-light)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-secondary)]'}
-                                    ${isDownloading ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}
-                                `}
-                                title={isDownloading ? "Downloading..." : isDownloaded ? "Saved Offline" : "Download Audio"}
-                            >
-                                {isDownloading ? (
-                                    <Loader2 size={18} className="animate-spin" />
-                                ) : isDownloaded ? (
-                                    <CloudCheck size={18} />
-                                ) : (
-                                    <Download size={18} />
-                                )}
-                            </button>
+                            {!isDownloaded && (
+                                <button
+                                    id="download-audio-btn"
+                                    onClick={handleDownloadSurah}
+                                    disabled={isDownloading}
+                                    className={`flex items-center justify-center h-10 w-10 rounded-full transition-all duration-300
+                                        text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-secondary)]
+                                        ${isDownloading ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}
+                                    `}
+                                    title={isDownloading ? "Downloading..." : "Download Audio"}
+                                >
+                                    {isDownloading ? (
+                                        <Loader2 size={18} className="animate-spin" />
+                                    ) : (
+                                        <Download size={18} />
+                                    )}
+                                </button>
+                            )}
                         </div>
                     </div>
 

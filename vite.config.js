@@ -100,6 +100,21 @@ export default defineConfig({
               },
               rangeRequests: true,
             },
+          },
+          {
+            urlPattern: ({ url }) => url.hostname === 'verses.quran.com',
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'quran-verse-audio-cache',
+              expiration: {
+                maxEntries: 6500, // Roughly enough for the whole Quran
+                maxAgeSeconds: 60 * 60 * 24 * 90,
+              },
+              cacheableResponse: {
+                statuses: [0, 200, 206],
+              },
+              rangeRequests: true,
+            },
           }
         ]
       }
