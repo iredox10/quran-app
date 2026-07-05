@@ -350,9 +350,6 @@ export default function Surah() {
                 const savedPos = surahScrollPositions[id];
                 if (savedPos !== undefined) {
                     window.scrollTo({ top: savedPos, behavior: 'instant' });
-                } else if (swipeDirectionRef.current === -1) {
-                    // Navigate backwards and no saved position -> jump to bottom
-                    window.scrollTo({ top: document.body.scrollHeight, behavior: 'instant' });
                 } else {
                     window.scrollTo({ top: 0, behavior: 'instant' });
                 }
@@ -439,61 +436,56 @@ export default function Surah() {
 
 
 
-                    <div className="surah-hero-card" style={{ padding: 'clamp(2rem, 5vw, 4rem) 1.5rem' }}>
-                        <div className="surah-bg-glow" />
-
-                        {/* Subtle decorative background Arabic text */}
-                        <div
-                            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-[0.04] pointer-events-none select-none whitespace-nowrap text-[var(--text-primary)]"
-                            style={{ fontFamily: 'var(--font-arabic)', fontSize: 'clamp(8rem, 25vw, 15rem)' }}
-                        >
-                            {chapter?.name_arabic}
-                        </div>
-
-                        <div className="relative z-[1]">
-                            <div className="inline-block px-4 py-[0.4rem] rounded-full bg-[var(--accent-light)] text-accent font-mono text-[0.7rem] font-bold tracking-[0.1em] uppercase mb-6">
-                                Surah {chapter?.id}
-                            </div>
-
-                            <h1
-                                className="surah-title font-ui font-extrabold mb-2 text-[var(--text-primary)] tracking-[-1px]"
-                                style={{
-                                    fontSize: 'clamp(2.5rem, 8vw, 4rem)',
-                                }}
-                            >
+                    <div className="flex flex-col items-center text-center w-full pt-8 pb-8 mb-6 border-b border-[var(--border-color)]">
+                        {/* Title Lockup */}
+                        <div className="flex items-center justify-center gap-3 mb-2">
+                            <h1 className="font-ui font-extrabold text-[2.2rem] text-[var(--text-primary)] tracking-tight leading-none">
                                 {chapter?.name_simple}
                             </h1>
-                            <p
-                                className="text-[var(--text-secondary)] mb-8 font-medium"
-                                style={{
-                                    fontSize: 'clamp(1rem, 3vw, 1.25rem)',
-                                }}
-                            >
-                                {chapter?.translated_name.name} • {chapter?.verses_count} Ayahs • {chapter?.revelation_place}
-                            </p>
+                            <span className="font-arabic text-[2.5rem] text-[var(--accent-primary)] leading-none mt-[-0.5rem]">
+                                {chapter?.name_arabic}
+                            </span>
+                        </div>
+                        
+                        {/* Meta info */}
+                        <div className="flex items-center justify-center flex-wrap gap-2 font-mono text-[0.65rem] font-medium text-[var(--text-secondary)] uppercase tracking-[0.15em] mb-5">
+                            <span className="font-bold text-[var(--accent-primary)]">Surah {chapter?.id}</span>
+                            <span className="text-[var(--text-muted)] opacity-50">●</span>
+                            <span>{chapter?.translated_name.name}</span>
+                            <span className="text-[var(--text-muted)] opacity-50">●</span>
+                            <span>{chapter?.verses_count} Ayahs</span>
+                            <span className="text-[var(--text-muted)] opacity-50">●</span>
+                            <span>{chapter?.revelation_place}</span>
+                        </div>
 
-                            <div className="flex justify-center gap-4 flex-wrap">
-                                <button
-                                    className="btn-primary flex items-center gap-2"
-                                    onClick={handlePlayClick}
-                                >
-                                    {isCurrentAudio && isPlaying ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" />}
-                                    {isCurrentAudio && isPlaying ? 'Pause Audio' : 'Play Audio'}
-                                </button>
-                                <button
-                                    id="download-audio-btn"
-                                    className="btn-primary flex items-center gap-2 border border-[var(--border-color)]"
-                                    style={{
-                                        backgroundColor: isDownloaded ? 'var(--accent-light)' : 'var(--bg-primary)',
-                                        color: isDownloaded ? 'var(--accent-primary)' : 'var(--text-primary)',
-                                        opacity: isDownloading ? 0.7 : 1
-                                    }}
-                                    onClick={handleDownloadSurah}
-                                    disabled={isDownloading || isDownloaded}
-                                >
-                                    {isDownloading ? 'Downloading...' : isDownloaded ? 'Offline Ready' : 'Download for Offline'}
-                                </button>
-                            </div>
+                        {/* Actions Pill Centered */}
+                        <div className="flex items-center justify-center gap-1 bg-[var(--bg-surface)] p-1.5 rounded-full border border-[var(--border-color)] shadow-sm">
+                            <button
+                                onClick={handlePlayClick}
+                                className="flex items-center justify-center h-10 w-10 rounded-full bg-[var(--accent-primary)] text-white transition-all duration-300 hover:scale-105 shadow-[0_4px_12px_rgba(198,168,124,0.3)] cursor-pointer"
+                                title={isCurrentAudio && isPlaying ? "Pause Audio" : "Play Audio"}
+                            >
+                                {isCurrentAudio && isPlaying ? <Pause size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" className="ml-0.5" />}
+                            </button>
+                            
+                            <button
+                                id="download-audio-btn"
+                                onClick={handleDownloadSurah}
+                                disabled={isDownloading || isDownloaded}
+                                className={`flex items-center justify-center h-10 w-10 rounded-full transition-all duration-300
+                                    ${isDownloaded ? 'text-[var(--accent-primary)] bg-[var(--accent-light)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-secondary)]'}
+                                    ${isDownloading ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}
+                                `}
+                                title={isDownloading ? "Downloading..." : isDownloaded ? "Saved Offline" : "Download Audio"}
+                            >
+                                {isDownloading ? (
+                                    <Loader2 size={18} className="animate-spin" />
+                                ) : isDownloaded ? (
+                                    <CloudCheck size={18} />
+                                ) : (
+                                    <Download size={18} />
+                                )}
+                            </button>
                         </div>
                     </div>
 
