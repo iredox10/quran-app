@@ -304,17 +304,40 @@ export default function Home() {
                 {/* Install Banner */}
                 <AnimatePresence>
                     {isInstallable && (
-                        <motion.div className="relative mb-6 cursor-pointer rounded-2xl bg-gradient-to-br from-[var(--h-teal)] to-[#3d8b6e] px-5 py-4 text-white transition-shadow duration-150 hover:shadow-[0_8px_24px_rgba(46,79,74,0.25)] md:px-6 md:py-5" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.95 }} onClick={handleInstallClick}>
-                            <button className="absolute right-1.5 top-1.5 cursor-pointer border-none bg-transparent p-1 text-white/50" onClick={dismissInstall}><X size={14} /></button>
-                            <div className="flex flex-1 items-center gap-4">
-                                <div className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-xl bg-white/15"><DownloadCloud size={22} /></div>
-                                <div>
-                                    <div className="text-base font-bold">Install App</div>
-                                    <div className="mt-0.5 text-xs opacity-85">Read offline with a native feel</div>
+                        <motion.div
+                            className="relative mb-8 cursor-pointer overflow-hidden rounded-[24px] border-[1.5px] border-[var(--h-bone-dark)] bg-[var(--h-cream)] p-[3px] shadow-[0_12px_32px_rgba(43,63,60,0.08)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_16px_40px_rgba(43,63,60,0.12)]"
+                            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20, scale: 0.95 }}
+                            onClick={handleInstallClick}
+                        >
+                            <div className="relative flex items-center justify-between gap-4 overflow-hidden rounded-[20px] bg-gradient-to-br from-[var(--h-teal)] to-[#1f3632] px-5 py-5 md:px-6">
+                                {/* Decorative watermark logo */}
+                                <img src="/logo-192.png" className="absolute -bottom-8 -right-4 w-40 h-40 opacity-10" alt="" />
+
+                                <button
+                                    className="absolute right-2 top-2 z-10 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-white/10 text-white/60 backdrop-blur-md transition-colors hover:bg-white/20 hover:text-white"
+                                    onClick={dismissInstall}
+                                >
+                                    <X size={14} strokeWidth={2.5} />
+                                </button>
+
+                                <div className="relative z-10 flex flex-1 items-center gap-4">
+                                    <div className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-[14px] bg-[#FAF7F0] p-2 shadow-inner">
+                                        <img src="/logo-192.png" alt="Quran Nur" className="h-full w-full object-contain" />
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <div className="font-ui text-[1.1rem] font-bold tracking-wide text-white">Install Quran Nur</div>
+                                        <div className="mt-0.5 font-body text-[0.8rem] leading-snug text-white/80 pr-6">
+                                            Experience offline reading, instant loading, and a seamless native feel.
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="relative z-10 shrink-0 hidden sm:block">
+                                    <span className="flex items-center gap-1.5 whitespace-nowrap rounded-[12px] bg-[#B8924A] px-4 py-2.5 font-mono text-[0.75rem] font-bold uppercase tracking-wider text-white shadow-[0_4px_16px_rgba(184,146,74,0.3)] transition-transform hover:scale-105">
+                                        <DownloadCloud size={16} /> Get App
+                                    </span>
                                 </div>
                             </div>
-                            <span className="shrink-0 whitespace-nowrap rounded-full bg-white px-3.5 py-1.5 text-xs font-bold text-[var(--h-teal)]">Install</span>
                         </motion.div>
                     )}
                 </AnimatePresence>
