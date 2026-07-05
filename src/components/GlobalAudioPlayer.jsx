@@ -1,9 +1,10 @@
 import React, { useRef, useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
-import { getLocalAudioUrl } from '../utils/localAudio';
 import { Play, Pause, X, Music, SkipBack, SkipForward, Square, Settings2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import CustomSelect from './ui/CustomSelect';
+import { getLocalAudioUrl } from '../utils/localAudio';
 
 const DELAY_OPTIONS = [0, 1, 2, 3, 5, 10];
 const REPEAT_OPTIONS = [1, 2, 3, 5, 10, -1];
@@ -20,6 +21,12 @@ export default function GlobalAudioPlayer() {
     const audioRef = useRef(null);
     const delayTimeoutRef = useRef(null);
     const prevIsPlayingRef = useRef(false);
+
+    const location = useLocation();
+    const isNavHidden = /^\/surah\/\d+/.test(location.pathname) || 
+                        /^\/memorize\/\d+/.test(location.pathname) || 
+                        /^\/page\/\d+/.test(location.pathname) || 
+                        /^\/planner\/read\/\d+/.test(location.pathname);
 
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [currentAyaLoopCount, setCurrentAyaLoopCount] = useState(0);
@@ -150,7 +157,7 @@ export default function GlobalAudioPlayer() {
                         animate={{ y: 0, opacity: 1 }}
                         exit={{ y: 100, opacity: 0 }}
                         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                        className="fixed bottom-8 left-0 right-0 mx-auto w-[calc(100%-1rem)] max-w-[480px] px-3 py-2 bg-[var(--glass-bg)] backdrop-blur-xl border-[var(--glass-border)] z-[900] flex items-center justify-between gap-2 rounded-full shadow-[var(--shadow-xl)]"
+                        className={`fixed left-0 right-0 mx-auto w-[calc(100%-1rem)] max-w-[480px] px-3 py-2 bg-[var(--glass-bg)] backdrop-blur-xl border-[var(--glass-border)] z-[900] flex items-center justify-between gap-2 rounded-full shadow-[var(--shadow-xl)] transition-all duration-300 ${isNavHidden ? 'bottom-8' : 'bottom-24'}`}
                     >
                         {hasAudio && (
                             <audio 

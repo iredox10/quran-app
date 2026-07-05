@@ -156,7 +156,7 @@ const VerseRow = ({
                 }}
             >
                 <div className="flex flex-wrap items-center justify-between gap-4">
-                    <div className="rounded-[999px] border bg-[var(--accent-light)] px-3 py-[0.35rem] font-['Outfit',sans-serif] text-[0.85rem] font-bold tracking-[0.05em] text-accent"
+                    <div className="font-['Outfit',sans-serif] text-[1rem] sm:text-[0.85rem] font-bold tracking-[0.05em] text-[var(--accent-primary)] sm:rounded-[999px] sm:border sm:bg-[var(--accent-light)] sm:px-3 sm:py-[0.35rem]"
                         style={{ borderColor: 'rgba(198, 168, 124, 0.2)' }}
                     >
                         {verse.verse_key}

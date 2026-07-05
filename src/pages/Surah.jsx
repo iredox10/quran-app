@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useQuery, useInfiniteQuery, keepPreviousData } from '@tanstack/react-query';
 import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useInView } from 'react-intersection-observer';
-import { getChapter, getVerses, getChapterAudio, getChapterTafsirs, getTajweedVerses } from '../services/api/quranApi';
+import { getChapter, getVerses, getChapterAudio, getChapterTafsirs, getTajweedVerses, getChapters } from '../services/api/quranApi';
 import { useAppStore } from '../store/useAppStore';
 import { ArrowLeft, ArrowRight, Play, Pause, BookOpen, Bookmark, Info, X, Download, CloudCheck, RefreshCw, ChevronsDown, Minus, Plus, Settings2, Target, CheckCircle2, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -78,6 +78,12 @@ export default function Surah() {
     const { data: chapter, isLoading: isChapterLoading } = useQuery({
         queryKey: ['chapter', id],
         queryFn: () => getChapter(id),
+    });
+
+    const { data: allChapters } = useQuery({
+        queryKey: ['chapters'],
+        queryFn: getChapters,
+        staleTime: Infinity,
     });
 
     useEffect(() => {
@@ -596,19 +602,25 @@ export default function Surah() {
                             )}
                         </div>
 
-                        {/* Footer Navigation */}
                         {!hasNextPage && !isVersesLoading && !backToSauka && (
-                            <div className="mt-12 pt-8 border-t border-[var(--border-color)] flex justify-between gap-4 pb-8">
+                            <div className="mt-16 pt-8 border-t border-[var(--border-color)] flex flex-row justify-between gap-3 sm:gap-4 pb-12">
                                 {parseInt(id) < 114 ? (
                                     <button
                                         onClick={() => {
                                             surahScrollPositions[id] = window.scrollY;
-                                            swipeDirectionRef.current = 1;
+                                            swipeDirectionRef.current = -1; // RTL forward (Next)
                                             navigate(`/surah/${parseInt(id) + 1}`);
                                         }}
-                                        className="interactive-hover flex items-center gap-2 p-4 bg-[var(--bg-secondary)] rounded-xl text-[var(--text-primary)] font-semibold border border-[var(--border-color)] flex-1 justify-center cursor-pointer"
+                                        className="group flex flex-col sm:flex-row items-start sm:items-center p-3 sm:p-4 rounded-[1.25rem] border border-[var(--border-color)] bg-transparent hover:bg-[var(--bg-surface)] hover:border-[var(--accent-primary)] hover:shadow-sm transition-all flex-1 cursor-pointer w-full text-left gap-2 sm:gap-0"
                                     >
-                                        <ArrowLeft size={18} /> Next Surah
+                                        <div className="flex items-center justify-center w-8 h-8 sm:w-12 sm:h-12 shrink-0 rounded-full bg-[var(--bg-secondary)] text-[var(--text-secondary)] group-hover:bg-[var(--accent-primary)] group-hover:text-white transition-colors">
+                                            <ArrowLeft size={16} className="sm:w-[20px] sm:h-[20px] group-hover:-translate-x-1 transition-transform" />
+                                        </div>
+                                        <div className="flex flex-col items-start sm:ml-4 overflow-hidden w-full">
+                                            <span className="font-ui font-bold text-[0.85rem] sm:text-[1.1rem] text-[var(--text-primary)] truncate w-full">
+                                                Surah {allChapters?.find(c => String(c.id) === String(parseInt(id) + 1))?.name_simple || (parseInt(id) + 1)}
+                                            </span>
+                                        </div>
                                     </button>
                                 ) : <div className="flex-1" />}
 
@@ -616,12 +628,19 @@ export default function Surah() {
                                     <button
                                         onClick={() => {
                                             surahScrollPositions[id] = window.scrollY;
-                                            swipeDirectionRef.current = -1;
+                                            swipeDirectionRef.current = 1; // RTL backward (Prev)
                                             navigate(`/surah/${parseInt(id) - 1}`);
                                         }}
-                                        className="interactive-hover flex items-center gap-2 p-4 bg-[var(--bg-secondary)] rounded-xl text-[var(--text-primary)] font-semibold border border-[var(--border-color)] flex-1 justify-center cursor-pointer"
+                                        className="group flex flex-col sm:flex-row-reverse items-end sm:items-center p-3 sm:p-4 rounded-[1.25rem] border border-[var(--border-color)] bg-transparent hover:bg-[var(--bg-surface)] hover:border-[var(--accent-primary)] hover:shadow-sm transition-all flex-1 cursor-pointer w-full text-right gap-2 sm:gap-0"
                                     >
-                                        Previous Surah <ArrowRight size={18} />
+                                        <div className="flex items-center justify-center w-8 h-8 sm:w-12 sm:h-12 shrink-0 rounded-full bg-[var(--bg-secondary)] text-[var(--text-secondary)] group-hover:bg-[var(--accent-primary)] group-hover:text-white transition-colors">
+                                            <ArrowRight size={16} className="sm:w-[20px] sm:h-[20px] group-hover:translate-x-1 transition-transform" />
+                                        </div>
+                                        <div className="flex flex-col items-end sm:mr-4 overflow-hidden w-full">
+                                            <span className="font-ui font-bold text-[0.85rem] sm:text-[1.1rem] text-[var(--text-primary)] truncate w-full">
+                                                Surah {allChapters?.find(c => String(c.id) === String(parseInt(id) - 1))?.name_simple || (parseInt(id) - 1)}
+                                            </span>
+                                        </div>
                                     </button>
                                 ) : <div className="flex-1" />}
                             </div>
