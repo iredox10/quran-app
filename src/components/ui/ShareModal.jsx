@@ -19,7 +19,7 @@ export default function ShareModal({ isOpen, onClose, type, data }) {
             const blob = await toBlob(cardRef.current, {
                 quality: 1,
                 pixelRatio: 2,
-                backgroundColor: '#FAF7F0', // Match our --h-cream or paper color
+                backgroundColor: '#004d40', // Match our dark teal gradient top color
                 style: { margin: 0 } // Ensure no weird margins in the output
             });
 
@@ -61,18 +61,19 @@ export default function ShareModal({ isOpen, onClose, type, data }) {
     const renderCardContent = () => {
         if (type === 'verse') {
             return (
-                <div className="flex flex-col h-full justify-center">
-                    <div className="mb-4 flex items-center justify-center gap-1.5 font-mono text-[0.65rem] uppercase tracking-[0.12em] text-[#B8924A]">
-                        <Sparkles size={14} /> Verse of the Day
+                <div className="flex flex-col h-full justify-center relative z-10 pt-2 pb-4">
+                    <div className="mb-6 flex flex-col items-center justify-center gap-2">
+                        <div className="w-8 h-[1.5px] bg-[#B8924A]/60" />
+                        <span className="font-mono text-[0.6rem] uppercase tracking-[0.25em] text-[#B8924A]">Verse of the Day</span>
                     </div>
-                    <div className="font-arabic text-center text-[1.8rem] leading-[2.2] text-[#2B3F3C] mb-6" dir="rtl">
+                    <div className="font-arabic text-center text-[clamp(1.4rem,6vw,1.8rem)] leading-[2.1] text-white mb-6" dir="rtl">
                         {data?.arabic}
                     </div>
-                    <div className="text-center text-[0.95rem] italic leading-[1.6] text-[#4D5F5C] mb-6 font-body">
-                        {data?.translation}
+                    <div className="text-center text-[0.9rem] italic leading-[1.65] text-white/90 mb-6 font-body px-1">
+                        "{data?.translation}"
                     </div>
-                    <div className="text-center font-mono text-[0.75rem] text-[#8E9B97]">
-                        — {data?.ref}
+                    <div className="text-center font-mono text-[0.65rem] text-[#B8924A] tracking-widest mt-auto">
+                        — {data?.ref} —
                     </div>
                 </div>
             );
@@ -80,27 +81,28 @@ export default function ShareModal({ isOpen, onClose, type, data }) {
 
         if (type === 'progress') {
             return (
-                <div className="flex flex-col h-full justify-center">
+                <div className="flex flex-col h-full justify-center relative z-10 py-4">
                     <div className="mb-8 text-center">
-                        <h3 className="font-ui text-[1.5rem] font-bold text-[#2B3F3C] mb-1">My Reading Progress</h3>
-                        <p className="font-body text-[0.9rem] text-[#8E9B97]">Consistent steps on the path of knowledge.</p>
+                        <div className="w-12 h-[1.5px] bg-[#B8924A]/60 mx-auto mb-3" />
+                        <h3 className="font-ui text-[1.25rem] font-bold text-white tracking-[0.08em] mb-1.5 uppercase">Reading Progress</h3>
+                        <p className="font-body text-[0.85rem] text-[#B8924A] italic">Consistent steps on the path of knowledge.</p>
                     </div>
-                    <div className="flex gap-3 mb-6">
-                        <div className="flex-1 rounded-[14px] bg-[#EDE8DA] border border-[#DDD7C7] p-4 text-center">
-                            <div className="mb-2 flex justify-center"><Flame size={20} color="#ef4444" /></div>
-                            <div className="font-ui text-2xl font-bold text-[#2B3F3C]">{data?.streak}</div>
-                            <div className="font-mono text-[0.6rem] uppercase tracking-wider text-[#8E9B97] mt-1">Day Streak</div>
+                    <div className="flex gap-2.5 mb-2.5">
+                        <div className="flex-1 rounded-[14px] bg-white/5 border border-white/10 p-4 text-center backdrop-blur-sm">
+                            <div className="mb-1.5 flex justify-center"><Flame size={20} className="text-[#B8924A]" /></div>
+                            <div className="font-ui text-2xl font-bold text-white">{data?.streak}</div>
+                            <div className="font-mono text-[0.55rem] uppercase tracking-[0.1em] text-white/60 mt-1">Day Streak</div>
                         </div>
-                        <div className="flex-1 rounded-[14px] bg-[#EDE8DA] border border-[#DDD7C7] p-4 text-center">
-                            <div className="mb-2 flex justify-center"><Clock size={20} color="#2E4F4A" /></div>
-                            <div className="font-ui text-2xl font-bold text-[#2B3F3C]">{data?.todayMinutes}</div>
-                            <div className="font-mono text-[0.6rem] uppercase tracking-wider text-[#8E9B97] mt-1">Mins Today</div>
+                        <div className="flex-1 rounded-[14px] bg-white/5 border border-white/10 p-4 text-center backdrop-blur-sm">
+                            <div className="mb-1.5 flex justify-center"><Clock size={20} className="text-[#B8924A]" /></div>
+                            <div className="font-ui text-2xl font-bold text-white">{data?.todayMinutes}</div>
+                            <div className="font-mono text-[0.55rem] uppercase tracking-[0.1em] text-white/60 mt-1">Mins Today</div>
                         </div>
                     </div>
-                    <div className="rounded-[14px] bg-[#EDE8DA] border border-[#DDD7C7] p-4 text-center">
-                        <div className="mb-2 flex justify-center"><BarChart3 size={20} color="#B8924A" /></div>
-                        <div className="font-ui text-2xl font-bold text-[#2B3F3C]">{data?.totalHours}</div>
-                        <div className="font-mono text-[0.6rem] uppercase tracking-wider text-[#8E9B97] mt-1">Total Hours Read</div>
+                    <div className="rounded-[14px] bg-white/5 border border-white/10 p-4 text-center backdrop-blur-sm">
+                        <div className="mb-1.5 flex justify-center"><BarChart3 size={20} className="text-[#B8924A]" /></div>
+                        <div className="font-ui text-2xl font-bold text-white">{data?.totalHours}</div>
+                        <div className="font-mono text-[0.55rem] uppercase tracking-[0.1em] text-white/60 mt-1">Total Hours Read</div>
                     </div>
                 </div>
             );
@@ -116,35 +118,35 @@ export default function ShareModal({ isOpen, onClose, type, data }) {
                     animate={{ opacity: 1 }} 
                     exit={{ opacity: 0 }}
                     onClick={onClose}
-                    className="absolute inset-0 bg-[rgba(43,63,60,0.6)] backdrop-blur-sm cursor-pointer"
+                    className="absolute inset-0 bg-[rgba(15,23,21,0.85)] backdrop-blur-md cursor-pointer"
                 />
 
                 <motion.div 
                     initial={{ opacity: 0, scale: 0.95, y: 20 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                    className="relative w-full max-w-[400px] flex flex-col gap-4 z-10"
+                    className="relative w-full max-w-[380px] flex flex-col gap-4 z-10 max-h-[90vh] overflow-y-auto [&::-webkit-scrollbar]:hidden"
                 >
                     {/* The Card to be captured */}
                     <div 
                         ref={cardRef}
-                        className="w-full aspect-[4/5] bg-[#FAF7F0] rounded-[24px] overflow-hidden relative shadow-xl p-8 flex flex-col"
+                        className="w-full min-h-[420px] bg-gradient-to-br from-[#004d40] to-[#002620] rounded-[24px] relative shadow-[0_16px_40px_rgba(0,0,0,0.4)] p-6 md:p-8 flex flex-col border border-[#B8924A]/20"
                     >
                         {/* Decorative Background Elements */}
-                        <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-[#2E4F4A] via-[#B8924A] to-[#2E4F4A]" />
-                        <span className="pointer-events-none absolute -right-4 -top-6 select-none text-[8rem] opacity-[0.03] text-[#B8924A] font-arabic" aria-hidden="true">﷽</span>
+                        <img src="/logo-192.png" className="absolute -top-10 -right-10 w-56 h-56 opacity-[0.03] pointer-events-none" alt="" />
+                        <div className="absolute inset-2.5 rounded-[18px] border border-[#B8924A]/10 pointer-events-none" />
                         
-                        <div className="flex-1">
+                        <div className="flex-1 flex flex-col relative z-10">
                             {renderCardContent()}
                         </div>
 
                         {/* Footer / Branding */}
-                        <div className="mt-8 pt-4 border-t border-[#DDD7C7] flex items-center justify-between">
+                        <div className="mt-4 pt-4 border-t border-[#B8924A]/20 flex items-center justify-between relative z-10">
                             <div className="flex items-center gap-2">
-                                <img src="/logo-192.png" alt="Quran Nur Logo" className="w-6 h-6 object-contain" />
-                                <span className="font-ui font-bold text-[#2B3F3C] text-sm">Quran Nur</span>
+                                <img src="/logo-192.png" alt="Quran Nur Logo" className="w-5 h-5 object-contain opacity-90" />
+                                <span className="font-ui font-bold text-white text-xs uppercase tracking-[0.1em]">Quran Nur</span>
                             </div>
-                            <span className="font-mono text-[0.6rem] text-[#8E9B97]">quranapp.com</span>
+                            <span className="font-mono text-[0.55rem] tracking-[0.15em] text-[#B8924A] uppercase">quranapp.com</span>
                         </div>
                     </div>
 

@@ -35,65 +35,61 @@ export default function OnboardingProgress() {
         <motion.div 
             initial={{ opacity: 0, y: 20 }} 
             animate={{ opacity: 1, y: 0 }} 
-            className="mb-6 rounded-[20px] bg-gradient-to-br from-emerald-500 to-emerald-700 dark:from-[#C6A87C] dark:to-[#8c7450] p-1 shadow-lg"
+            className="mb-8 relative overflow-hidden rounded-[24px] border-[1.5px] border-[var(--h-bone-dark)] bg-[var(--h-cream)] p-6 shadow-[0_8px_32px_rgba(43,63,60,0.05)]"
         >
-            <div className="bg-white dark:bg-[#1A1A18] rounded-[16px] p-5 relative overflow-hidden">
-                <button 
-                    onClick={() => setIsDismissed(true)} 
-                    className="absolute top-3 right-3 text-slate-400 hover:text-slate-600 dark:hover:text-[#EFECE4] transition-colors"
-                >
-                    <X size={16} />
-                </button>
-                
-                <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-[#C6A87C]/20 flex items-center justify-center text-emerald-600 dark:text-[#C6A87C]">
-                        <img src="/logo-192.png" alt="Quran App Logo" className="w-6 h-6 object-contain" />
-                    </div>
-                    <div>
-                        <h3 className="font-bold text-slate-900 dark:text-[#EFECE4] text-base leading-tight">Getting Started</h3>
-                        <p className="text-xs text-slate-500 dark:text-[#B0ABA5] font-medium">{completedCount} of {ALL_TOURS.length} tours completed</p>
-                    </div>
-                </div>
+            {/* Elegant Background Watermark */}
+            <img src="/logo-192.png" className="absolute -right-8 -top-8 w-48 h-48 opacity-[0.03] pointer-events-none" alt="" />
 
-                <div className="mb-4">
-                    <div className="h-2 w-full bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden">
-                        <motion.div 
-                            className="h-full bg-emerald-500 dark:bg-[#C6A87C] rounded-full"
-                            initial={{ width: 0 }}
-                            animate={{ width: `${progressPct}%` }}
-                            transition={{ duration: 0.8, ease: "easeOut" }}
-                        />
-                    </div>
-                </div>
+            <button 
+                onClick={() => setIsDismissed(true)} 
+                className="absolute right-4 top-4 z-20 flex h-7 w-7 items-center justify-center rounded-full bg-white text-[var(--h-ink-muted)] shadow-sm transition-colors hover:text-[var(--h-ink)] border border-[var(--h-bone)]"
+            >
+                <X size={14} />
+            </button>
+            
+            <div className="relative z-10 flex flex-col gap-1 mb-6">
+                <h3 className="font-ui text-[1.25rem] font-bold text-[var(--h-ink)] tracking-tight">Welcome to Quran Nur</h3>
+                <p className="font-body text-[0.85rem] text-[var(--h-ink-mid)]">{completedCount} of {ALL_TOURS.length} steps completed</p>
+            </div>
 
-                <div className="space-y-2">
-                    {ALL_TOURS.map(tour => {
-                        const isCompleted = completedTours?.includes(tour.id);
-                        return (
-                            <Link 
-                                key={tour.id} 
-                                to={tour.path}
-                                className={`flex items-center justify-between p-2.5 rounded-xl border transition-colors ${
-                                    isCompleted 
-                                        ? 'border-emerald-100 dark:border-white/5 bg-emerald-50/50 dark:bg-white/5' 
-                                        : 'border-slate-100 dark:border-white/10 hover:border-emerald-200 dark:hover:border-[#C6A87C]/50 hover:bg-slate-50 dark:hover:bg-white/5'
-                                }`}
-                            >
-                                <div className="flex items-center gap-3">
-                                    <span className="text-lg">{tour.icon}</span>
-                                    <span className={`text-sm font-semibold ${isCompleted ? 'text-emerald-700 dark:text-[#C6A87C]' : 'text-slate-700 dark:text-[#EFECE4]'}`}>
-                                        {tour.label}
-                                    </span>
-                                </div>
-                                {isCompleted ? (
-                                    <CheckCircle2 size={18} className="text-emerald-500 dark:text-[#C6A87C]" />
-                                ) : (
-                                    <ChevronRight size={16} className="text-slate-400" />
-                                )}
-                            </Link>
-                        );
-                    })}
+            <div className="relative z-10 mb-6">
+                <div className="h-[4px] w-full rounded-full bg-[var(--h-bone-dark)] overflow-hidden">
+                    <motion.div 
+                        className="h-full rounded-full bg-gradient-to-r from-[var(--h-teal)] to-[#B8924A]"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${progressPct}%` }}
+                        transition={{ duration: 1, ease: "easeOut" }}
+                    />
                 </div>
+            </div>
+
+            <div className="relative z-10 flex flex-col gap-1">
+                {ALL_TOURS.map((tour, idx) => {
+                    const isCompleted = completedTours?.includes(tour.id);
+                    return (
+                        <Link 
+                            key={tour.id} 
+                            to={tour.path}
+                            className="group flex items-center justify-between rounded-2xl p-2.5 transition-colors hover:bg-white/60 no-underline"
+                        >
+                            <div className="flex items-center gap-4">
+                                <span className="flex h-9 w-9 items-center justify-center rounded-[12px] bg-white shadow-[0_2px_8px_rgba(43,63,60,0.04)] text-base transition-transform group-hover:scale-105">
+                                    {tour.icon}
+                                </span>
+                                <span className={`font-ui text-[0.95rem] font-semibold transition-colors ${
+                                    isCompleted ? 'text-[var(--h-ink-muted)] opacity-60' : 'text-[var(--h-ink)] group-hover:text-[var(--h-teal)]'
+                                }`}>
+                                    {tour.label}
+                                </span>
+                            </div>
+                            {isCompleted ? (
+                                <CheckCircle2 size={18} className="text-[#B8924A] opacity-80" />
+                            ) : (
+                                <ChevronRight size={16} className="text-[var(--h-ink-muted)] opacity-40 transition-all group-hover:translate-x-1 group-hover:opacity-100" />
+                            )}
+                        </Link>
+                    );
+                })}
             </div>
         </motion.div>
     );
