@@ -7,6 +7,7 @@ import { Helmet } from 'react-helmet-async';
 import { ArrowLeft, ArrowRight, CheckCircle2, ChevronRight, ChevronLeft, Minus, Pause, Play, Plus, Target, X, Loader2 } from 'lucide-react';
 
 import { getVersesByPage, getTajweedVersesByPage, getChapters } from '../services/api/quranApi';
+import { JUZ_STARTS, getJuzByPage, getHizbByPage } from '../data/quranNavigation';
 import { useAppStore } from '../store/useAppStore';
 import { getMushafById, isTajweedEnabledForMushaf } from '../config/mushaf';
 import { sanitizeTajweedHtml } from '../utils/quranText';
@@ -345,7 +346,7 @@ export default function Page() {
                     <MinimalHeader
                         title={`Page ${pageNumber}`}
                         pillPrimary={activeSurah?.name_simple}
-                        pillSecondary={activeSurah?.translated_name?.name}
+                        pillSecondary={`Juz ${getJuzByPage(pageNumber).id} • Hizb ${getHizbByPage(pageNumber).id}`}
                     />
 
                     {/* Context bar — shown at top when reading from a sauka */}

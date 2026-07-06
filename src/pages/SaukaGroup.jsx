@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useParams, useNavigate } from 'react-router-dom';
-import { saukaService, JUZ_MAP, ASSIGNMENTS_COLLECTION, COMMENTS_COLLECTION } from '../services/saukaService';
+import { saukaService, ASSIGNMENTS_COLLECTION, COMMENTS_COLLECTION } from '../services/saukaService';
+import { JUZ_STARTS, HIZB_STARTS } from '../data/quranNavigation';
 import { client, databaseId } from '../services/appwrite';
 import { useAppStore } from '../store/useAppStore';
 import { Loader2, ArrowLeft, CheckCircle2, Clock, Share2, Copy, BookOpen, Trash2, MessageSquare } from 'lucide-react';
@@ -387,21 +388,13 @@ export default function SaukaGroup() {
                                                     let startPage = 1, endPage = 604;
                                                     if (!isSurah) {
                                                         if (isHizb) {
-                                                            const juzIndex = Math.ceil(selectedJuz.partNumber / 2) - 1;
-                                                            const juzStart = JUZ_MAP[juzIndex]?.startPage || 1;
-                                                            const nextJuzStart = JUZ_MAP[juzIndex + 1]?.startPage || 605;
-                                                            const half = Math.floor((nextJuzStart - juzStart) / 2);
-                                                            if (selectedJuz.partNumber % 2 !== 0) {
-                                                                startPage = juzStart;
-                                                                endPage = juzStart + half - 1;
-                                                            } else {
-                                                                startPage = juzStart + half;
-                                                                endPage = nextJuzStart - 1;
-                                                            }
+                                                            const hizbIndex = selectedJuz.partNumber - 1;
+                                                            startPage = HIZB_STARTS[hizbIndex]?.pageNumber || 1;
+                                                            endPage = HIZB_STARTS[hizbIndex + 1] ? HIZB_STARTS[hizbIndex + 1].pageNumber - 1 : 604;
                                                         } else {
                                                             const juzIndex = selectedJuz.partNumber - 1;
-                                                            startPage = JUZ_MAP[juzIndex]?.startPage || 1;
-                                                            endPage = (JUZ_MAP[juzIndex + 1]?.startPage || 605) - 1;
+                                                            startPage = JUZ_STARTS[juzIndex]?.pageNumber || 1;
+                                                            endPage = JUZ_STARTS[juzIndex + 1] ? JUZ_STARTS[juzIndex + 1].pageNumber - 1 : 604;
                                                         }
                                                     }
 

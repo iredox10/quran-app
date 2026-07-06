@@ -3,6 +3,7 @@ import { useQuery, useInfiniteQuery, keepPreviousData } from '@tanstack/react-qu
 import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useInView } from 'react-intersection-observer';
 import { getChapter, getVerses, getChapterAudio, getChapterTafsirs, getTajweedVerses, getChapters } from '../services/api/quranApi';
+import { getJuzByPage, getHizbByPage } from '../data/quranNavigation';
 import { useAppStore } from '../store/useAppStore';
 import { ArrowLeft, ArrowRight, Play, Pause, BookOpen, Bookmark, Info, X, Download, CloudCheck, RefreshCw, ChevronsDown, Minus, Plus, Settings2, Target, CheckCircle2, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -477,6 +478,12 @@ export default function Surah() {
                             <span>{chapter?.verses_count} Ayahs</span>
                             <span className="text-[var(--text-muted)] opacity-50">●</span>
                             <span>{chapter?.revelation_place}</span>
+                            {verses && verses.length > 0 && (
+                                <>
+                                    <span className="text-[var(--text-muted)] opacity-50">●</span>
+                                    <span>Starts Juz {getJuzByPage(verses[0].page_number).id} • Hizb {getHizbByPage(verses[0].page_number).id}</span>
+                                </>
+                            )}
                         </div>
 
                         {/* Actions Pill Centered */}

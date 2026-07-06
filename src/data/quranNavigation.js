@@ -98,3 +98,21 @@ export const PAGE_GROUPS = Array.from({ length: 604 }, (_, index) => ({
   id: index + 1,
   pageNumber: index + 1,
 }));
+
+export const getJuzByPage = (page) => {
+  for (let i = JUZ_STARTS.length - 1; i >= 0; i--) {
+    if (page >= JUZ_STARTS[i].pageNumber) {
+      return JUZ_STARTS[i];
+    }
+  }
+  return JUZ_STARTS[0];
+};
+
+export const getHizbByPage = (page) => {
+  for (let i = HIZB_STARTS.length - 1; i >= 0; i--) {
+    if (page >= HIZB_STARTS[i].pageNumber) {
+      return HIZB_STARTS[i];
+    }
+  }
+  return HIZB_STARTS[0];
+};
