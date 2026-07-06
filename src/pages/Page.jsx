@@ -10,7 +10,6 @@ import { getVersesByPage, getTajweedVersesByPage, getChapters } from '../service
 import { useAppStore } from '../store/useAppStore';
 import { getMushafById, isTajweedEnabledForMushaf } from '../config/mushaf';
 import { sanitizeTajweedHtml } from '../utils/quranText';
-import { getAssignmentProgress, getPlannerPageContext } from '../utils/planner';
 import { saukaService } from '../services/saukaService';
 
 import VerseRow from '../components/VerseRow';
@@ -84,8 +83,6 @@ export default function Page() {
         setNavHeaderTitle,
         autoScroll, setAutoScroll, autoScrollSpeed, setAutoScrollSpeed,
         isAutoScrollPaused, setIsAutoScrollPaused,
-        planner, markPlannerItemComplete, togglePlannerDayComplete,
-        setPlannerLastPage,
         setIsPlaying, isPlaying, audioPlaylist, setAudioPlaylist,
         audioTrackIndex, audioSettings, updateAudioSettings,
         isPlayerVisible, setIsPlayerVisible, playTriggerCount,
@@ -125,41 +122,6 @@ export default function Page() {
     const maxPageNumber = mushaf.pageCount || 604;
     const minPageLimit = backToSauka && saukaStartPage ? saukaStartPage : 1;
     const maxPageLimit = backToSauka && saukaEndPage ? saukaEndPage : maxPageNumber;
-
-    const plannerPageContext = React.useMemo(() => getPlannerPageContext(planner, pageNumber, chapters || []), [planner, pageNumber, chapters]);
-    const plannerAssignmentProgress = plannerPageContext
-        ? getAssignmentProgress(planner, plannerPageContext.assignment)
-        : null;
-
-    // Track the current page in the planner for "Resume" functionality
-    // Only fire on pageNumber change — NOT on plannerPageContext (which depends on planner, creating a loop)
-    const lastTrackedPageRef = React.useRef(null);
-    useEffect(() => {
-        if (lastTrackedPageRef.current === pageNumber) return;
-        lastTrackedPageRef.current = pageNumber;
-        // Check planner context at call time to avoid stale closure
-        const { planner: p, setPlannerLastPage: setPage } = useAppStore.getState();
-        if (p && setPage) {
-            setPage(pageNumber);
-        }
-    }, [pageNumber]);
-
-    // Auto-mark current page as read when the user navigates to a new page
-    const prevPageRef = React.useRef(pageNumber);
-    useEffect(() => {
-        const leavingPage = prevPageRef.current;
-        prevPageRef.current = pageNumber;
-        if (leavingPage === pageNumber) return; // initial mount, no change
-        // Use getState() to get fresh planner data at the moment of navigation
-        const { planner: currentPlanner, markPlannerItemComplete: markDone } = useAppStore.getState();
-        if (!currentPlanner) return;
-        const leftCtx = getPlannerPageContext(currentPlanner, leavingPage, chapters || []);
-        if (!leftCtx || !leftCtx.currentItem) return;
-        const leftProgress = getAssignmentProgress(currentPlanner, leftCtx.assignment);
-        if (!leftProgress.completedRangeValues.includes(leftCtx.currentItem.rangeValue)) {
-            markDone(leftCtx.assignment.dayNumber, leftCtx.currentItem.rangeValue);
-        }
-    }, [pageNumber, chapters]);
 
     const activeSurahId = verses.length > 0 ? verses[0].verse_key.split(':')[0] : null;
     const activeSurah = chapters?.find(c => c.id.toString() === activeSurahId);
@@ -365,23 +327,36 @@ export default function Page() {
                     transition={pageTransition}
                     className="will-change-[transform,opacity]"
                 >
-                    <div className="surah-hero-card mb-8" style={{ padding: 'clamp(1rem, 3vw, 2rem) 1.5rem' }}>
-                        <div className="surah-bg-glow" />
-                        <div className="relative z-[1] text-center">
-                            <div className="inline-block px-4 py-[0.4rem] rounded-full bg-[var(--accent-light)] text-[var(--accent-primary)] font-mono text-[0.7rem] font-bold tracking-[0.1em] uppercase mb-2">
+                    <div className="py-6 sm:py-10 text-center flex flex-col items-center relative z-[1] mb-2">
+                        <div className="inline-flex items-center gap-3 mb-3 opacity-80">
+                            <span className="w-8 h-[1px] bg-[var(--border-color)]"></span>
+                            <span className="font-mono text-[0.65rem] tracking-[0.2em] text-[var(--text-muted)] uppercase">
                                 {mushaf.name} Mushaf
-                            </div>
-                            <h1 className="font-ui font-extrabold m-0 leading-[1.2] text-[var(--text-primary)] tracking-[-1px]" style={{ fontSize: 'clamp(2rem, 5vw, 3rem)' }}>
-                                Page {pageNumber}
-                            </h1>
-                            <p className="text-[var(--text-muted)] mt-[0.8rem] text-[1.1rem] font-medium">
-                                {activeSurah ? `${activeSurah.name_simple} (${activeSurah.translated_name.name})` : 'Loading...'}
-                            </p>
+                            </span>
+                            <span className="w-8 h-[1px] bg-[var(--border-color)]"></span>
                         </div>
+                        
+                        <h1 className="font-ui font-bold text-[var(--text-primary)] tracking-tight leading-none mb-4" style={{ fontSize: 'clamp(2.5rem, 6vw, 4rem)' }}>
+                            Page {pageNumber}
+                        </h1>
+                        
+                        {activeSurah ? (
+                            <div className="flex items-center gap-3 px-4 py-1.5 rounded-full bg-[var(--bg-secondary)] border border-[var(--border-color)] shadow-[var(--shadow-sm)]">
+                                <span className="font-medium text-[var(--text-primary)] text-[0.85rem]">
+                                    {activeSurah.name_simple}
+                                </span>
+                                <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-primary)] opacity-50"></span>
+                                <span className="text-[var(--text-muted)] text-[0.75rem]">
+                                    {activeSurah.translated_name.name}
+                                </span>
+                            </div>
+                        ) : (
+                            <div className="h-[30px]"></div>
+                        )}
                     </div>
 
-                    {/* Context bar — shown at top when reading from a plan or sauka */}
-                    {backToSauka && saukaAssignmentId ? (
+                    {/* Context bar — shown at top when reading from a sauka */}
+                    {backToSauka && saukaAssignmentId && (
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-5 p-3 sm:p-4 rounded-[14px] bg-[var(--bg-surface)] border border-[var(--border-color)] shadow-[var(--shadow-sm)]">
                             <div className="min-w-0 w-full sm:w-auto flex-1">
                                 <div className="flex items-center gap-[0.4rem] mb-[0.15rem] text-[var(--text-primary)] font-bold text-[0.88rem]">
@@ -410,42 +385,7 @@ export default function Page() {
                                 </Link>
                             </div>
                         </div>
-                    ) : (plannerPageContext && plannerAssignmentProgress && (
-                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-5 p-3 sm:p-4 rounded-[14px] bg-[var(--bg-surface)] border border-[var(--border-color)] shadow-[var(--shadow-sm)]">
-                            <div className="min-w-0 w-full sm:w-auto flex-1">
-                                <div className="flex items-center gap-[0.4rem] mb-[0.15rem] text-[var(--text-primary)] font-bold text-[0.88rem]">
-                                    <Target size={13} aria-hidden="true" />
-                                    <span>{plannerPageContext.assignment.title}</span>
-                                    {plannerAssignmentProgress.isComplete && (
-                                        <span className="ml-[0.3rem] text-[#22c55e] text-[0.78rem] font-semibold">✓ Done</span>
-                                    )}
-                                </div>
-                                <div className="text-[var(--text-muted)] text-[0.76rem]">
-                                    {plannerAssignmentProgress.isComplete
-                                        ? 'Day completed 🎉'
-                                        : `Page ${plannerAssignmentProgress.completedCount + 1} of ${plannerAssignmentProgress.totalCount} · ${plannerAssignmentProgress.remainingCount} remaining`}
-                                </div>
-                            </div>
-                            <div className="flex gap-2 items-center w-full sm:w-auto">
-                                {!plannerAssignmentProgress.isComplete && !plannerPageContext.isCurrentItemComplete && (
-                                    <button
-                                        type="button"
-                                        onClick={() => markPlannerItemComplete(plannerPageContext.assignment.dayNumber, plannerPageContext.currentItem?.rangeValue)}
-                                        className="flex-1 sm:flex-none justify-center min-h-9 px-4 py-2 rounded-full bg-[var(--accent-light)] text-[var(--accent-primary)] font-bold inline-flex items-center gap-2 text-[0.82rem] border-none cursor-pointer"
-                                    >
-                                        <CheckCircle2 size={13} aria-hidden="true" />
-                                        Mark done
-                                    </button>
-                                )}
-                                <Link
-                                    to="/planner"
-                                    className="flex-1 sm:flex-none justify-center min-h-9 px-4 py-2 rounded-full bg-[var(--bg-secondary)] text-[var(--text-muted)] font-semibold inline-flex items-center gap-2 text-[0.78rem] no-underline"
-                                >
-                                    ← Planner
-                                </Link>
-                            </div>
-                        </div>
-                    ))}
+                    )}
 
                     <div className="relative z-[5] pb-16">
                         {mushaf.renderMode === 'qcf-page' && !readingMode ? (
@@ -540,41 +480,54 @@ export default function Page() {
 
             {/* Old planner bar removed — now shown at top */}
 
-            <div className="flex justify-between items-center mt-4 border-t border-[var(--border-color)] pt-12 pb-8">
+            <div className="flex justify-between items-center mt-12 mb-8 pt-8 border-t border-[var(--border-color)]">
                 <button
                     onClick={handleNextPage}
                     disabled={pageNumber >= maxPageLimit}
-                    className="interactive-hover flex items-center gap-2 p-4 px-6 rounded-2xl border-none bg-[var(--bg-secondary)] text-[var(--text-primary)] font-semibold text-[0.95rem] transition-all duration-200"
+                    className="group flex items-center gap-3 bg-transparent border-none p-2 cursor-pointer transition-opacity duration-200"
                     style={{
+                        opacity: pageNumber >= maxPageLimit ? 0.3 : 1,
                         cursor: pageNumber >= maxPageLimit ? 'not-allowed' : 'pointer',
-                        opacity: pageNumber >= maxPageLimit ? 0.5 : 1,
                     }}
                 >
-                    <ChevronLeft size={20} />
-                    <div className="flex flex-col items-start text-left">
-                        <span className="font-mono text-[0.65rem] font-semibold text-[var(--text-muted)] uppercase tracking-[0.1em]">Next</span>
-                        <span>Page {pageNumber + 1 > maxPageLimit ? maxPageLimit : pageNumber + 1}</span>
+                    <div className="flex items-center justify-center w-10 h-10 rounded-full bg-[var(--bg-secondary)] text-[var(--text-primary)] group-hover:bg-[var(--accent-primary)] group-hover:text-white transition-colors">
+                        <ChevronLeft size={18} strokeWidth={2.5} />
+                    </div>
+                    <div className="hidden sm:flex flex-col items-start text-left">
+                        <span className="font-mono text-[0.65rem] tracking-[0.15em] text-[var(--text-muted)] uppercase mb-[0.15rem]">Next Page</span>
+                        <span className="font-ui font-bold text-[var(--text-primary)] text-[1.05rem] leading-none">
+                            {pageNumber + 1 > maxPageLimit ? maxPageLimit : pageNumber + 1}
+                        </span>
                     </div>
                 </button>
 
-                <div className="text-center font-mono text-[0.75rem] font-semibold text-[var(--text-muted)]">
-                    {pageNumber} / {maxPageNumber}
+                <div className="flex flex-col items-center">
+                    <span className="font-mono text-[0.65rem] tracking-[0.2em] text-[var(--text-muted)] uppercase mb-[0.2rem]">
+                        Page
+                    </span>
+                    <span className="font-ui font-extrabold text-[var(--text-primary)] text-[1.2rem] leading-none">
+                        {pageNumber} <span className="text-[var(--text-muted)] text-[0.95rem] font-medium tracking-normal">/ {maxPageNumber}</span>
+                    </span>
                 </div>
 
                 <button
                     onClick={handlePrevPage}
                     disabled={pageNumber <= minPageLimit}
-                    className="interactive-hover flex items-center gap-2 p-4 px-6 rounded-2xl border-none bg-[var(--bg-secondary)] text-[var(--text-primary)] font-semibold text-[0.95rem] transition-all duration-200"
+                    className="group flex items-center gap-3 bg-transparent border-none p-2 cursor-pointer transition-opacity duration-200"
                     style={{
+                        opacity: pageNumber <= minPageLimit ? 0.3 : 1,
                         cursor: pageNumber <= minPageLimit ? 'not-allowed' : 'pointer',
-                        opacity: pageNumber <= minPageLimit ? 0.5 : 1,
                     }}
                 >
-                    <div className="flex flex-col items-end text-right">
-                        <span className="font-mono text-[0.65rem] font-semibold text-[var(--text-muted)] uppercase tracking-[0.1em]">Previous</span>
-                        <span>Page {pageNumber - 1 < minPageLimit ? minPageLimit : pageNumber - 1}</span>
+                    <div className="hidden sm:flex flex-col items-end text-right">
+                        <span className="font-mono text-[0.65rem] tracking-[0.15em] text-[var(--text-muted)] uppercase mb-[0.15rem]">Previous Page</span>
+                        <span className="font-ui font-bold text-[var(--text-primary)] text-[1.05rem] leading-none">
+                            {pageNumber - 1 < minPageLimit ? minPageLimit : pageNumber - 1}
+                        </span>
                     </div>
-                    <ChevronRight size={20} />
+                    <div className="flex items-center justify-center w-10 h-10 rounded-full bg-[var(--bg-secondary)] text-[var(--text-primary)] group-hover:bg-[var(--accent-primary)] group-hover:text-white transition-colors">
+                        <ChevronRight size={18} strokeWidth={2.5} />
+                    </div>
                 </button>
             </div>
 
