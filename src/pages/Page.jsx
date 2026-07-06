@@ -343,7 +343,6 @@ export default function Page() {
                     className="will-change-[transform,opacity]"
                 >
                     <MinimalHeader
-                        overline={`${mushaf.name} Mushaf`}
                         title={`Page ${pageNumber}`}
                         pillPrimary={activeSurah?.name_simple}
                         pillSecondary={activeSurah?.translated_name?.name}
