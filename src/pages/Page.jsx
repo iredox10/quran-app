@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
-import { useQuery, keepPreviousData } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSwipeable } from 'react-swipeable';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Helmet } from 'react-helmet-async';
@@ -15,6 +15,7 @@ import { saukaService } from '../services/saukaService';
 import VerseRow from '../components/VerseRow';
 import MushafPageView from '../components/MushafPageView';
 import AudioSetupModal from '../components/AudioSetupModal';
+import MinimalHeader from '../components/ui/MinimalHeader';
 
 const pageTransition = {
     type: 'spring',
@@ -92,10 +93,9 @@ export default function Page() {
     const isTajweedActive = isTajweedEnabledForMushaf(mushafId, tajweedEnabled);
 
     // Queries
-    const { data: pageData, isLoading: isPageLoading } = useQuery({
+    const { data: pageData, isLoading: isPageLoading, isFetching: isPageFetching } = useQuery({
         queryKey: ['pageVerses', pageNumber, translationId, reciterId, mushafId],
         queryFn: () => getVersesByPage(pageNumber, translationId, reciterId, mushafId),
-        placeholderData: keepPreviousData,
     });
 
     const { data: tajweedData } = useQuery({
@@ -122,6 +122,29 @@ export default function Page() {
     const maxPageNumber = mushaf.pageCount || 604;
     const minPageLimit = backToSauka && saukaStartPage ? saukaStartPage : 1;
     const maxPageLimit = backToSauka && saukaEndPage ? saukaEndPage : maxPageNumber;
+    const queryClient = useQueryClient();
+
+    // Prefetch the next 5 pages
+    useEffect(() => {
+        for (let i = 1; i <= 5; i++) {
+            const nextPg = pageNumber + i;
+            if (nextPg <= maxPageLimit) {
+                queryClient.prefetchQuery({
+                    queryKey: ['pageVerses', nextPg, translationId, reciterId, mushafId],
+                    queryFn: () => getVersesByPage(nextPg, translationId, reciterId, mushafId),
+                    staleTime: 1000 * 60 * 30, // Keep fresh for 30 minutes
+                });
+                
+                if (isTajweedActive && mushaf.tajweedSource === 'uthmani_html') {
+                    queryClient.prefetchQuery({
+                        queryKey: ['tajweedPage', nextPg, mushafId],
+                        queryFn: () => getTajweedVersesByPage(nextPg),
+                        staleTime: 1000 * 60 * 30,
+                    });
+                }
+            }
+        }
+    }, [pageNumber, maxPageLimit, translationId, reciterId, mushafId, isTajweedActive, mushaf.tajweedSource, queryClient]);
 
     const activeSurahId = verses.length > 0 ? verses[0].verse_key.split(':')[0] : null;
     const activeSurah = chapters?.find(c => c.id.toString() === activeSurahId);
@@ -195,15 +218,35 @@ export default function Page() {
         mountPlayTriggerRef.current = playTriggerCount;
     }, [playTriggerCount, handlePlayClick]);
 
+    const scrollToTop = useCallback(() => {
+        window.scrollTo({ top: 0, behavior: 'auto' });
+    }, []);
+
+    const handleNextPage = useCallback(() => {
+        if (pageNumber < maxPageLimit) {
+            scrollToTop();
+            swipeDirectionRef.current = -1;
+            navigate(`/page/${pageNumber + 1}`, { state: location.state });
+        }
+    }, [pageNumber, maxPageLimit, navigate, location.state, scrollToTop]);
+
+    const handlePrevPage = useCallback(() => {
+        if (pageNumber > minPageLimit) {
+            scrollToTop();
+            swipeDirectionRef.current = 1;
+            navigate(`/page/${pageNumber - 1}`, { state: location.state });
+        }
+    }, [pageNumber, minPageLimit, navigate, location.state, scrollToTop]);
+
     // Handle Top Level Keyboard
     useEffect(() => {
         const handleKeyDown = (e) => {
-            if (e.key === 'ArrowRight' && pageNumber > minPageLimit) navigate(`/page/${pageNumber - 1}`, { state: location.state });
-            if (e.key === 'ArrowLeft' && pageNumber < maxPageLimit) navigate(`/page/${pageNumber + 1}`, { state: location.state });
+            if (e.key === 'ArrowRight') handlePrevPage();
+            if (e.key === 'ArrowLeft') handleNextPage();
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [pageNumber, maxPageLimit, minPageLimit, navigate, location.state]);
+    }, [handleNextPage, handlePrevPage]);
 
     const scrollRafRef = useRef(null);
     const lastScrollTimestampRef = useRef(null);
@@ -263,18 +306,8 @@ export default function Page() {
     // Swipe gestures
     const swipeDirectionRef = useRef(0);
     const swipeHandlers = useSwipeable({
-        onSwipedLeft: () => {
-            if (pageNumber < maxPageLimit) {
-                swipeDirectionRef.current = 1;
-                navigate(`/page/${pageNumber + 1}`, { state: location.state });
-            }
-        },
-        onSwipedRight: () => {
-            if (pageNumber > minPageLimit) {
-                swipeDirectionRef.current = -1;
-                navigate(`/page/${pageNumber - 1}`, { state: location.state });
-            }
-        },
+        onSwipedLeft: () => handlePrevPage(),
+        onSwipedRight: () => handleNextPage(),
         preventDefaultTouchmoveEvent: false,
         trackTouch: true,
         trackMouse: false,
@@ -282,25 +315,7 @@ export default function Page() {
         swipeDuration: 500
     });
 
-    const scrollToTop = () => {
-        window.scrollTo({ top: 0, behavior: 'auto' });
-    };
 
-    const handleNextPage = () => {
-        if (pageNumber < maxPageLimit) {
-            scrollToTop();
-            swipeDirectionRef.current = 1;
-            navigate(`/page/${pageNumber + 1}`, { state: location.state });
-        }
-    };
-
-    const handlePrevPage = () => {
-        if (pageNumber > minPageLimit) {
-            scrollToTop();
-            swipeDirectionRef.current = -1;
-            navigate(`/page/${pageNumber - 1}`, { state: location.state });
-        }
-    };
 
     // Auto-smooth top-scroll when verses change (avoids jank)
     useEffect(() => {
@@ -316,7 +331,7 @@ export default function Page() {
                 <title>{`Page ${pageNumber} - ${mushaf?.name || ''} - The Noble Qur'an`}</title>
             </Helmet>
 
-            <AnimatePresence mode="wait" initial={false} custom={swipeDirectionRef.current}>
+            <AnimatePresence initial={false} custom={swipeDirectionRef.current}>
                 <motion.div
                     key={pageNumber}
                     custom={swipeDirectionRef.current}
@@ -327,33 +342,12 @@ export default function Page() {
                     transition={pageTransition}
                     className="will-change-[transform,opacity]"
                 >
-                    <div className="py-6 sm:py-10 text-center flex flex-col items-center relative z-[1] mb-2">
-                        <div className="inline-flex items-center gap-3 mb-3 opacity-80">
-                            <span className="w-8 h-[1px] bg-[var(--border-color)]"></span>
-                            <span className="font-mono text-[0.65rem] tracking-[0.2em] text-[var(--text-muted)] uppercase">
-                                {mushaf.name} Mushaf
-                            </span>
-                            <span className="w-8 h-[1px] bg-[var(--border-color)]"></span>
-                        </div>
-                        
-                        <h1 className="font-ui font-bold text-[var(--text-primary)] tracking-tight leading-none mb-4" style={{ fontSize: 'clamp(2.5rem, 6vw, 4rem)' }}>
-                            Page {pageNumber}
-                        </h1>
-                        
-                        {activeSurah ? (
-                            <div className="flex items-center gap-3 px-4 py-1.5 rounded-full bg-[var(--bg-secondary)] border border-[var(--border-color)] shadow-[var(--shadow-sm)]">
-                                <span className="font-medium text-[var(--text-primary)] text-[0.85rem]">
-                                    {activeSurah.name_simple}
-                                </span>
-                                <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-primary)] opacity-50"></span>
-                                <span className="text-[var(--text-muted)] text-[0.75rem]">
-                                    {activeSurah.translated_name.name}
-                                </span>
-                            </div>
-                        ) : (
-                            <div className="h-[30px]"></div>
-                        )}
-                    </div>
+                    <MinimalHeader
+                        overline={`${mushaf.name} Mushaf`}
+                        title={`Page ${pageNumber}`}
+                        pillPrimary={activeSurah?.name_simple}
+                        pillSecondary={activeSurah?.translated_name?.name}
+                    />
 
                     {/* Context bar — shown at top when reading from a sauka */}
                     {backToSauka && saukaAssignmentId && (
@@ -390,9 +384,35 @@ export default function Page() {
                     <div className="relative z-[5] pb-16">
                         {mushaf.renderMode === 'qcf-page' && !readingMode ? (
                             isPageLoading && verses.length === 0 ? (
-                                <div className="text-center py-[10vh] text-[var(--text-muted)]">
-                                    <span className="ui-text">Loading page {pageNumber}...</span>
-                                </div>
+                                <motion.div
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    className="flex flex-col items-center justify-center py-[15vh] gap-6"
+                                >
+                                    <div className="relative flex items-center justify-center">
+                                        <motion.img 
+                                            src="/logo-192.png" 
+                                            alt="Loading" 
+                                            className="w-14 h-14 object-contain relative z-10"
+                                            animate={{ scale: [0.95, 1.1, 0.95], opacity: [0.8, 1, 0.8] }}
+                                            transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
+                                        />
+                                        <motion.div
+                                            animate={{ scale: [0.8, 1.5, 0.8], opacity: [0.15, 0.5, 0.15] }}
+                                            transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
+                                            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 bg-[var(--accent-primary)] rounded-full blur-[12px] z-0"
+                                        />
+                                    </div>
+                                    
+                                    <div className="flex flex-col items-center gap-2">
+                                        <span className="font-ui font-medium text-[1.2rem] text-[var(--text-primary)] tracking-wide">
+                                            Loading Page {pageNumber}
+                                        </span>
+                                        <span className="font-mono text-[0.7rem] uppercase tracking-[0.2em] text-[var(--text-muted)]">
+                                            Preparing verses
+                                        </span>
+                                    </div>
+                                </motion.div>
                             ) : (
                                 <MushafPageView
                                     verses={verses}
@@ -409,9 +429,35 @@ export default function Page() {
                                 direction: readingMode ? 'rtl' : 'ltr',
                             }}>
                                 {isPageLoading && verses.length === 0 ? (
-                                    <div className="text-center py-[10vh] text-[var(--text-muted)]">
-                                        <span className="ui-text">Loading page {pageNumber}...</span>
-                                    </div>
+                                    <motion.div
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        className="flex flex-col items-center justify-center py-[15vh] gap-6"
+                                    >
+                                        <div className="relative flex items-center justify-center">
+                                            <motion.img 
+                                                src="/logo-192.png" 
+                                                alt="Loading" 
+                                                className="w-14 h-14 object-contain relative z-10"
+                                                animate={{ scale: [0.95, 1.1, 0.95], opacity: [0.8, 1, 0.8] }}
+                                                transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
+                                            />
+                                            <motion.div
+                                                animate={{ scale: [0.8, 1.5, 0.8], opacity: [0.15, 0.5, 0.15] }}
+                                                transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
+                                                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 bg-[var(--accent-primary)] rounded-full blur-[12px] z-0"
+                                            />
+                                        </div>
+                                        
+                                        <div className="flex flex-col items-center gap-2">
+                                            <span className="font-ui font-medium text-[1.2rem] text-[var(--text-primary)] tracking-wide">
+                                                Loading Page {pageNumber}
+                                            </span>
+                                            <span className="font-mono text-[0.7rem] uppercase tracking-[0.2em] text-[var(--text-muted)]">
+                                                Preparing verses
+                                            </span>
+                                        </div>
+                                    </motion.div>
                                 ) : (
                                     verses.map((verse) => {
                                         const chId = verse.verse_key.split(':')[0];
@@ -421,18 +467,12 @@ export default function Page() {
                                             <React.Fragment key={verse.id}>
                                                 {verse.verse_number === 1 && (
                                                     <div style={{ display: 'block', width: '100%', textAlign: 'center', direction: 'ltr' }} className="my-12">
-                                                        <div className="inline-flex flex-col items-center justify-center rounded-[24px] bg-[var(--bg-secondary)] px-10 py-8 border border-[var(--border-color)] relative overflow-hidden shadow-sm">
-                                                            <div className="absolute top-0 left-0 w-full h-1 bg-[var(--accent-primary)] opacity-50"></div>
-                                                            <div className="inline-block px-4 py-1 rounded-full bg-[var(--accent-light)] text-[var(--accent-primary)] font-mono text-[0.7rem] font-bold tracking-[0.1em] uppercase mb-4">
-                                                                Surah {chapterContext.id}
-                                                            </div>
-                                                            <h3 className="font-ui text-3xl font-extrabold text-[var(--text-primary)] m-0 mb-2">{chapterContext.name_simple}</h3>
-                                                            {chapterContext.translated_name?.name && (
-                                                                <p className="font-ui text-[0.95rem] text-[var(--text-muted)] m-0 font-medium">
-                                                                    {chapterContext.translated_name.name} • {chapterContext.verses_count} Ayahs
-                                                                </p>
-                                                            )}
-                                                        </div>
+                                                        <MinimalHeader
+                                                            overline={`Surah ${chapterContext.id}`}
+                                                            title={chapterContext.name_simple}
+                                                            pillPrimary={chapterContext.translated_name?.name}
+                                                            pillSecondary={`${chapterContext.verses_count} Ayahs`}
+                                                        />
                                                         {chapterContext.id !== 1 && chapterContext.id !== 9 && (
                                                             <div
                                                                 className="quran-text text-center mt-10 mb-4 text-[var(--accent-primary)]"
