@@ -1,5 +1,5 @@
-import { buildOfflineCacheKey, getChapters, getTajweedVerses, getVerses } from '../services/api/quranApi';
-import { deleteOfflineCacheByPrefix, getOfflineCacheStats } from './offlineCache';
+import { buildOfflineCacheKey, getChapters, getTajweedVerses, getTajweedVersesByPage, getVerses, getVersesByPage } from '../services/api/quranApi';
+import { deleteOfflineCacheByPrefix, getOfflineCacheStats, getOfflineCacheData } from './offlineCache';
 
 export const OFFLINE_PACKS = {
   quranText: {
@@ -67,7 +67,7 @@ export async function getOfflinePackStats({ translationId, reciterId, mushafId }
 
 export async function syncQuranTextPack({ translationId, reciterId, mushafId, onProgress }) {
   const chapters = await getChapters();
-  const totalUnits = chapters.reduce((sum, chapter) => sum + Math.ceil(chapter.verses_count / 50), 1);
+  const totalUnits = chapters.reduce((sum, chapter) => sum + Math.ceil(chapter.verses_count / 50), 0) + 604;
   let completedUnits = 0;
 
   onProgress?.({ current: completedUnits, total: totalUnits, label: 'Preparing chapters' });
@@ -77,8 +77,14 @@ export async function syncQuranTextPack({ translationId, reciterId, mushafId, on
     for (let page = 1; page <= totalPages; page += 1) {
       await getVerses(chapter.id, translationId, reciterId, page, mushafId);
       completedUnits += 1;
-      onProgress?.({ current: completedUnits, total: totalUnits, label: `Caching ${chapter.name_simple} · page ${page}` });
+      onProgress?.({ current: completedUnits, total: totalUnits, label: `Caching ${chapter.name_simple} · part ${page}` });
     }
+  }
+
+  for (let page = 1; page <= 604; page += 1) {
+    await getVersesByPage(page, translationId, reciterId, mushafId);
+    completedUnits += 1;
+    onProgress?.({ current: completedUnits, total: totalUnits, label: `Caching Mushaf Page ${page}` });
   }
 
   const { setOfflineCacheEntry } = await import('./offlineCache');
@@ -87,10 +93,20 @@ export async function syncQuranTextPack({ translationId, reciterId, mushafId, on
 
 export async function syncTajweedPack({ onProgress }) {
   const chapters = await getChapters();
+  const totalUnits = chapters.length + 604;
+  let completedUnits = 0;
+
   for (let index = 0; index < chapters.length; index += 1) {
     const chapter = chapters[index];
     await getTajweedVerses(chapter.id);
-    onProgress?.({ current: index + 1, total: chapters.length, label: `Caching ${chapter.name_simple}` });
+    completedUnits += 1;
+    onProgress?.({ current: completedUnits, total: totalUnits, label: `Caching Tajweed ${chapter.name_simple}` });
+  }
+
+  for (let page = 1; page <= 604; page += 1) {
+    await getTajweedVersesByPage(page);
+    completedUnits += 1;
+    onProgress?.({ current: completedUnits, total: totalUnits, label: `Caching Tajweed Page ${page}` });
   }
 
   const { setOfflineCacheEntry } = await import('./offlineCache');

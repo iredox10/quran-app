@@ -78,7 +78,7 @@ define(['./workbox-05449209'], (function (workbox) { 'use strict';
    */
   workbox.precacheAndRoute([{
     "url": "/index.html",
-    "revision": "0.4v1m9rgsbfg"
+    "revision": "0.8jg1d01rdko"
   }], {});
   workbox.cleanupOutdatedCaches();
   workbox.registerRoute(new workbox.NavigationRoute(workbox.createHandlerBoundToURL("/index.html"), {
@@ -126,6 +126,17 @@ define(['./workbox-05449209'], (function (workbox) { 'use strict';
       maxAgeSeconds: 7776000
     }), new workbox.CacheableResponsePlugin({
       statuses: [0, 200]
+    }), new workbox.RangeRequestsPlugin()]
+  }), 'GET');
+  workbox.registerRoute(({
+    url
+  }) => url.hostname === "verses.quran.com", new workbox.CacheFirst({
+    "cacheName": "quran-verse-audio-cache",
+    plugins: [new workbox.ExpirationPlugin({
+      maxEntries: 6500,
+      maxAgeSeconds: 7776000
+    }), new workbox.CacheableResponsePlugin({
+      statuses: [0, 200, 206]
     }), new workbox.RangeRequestsPlugin()]
   }), 'GET');
 
