@@ -1,10 +1,11 @@
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { saukaService } from '../services/saukaService';
 import { getChapters } from '../services/api/quranApi';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../store/useAppStore';
-import { BookOpen, Search, Bookmark, DownloadCloud, X, Hash, Layers3, LibraryBig, Rows3, ArrowRight, Flame, Clock, BarChart3, Sparkles, Share2, Copy, Check, CalendarDays, Brain } from 'lucide-react';
+import { BookOpen, Search, Bookmark, DownloadCloud, X, Hash, Layers3, LibraryBig, Rows3, ArrowRight, Flame, Clock, BarChart3, Sparkles, Share2, Copy, Check, CalendarDays, Brain, Target, Users } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
 import { HIZB_STARTS, JUZ_STARTS, PAGE_GROUPS } from '../data/quranNavigation';
 import { APP_CONFIG } from '../config/constants';
@@ -156,6 +157,29 @@ export default function Home() {
     };
 
     const { data: chapters, isLoading, error } = useQuery({ queryKey: ['chapters'], queryFn: getChapters });
+    
+    // Active Goals (Sauka)
+    const { data: saukaData } = useQuery({
+        queryKey: ['my_sauka_groups'],
+        queryFn: async () => await saukaService.getMyGroups(),
+        staleTime: 1000 * 60 * 5,
+        enabled: isOnline
+    });
+
+    const activeGoals = useMemo(() => {
+        if (!saukaData?.myClaims) return [];
+        const inProgress = saukaData.myClaims.filter(c => c.status === 'in_progress');
+        const allGroups = [...(saukaData.created || []), ...(saukaData.joined || [])];
+        return inProgress.map(claim => {
+            const group = allGroups.find(g => g.$id === claim.groupId);
+            return {
+                ...claim,
+                groupTitle: group?.title || 'Group Khatmah',
+                divisionType: group?.divisionType || 'juz'
+            };
+        });
+    }, [saukaData]);
+
     const browseItems = useMemo(() => getBrowseItems(browseMode, chapters), [browseMode, chapters]);
     const filteredItems = useMemo(() => {
         const q = searchQuery.trim().toLowerCase();
@@ -360,6 +384,46 @@ export default function Home() {
                             <ArrowRight size={18} className="shrink-0 opacity-60" />
                         </Link>
                     )}
+                </div>
+
+                {/* ─── Active Goals Widget ─── */}
+                {activeGoals.length > 0 && (
+                    <div className="mb-8 space-y-3">
+                        <div className="flex items-center gap-2 mb-2 px-1">
+                            <Target size={16} className="text-[var(--h-gold)]" />
+                            <h2 className="font-ui font-bold text-[1.1rem] text-[var(--h-ink)]">Today's Goals</h2>
+                        </div>
+                        {activeGoals.map(goal => (
+                            <Link key={goal.$id} to={`/sauka/${goal.groupId}`} className="block rounded-[20px] border-[1.5px] border-[var(--h-gold)] bg-[var(--h-gold)]/5 p-4 transition-all duration-200 hover:-translate-y-1 hover:shadow-sm">
+                                <div className="flex items-center justify-between gap-4">
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="font-mono text-[0.65rem] uppercase tracking-wider text-[var(--h-gold)] font-bold">{goal.groupTitle}</span>
+                                        </div>
+                                        <h3 className="font-ui text-lg font-bold text-[var(--h-ink)] capitalize">
+                                            {goal.divisionType} {goal.partNumber}
+                                        </h3>
+                                    </div>
+                                    <div className="shrink-0">
+                                        <div className="flex h-10 items-center gap-2 rounded-xl bg-[var(--h-gold)] px-4 text-sm font-bold text-white shadow-sm">
+                                            Read <ArrowRight size={16} />
+                                        </div>
+                                    </div>
+                                </div>
+                            </Link>
+                        ))}
+                    </div>
+                )}
+
+                <div className="mb-10 grid grid-cols-2 gap-2 sm:gap-3">
+                    <Link to="/sauka" className="flex flex-col items-center justify-center gap-2 rounded-[18px] border border-[var(--h-bone-dark)] bg-white p-4 text-center transition-all duration-200 hover:-translate-y-1 hover:border-[var(--h-teal)] hover:shadow-sm">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--h-teal)]/10 text-[var(--h-teal)]"><Users size={20} /></div>
+                        <span className="font-ui text-[0.85rem] font-bold text-[var(--h-ink)]">Sauka Groups</span>
+                    </Link>
+                    <Link to="/library" className="flex flex-col items-center justify-center gap-2 rounded-[18px] border border-[var(--h-bone-dark)] bg-white p-4 text-center transition-all duration-200 hover:-translate-y-1 hover:border-[var(--h-ink)] hover:shadow-sm">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--h-ink)]/5 text-[var(--h-ink)]"><Bookmark size={20} /></div>
+                        <span className="font-ui text-[0.85rem] font-bold text-[var(--h-ink)]">Bookmarks</span>
+                    </Link>
                 </div>
 
                 {/* ─── Onboarding Progress ─── */}

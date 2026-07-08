@@ -1,16 +1,17 @@
 import { Client, Account, Databases, Query } from 'appwrite';
 
-const endpoint = import.meta.env.VITE_APPWRITE_ENDPOINT;
+const endpoint = import.meta.env.VITE_APPWRITE_ENDPOINT || 'https://cloud.appwrite.io/v1';
 const projectId = import.meta.env.VITE_APPWRITE_PROJECT_ID;
 export const databaseId = import.meta.env.VITE_APPWRITE_DATABASE_ID || 'quran_db';
 export const collectionId = import.meta.env.VITE_APPWRITE_USER_DATA_COLLECTION_ID || 'user_sync';
 
 export const client = new Client();
+export const isAppwriteConfigured = !!projectId;
 
-if (endpoint && projectId) {
+if (isAppwriteConfigured) {
     client.setEndpoint(endpoint).setProject(projectId);
 } else {
-    console.error('Appwrite endpoint or project id is missing in .env');
+    console.warn('Appwrite project id is missing in .env. Cloud features will be disabled.');
 }
 
 export const account = new Account(client);

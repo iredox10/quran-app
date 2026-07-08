@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
 import { saukaService } from '../services/saukaService';
+import { authService } from '../services/appwrite';
 import { useAppStore } from '../store/useAppStore';
 import { Users, Plus, Hash, ArrowRight, Loader2, Calendar, CheckCircle2, AlertCircle, ArrowLeft } from 'lucide-react';
 
@@ -26,6 +27,15 @@ export default function SaukaIndex() {
     const [joinCode, setJoinCode] = useState('');
     const [isJoining, setIsJoining] = useState(false);
 
+    // Auth Modal
+    const [showAuthModal, setShowAuthModal] = useState(false);
+    const [authMode, setAuthMode] = useState('login');
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [name, setName] = useState('');
+    const [authError, setAuthError] = useState('');
+    const [isAuthLoading, setIsAuthLoading] = useState(false);
+
     useEffect(() => {
         setNavHeaderTitle('Group Khatmah');
         loadGroups();
@@ -37,6 +47,9 @@ export default function SaukaIndex() {
             setIsLoading(true);
             setError('');
             const data = await saukaService.getMyGroups();
+            if (!data.userId) {
+                throw new Error("User not authenticated.");
+            }
             setGroups(data);
         } catch (e) {
             console.error(e);
@@ -59,7 +72,7 @@ export default function SaukaIndex() {
             navigate(`/sauka/${group.$id}`);
         } catch (e) {
             console.error(e);
-            alert('Failed to create group. Please check your connection.');
+            alert(`Failed to create group: ${e.message || 'Check your connection'}`);
             setIsCreating(false);
         }
     };
@@ -85,6 +98,27 @@ export default function SaukaIndex() {
         }
     };
 
+    const handleAuth = async (e) => {
+        e.preventDefault(); 
+        setIsAuthLoading(true); 
+        setAuthError('');
+        try {
+            if (authMode === 'register') { 
+                await authService.register(email, password, name); 
+                await authService.login(email, password); 
+            } else { 
+                await authService.login(email, password); 
+            }
+            setShowAuthModal(false);
+            setEmail(''); setPassword(''); setName('');
+            loadGroups(); // reload the groups after successful login
+        } catch (err) { 
+            setAuthError(err.message || 'Authentication failed'); 
+        } finally { 
+            setIsAuthLoading(false); 
+        }
+    };
+
     const allGroups = [...groups.created, ...groups.joined].sort((a, b) => new Date(b.$createdAt) - new Date(a.$createdAt));
 
     return (
@@ -106,12 +140,15 @@ export default function SaukaIndex() {
                 </div>
 
                 {error ? (
-                    <div className="mx-auto max-w-md rounded-2xl border border-red-500/20 bg-red-500/5 p-6 text-center text-[var(--h-ink)]">
-                        <AlertCircle className="mx-auto mb-3 text-red-500" size={24} />
-                        <p className="mb-4 text-sm">{error}</p>
-                        <Link to="/profile" className="inline-block rounded-xl bg-[var(--h-teal)] px-6 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[var(--h-teal-mid)]">
-                            Go to Profile
-                        </Link>
+                    <div className="mx-auto max-w-md rounded-2xl border border-[var(--h-bone-dark)] bg-[var(--h-cream)] p-8 text-center text-[var(--h-ink)] shadow-sm">
+                        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--h-teal)]/10 text-[var(--h-teal)]">
+                            <Users size={32} />
+                        </div>
+                        <h2 className="mb-2 font-[var(--font-ui)] text-2xl font-bold text-[var(--h-ink)]">Join the Community</h2>
+                        <p className="mb-6 text-sm text-[var(--h-ink-mid)]">Please sign in or create an account to start reading the Quran together with friends and family.</p>
+                        <button onClick={() => setShowAuthModal(true)} className="inline-block w-full rounded-xl bg-[var(--h-teal)] px-6 py-3.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-[var(--h-teal-mid)] active:scale-95">
+                            Sign In / Sign Up
+                        </button>
                     </div>
                 ) : (
                     <>
@@ -220,6 +257,49 @@ export default function SaukaIndex() {
                                     <button type="button" onClick={() => setIsJoinOpen(false)} className="flex-1 rounded-xl bg-[var(--h-bone)] py-3 text-sm font-bold text-[var(--h-ink-mid)] hover:bg-[var(--h-bone-dark)]">Cancel</button>
                                     <button type="submit" disabled={isJoining || joinCode.length < 6} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[var(--h-teal)] py-3 text-sm font-bold text-white hover:bg-[var(--h-teal-mid)] disabled:opacity-50">
                                         {isJoining ? <Loader2 size={16} className="animate-spin" /> : <>Join <ArrowRight size={16} /></>}
+                                    </button>
+                                </div>
+                            </form>
+                        </motion.div>
+                    </div>
+                )}
+
+                {showAuthModal && (
+                    <div className="fixed inset-0 z-[3000] flex items-center justify-center p-4">
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => !isAuthLoading && setShowAuthModal(false)} />
+                        <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative w-full max-w-sm rounded-3xl bg-[var(--h-cream)] p-6 shadow-xl border border-[var(--h-bone-dark)]">
+                            <h2 className="mb-2 font-[var(--font-ui)] text-2xl font-bold text-[var(--h-ink)]">
+                                {authMode === 'login' ? 'Welcome Back' : 'Create Account'}
+                            </h2>
+                            <p className="mb-6 text-sm text-[var(--h-ink-muted)]">
+                                {authMode === 'login' ? 'Sign in to access your Khatmah groups.' : 'Join the community to start reading.'}
+                            </p>
+                            
+                            <form onSubmit={handleAuth} className="space-y-4">
+                                {authError && <div className="rounded-[12px] bg-red-500/10 px-4 py-3 text-[0.8rem] font-bold text-red-500 border border-red-500/20">{authError}</div>}
+                                
+                                {authMode === 'register' && (
+                                    <div>
+                                        <label className="mb-1.5 block text-xs font-semibold text-[var(--h-ink-mid)]">Your Name</label>
+                                        <input type="text" value={name} onChange={e => setName(e.target.value)} required placeholder="e.g. Ahmad" className="w-full rounded-xl border border-[var(--h-bone-dark)] bg-white px-4 py-3 text-sm text-[var(--h-ink)] outline-none focus:border-[var(--h-teal)]" />
+                                    </div>
+                                )}
+                                <div>
+                                    <label className="mb-1.5 block text-xs font-semibold text-[var(--h-ink-mid)]">Email Address</label>
+                                    <input type="email" value={email} onChange={e => setEmail(e.target.value)} required placeholder="you@example.com" className="w-full rounded-xl border border-[var(--h-bone-dark)] bg-white px-4 py-3 text-sm text-[var(--h-ink)] outline-none focus:border-[var(--h-teal)]" />
+                                </div>
+                                <div>
+                                    <label className="mb-1.5 block text-xs font-semibold text-[var(--h-ink-mid)]">Password</label>
+                                    <input type="password" value={password} onChange={e => setPassword(e.target.value)} required minLength={8} placeholder="••••••••" className="w-full rounded-xl border border-[var(--h-bone-dark)] bg-white px-4 py-3 text-sm text-[var(--h-ink)] outline-none focus:border-[var(--h-teal)]" />
+                                </div>
+                                
+                                <button type="submit" disabled={isAuthLoading} className="mt-2 w-full flex justify-center items-center rounded-xl bg-[var(--h-teal)] py-3.5 text-sm font-bold text-white hover:bg-[var(--h-teal)]/90 disabled:opacity-50">
+                                    {isAuthLoading ? <Loader2 size={18} className="animate-spin" /> : (authMode === 'login' ? 'Sign In' : 'Sign Up')}
+                                </button>
+
+                                <div className="text-center mt-4">
+                                    <button type="button" onClick={() => { setAuthMode(authMode === 'login' ? 'register' : 'login'); setAuthError(''); }} className="text-sm font-bold text-[var(--h-ink-muted)] hover:text-[var(--h-ink)] transition-colors">
+                                        {authMode === 'login' ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
                                     </button>
                                 </div>
                             </form>

@@ -65,6 +65,7 @@ async function setup() {
                     { key: 'joinCode', type: 'string', size: 20, required: true },
                     { key: 'divisionType', type: 'string', size: 50, required: true },
                     { key: 'deadline', type: 'string', size: 255, required: false },
+                    { key: 'intention', type: 'string', size: 1000, required: false },
                     { key: 'status', type: 'string', size: 50, required: true },
                     { key: 'completedAt', type: 'string', size: 255, required: false }
                 ]
@@ -80,6 +81,16 @@ async function setup() {
                     { key: 'status', type: 'string', size: 50, required: true },
                     { key: 'claimedAt', type: 'string', size: 255, required: false },
                     { key: 'completedAt', type: 'string', size: 255, required: false }
+                ]
+            },
+            {
+                id: 'sauka_comments',
+                name: 'Sauka Comments',
+                attributes: [
+                    { key: 'groupId', type: 'string', size: 255, required: true },
+                    { key: 'userId', type: 'string', size: 255, required: true },
+                    { key: 'userName', type: 'string', size: 255, required: true },
+                    { key: 'text', type: 'string', size: 5000, required: true }
                 ]
             }
         ];
@@ -121,6 +132,7 @@ async function setup() {
                 } catch (e) {
                     if (e.code === 409) {
                         console.log(`Attribute ${attr.key} already exists.`);
+                        await new Promise(r => setTimeout(r, 100)); // Sleep on 409
                     } else {
                         console.error(`Error creating attribute ${attr.key}:`, e.message);
                         throw e;
@@ -128,6 +140,31 @@ async function setup() {
                 }
             }
         }
+
+        console.log("\nSetting up indexes...");
+        const indexesToCreate = [
+            { collectionId: 'sauka_assignments', key: 'groupId_idx', type: 'key', attributes: ['groupId'] },
+            { collectionId: 'sauka_assignments', key: 'partNumber_idx', type: 'key', attributes: ['partNumber'] },
+            { collectionId: 'sauka_assignments', key: 'claimedBy_idx', type: 'key', attributes: ['claimedBy'] },
+            { collectionId: 'sauka_comments', key: 'groupId_idx', type: 'key', attributes: ['groupId'] },
+            { collectionId: 'sauka_groups', key: 'createdBy_idx', type: 'key', attributes: ['createdBy'] },
+            { collectionId: 'sauka_groups', key: 'joinCode_idx', type: 'key', attributes: ['joinCode'] },
+        ];
+
+        for (const index of indexesToCreate) {
+            try {
+                await databases.createIndex(databaseId, index.collectionId, index.key, index.type, index.attributes);
+                console.log(`Created index ${index.key} on ${index.collectionId}`);
+                await new Promise(r => setTimeout(r, 1000));
+            } catch (e) {
+                if (e.code === 409) {
+                    console.log(`Index ${index.key} already exists on ${index.collectionId}.`);
+                } else {
+                    console.error(`Error creating index ${index.key}:`, e.message);
+                }
+            }
+        }
+
         console.log("\nSetup complete! All databases and collections are ready.");
     } catch (error) {
         console.error("Setup failed:", error);

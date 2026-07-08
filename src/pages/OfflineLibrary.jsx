@@ -16,9 +16,13 @@ function PackCard({ title, description, stats, status, onSync, onDelete }) {
                     <h3 className="font-ui text-2xl font-extrabold text-[var(--text-primary)] mb-[0.3rem]">{title}</h3>
                     <div className="text-[var(--text-secondary)] leading-[1.6]">{description}</div>
                 </div>
-                {stats?.downloaded ? (
-                    <div className="px-[0.65rem] py-[0.35rem] rounded-full bg-[rgba(34,197,94,0.12)] text-[#22c55e] font-bold text-[0.78rem]">
-                        Downloaded
+                {stats === undefined ? (
+                    <div className="px-[0.65rem] py-[0.35rem] rounded-full bg-[var(--bg-secondary)] text-[var(--text-muted)] font-bold text-[0.78rem] animate-pulse">
+                        Checking...
+                    </div>
+                ) : stats?.downloaded ? (
+                    <div className="px-[0.65rem] py-[0.35rem] rounded-full bg-[rgba(34,197,94,0.12)] text-[#22c55e] font-bold text-[0.78rem] flex items-center gap-1.5">
+                        <CheckCircle2 size={14} /> Downloaded
                     </div>
                 ) : (
                     <div className="px-[0.65rem] py-[0.35rem] rounded-full bg-[var(--bg-secondary)] text-[var(--text-muted)] font-bold text-[0.78rem]">
@@ -45,8 +49,15 @@ function PackCard({ title, description, stats, status, onSync, onDelete }) {
                         <span>{status.total ? `${Math.round((status.current / status.total) * 100)}%` : '...'}</span>
                     </div>
                     <div className="h-2 rounded-full bg-[var(--bg-secondary)] overflow-hidden">
-                        <div className="h-full bg-[var(--accent-primary)]" style={{ width: `${status.total ? (status.current / status.total) * 100 : 0}%` }} />
+                        <div className="h-full bg-[var(--accent-primary)] transition-all duration-300" style={{ width: `${status.total ? (status.current / status.total) * 100 : 0}%` }} />
                     </div>
+                </div>
+            )}
+
+            {status?.state === 'completed' && (
+                <div className="mt-4 px-[0.95rem] py-[0.85rem] rounded-2xl bg-[rgba(34,197,94,0.1)] border border-[rgba(34,197,94,0.2)] flex items-center gap-3 text-[#22c55e]">
+                    <CheckCircle2 size={20} />
+                    <span className="font-bold text-[0.9rem]">{status.label || 'Download Complete!'}</span>
                 </div>
             )}
 

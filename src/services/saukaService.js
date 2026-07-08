@@ -58,39 +58,50 @@ export const saukaService = {
 
     // ─── Get user's groups (created or participating) ───
     async getMyGroups() {
-        const user = await account.get();
+        try {
+            const user = await account.get();
 
-        // Groups I created
-        const created = await databases.listDocuments(databaseId, GROUPS_COLLECTION, [
-            Query.equal('createdBy', user.$id),
-            Query.orderDesc('$createdAt'),
-            Query.limit(50),
-        ]);
-
-        // Juz I claimed
-        const myClaims = await databases.listDocuments(databaseId, ASSIGNMENTS_COLLECTION, [
-            Query.equal('claimedBy', user.$id),
-            Query.limit(100),
-        ]);
-
-        const claimedGroupIds = [...new Set(myClaims.documents.map(a => a.groupId))];
-        const createdGroupIds = created.documents.map(g => g.$id);
-        const joinedOnlyIds = claimedGroupIds.filter(id => !createdGroupIds.includes(id));
-
-        let joinedGroups = [];
-        if (joinedOnlyIds.length > 0) {
-            const joined = await databases.listDocuments(databaseId, GROUPS_COLLECTION, [
-                Query.equal('$id', joinedOnlyIds),
+            // Groups I created
+            const created = await databases.listDocuments(databaseId, GROUPS_COLLECTION, [
+                Query.equal('createdBy', user.$id),
+                Query.orderDesc('$createdAt'),
                 Query.limit(50),
             ]);
-            joinedGroups = joined.documents;
-        }
 
-        return {
-            created: created.documents,
-            joined: joinedGroups,
-            userId: user.$id,
-        };
+            // Juz I claimed
+            const myClaims = await databases.listDocuments(databaseId, ASSIGNMENTS_COLLECTION, [
+                Query.equal('claimedBy', user.$id),
+                Query.limit(100),
+            ]);
+
+            const claimedGroupIds = [...new Set(myClaims.documents.map(a => a.groupId))];
+            const createdGroupIds = created.documents.map(g => g.$id);
+            const joinedOnlyIds = claimedGroupIds.filter(id => !createdGroupIds.includes(id));
+
+            let joinedGroups = [];
+            if (joinedOnlyIds.length > 0) {
+                const joined = await databases.listDocuments(databaseId, GROUPS_COLLECTION, [
+                    Query.equal('$id', joinedOnlyIds),
+                    Query.limit(50),
+                ]);
+                joinedGroups = joined.documents;
+            }
+
+            return {
+                created: created.documents,
+                joined: joinedGroups,
+                myClaims: myClaims.documents,
+                userId: user.$id,
+            };
+        } catch (error) {
+            console.error("Failed to fetch groups:", error);
+            return {
+                created: [],
+                joined: [],
+                myClaims: [],
+                userId: null,
+            };
+        }
     },
 
     // ─── Find group by join code ───

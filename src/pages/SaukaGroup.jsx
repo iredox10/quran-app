@@ -61,7 +61,7 @@ export default function SaukaGroup() {
             setComments(commentsData);
         } catch (e) {
             console.error(e);
-            setError('Group not found or you are offline.');
+            setError(e.message || 'Group not found or you are offline.');
             setNavHeaderTitle('Error');
         } finally {
             setIsLoading(false);
@@ -214,6 +214,16 @@ export default function SaukaGroup() {
         link.click();
     };
 
+    const handleShareInvite = () => {
+        const text = `🌙 Join my Quran Khatmah on Quran Nur!\n\nGroup: ${group.title}\nDivision: ${group.divisionType === 'surah' ? 'Surah by Surah' : 'Juz by Juz'}\nDeadline: ${group.deadline ? new Date(group.deadline).toLocaleDateString() : 'No deadline'}\n\nJoin Code: ${group.joinCode}\n\nRead and track together!`;
+        if (navigator.share) {
+            navigator.share({ title: 'Quran Nur Khatmah', text }).catch(() => {});
+        } else {
+            navigator.clipboard.writeText(text);
+            alert('Invite text copied to clipboard!');
+        }
+    };
+
     return (
         <div className="mx-auto max-w-[900px] px-4 sm:px-6 pb-24 pt-4">
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
@@ -233,19 +243,48 @@ export default function SaukaGroup() {
                             </div>
                         </div>
                         
-                        <div className="mb-2 flex items-center justify-between text-sm font-semibold">
-                            <span className="text-[var(--h-ink-mid)]">Progress</span>
-                            <span className="text-[var(--h-teal)]">{completedCount} / {totalParts} {unitName}</span>
-                        </div>
-                        <div className="h-2.5 w-full overflow-hidden rounded-full bg-[var(--h-bone-dark)]">
-                            <div className="h-full rounded-full bg-[var(--h-teal)] transition-all duration-500" style={{ width: `${(completedCount / totalParts) * 100}%` }} />
+                        <div className="flex flex-col sm:flex-row items-center gap-8 mb-6">
+                            {/* Circular Progress */}
+                            <div className="relative flex h-28 w-28 shrink-0 items-center justify-center rounded-full bg-[var(--h-teal)]/5">
+                                <svg className="absolute inset-0 h-full w-full -rotate-90" viewBox="0 0 100 100">
+                                    <circle className="stroke-[var(--h-bone-dark)]" cx="50" cy="50" r="40" fill="none" strokeWidth="6" />
+                                    <circle 
+                                        className="stroke-[var(--h-teal)] transition-all duration-1000 ease-out" 
+                                        cx="50" cy="50" r="40" fill="none" strokeWidth="6" 
+                                        strokeLinecap="round"
+                                        strokeDasharray={`${(completedCount / totalParts) * 251.2} 251.2`} 
+                                    />
+                                </svg>
+                                <div className="text-center">
+                                    <span className="block font-[var(--font-ui)] text-2xl font-bold text-[var(--h-teal)]">{Math.round((completedCount / totalParts) * 100)}%</span>
+                                </div>
+                            </div>
+                            
+                            {/* Stats */}
+                            <div className="flex flex-1 flex-col gap-3 w-full">
+                                <div className="flex items-center justify-between text-sm">
+                                    <span className="font-semibold text-[var(--h-ink-mid)]">Completed</span>
+                                    <span className="font-bold text-[var(--h-ink)]">{completedCount} <span className="text-[var(--h-ink-muted)]">/ {totalParts}</span></span>
+                                </div>
+                                <div className="flex items-center justify-between text-sm">
+                                    <span className="font-semibold text-[var(--h-ink-mid)]">In Progress</span>
+                                    <span className="font-bold text-[var(--h-ink)]">{assignments.filter(a => a.status === 'in_progress').length}</span>
+                                </div>
+                                <div className="flex items-center justify-between text-sm">
+                                    <span className="font-semibold text-[var(--h-ink-mid)]">Unclaimed</span>
+                                    <span className="font-bold text-[var(--h-ink)]">{assignments.filter(a => a.status === 'unclaimed').length}</span>
+                                </div>
+                            </div>
                         </div>
                         <div className="flex flex-wrap gap-3 sm:gap-4 mb-6 mt-4">
-                            <div className="flex-1 min-w-[120px] flex flex-col items-start px-4 py-3 bg-[var(--h-teal)]/10 rounded-2xl">
+                            <div className="flex-1 min-w-[120px] flex flex-col items-start px-4 py-3 bg-[var(--h-teal)]/10 rounded-2xl relative">
                                 <span className="text-[10px] font-bold tracking-widest text-[var(--h-teal)] uppercase">Join Code</span>
                                 <span className="text-xl font-bold font-mono tracking-widest cursor-pointer text-[var(--h-ink)]" onClick={copyCode}>
                                     {group.joinCode} {copied ? '✓' : ''}
                                 </span>
+                                <button onClick={handleShareInvite} className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white p-2 text-[var(--h-teal)] shadow-sm hover:bg-[var(--h-teal)] hover:text-white transition-colors" title="Share Invite">
+                                    <Share2 size={16} />
+                                </button>
                             </div>
                             {group.deadline && (
                                 <div className="flex-1 min-w-[120px] flex flex-col items-start px-4 py-3 bg-[var(--h-teal)]/10 rounded-2xl">
@@ -292,6 +331,9 @@ export default function SaukaGroup() {
                             >
                                 {isInactive && <div className="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500 animate-pulse" title="Inactive for over 3 days" />}
                                 <span className="text-xl font-bold">{j.partNumber}</span>
+                                {isClaimedByMe && j.status === 'in_progress' && (
+                                    <BookOpen size={12} className="absolute bottom-1 right-1 opacity-50" />
+                                )}
                             </motion.button>
                         );
                     })}
@@ -384,40 +426,45 @@ export default function SaukaGroup() {
                                                     </div>
                                                 )}
                                                 {selectedJuz.claimedBy === userId && (
-                                                    <button onClick={() => {
-                                                    let startPage = 1, endPage = 604;
-                                                    if (!isSurah) {
-                                                        if (isHizb) {
-                                                            const hizbIndex = selectedJuz.partNumber - 1;
-                                                            startPage = HIZB_STARTS[hizbIndex]?.pageNumber || 1;
-                                                            endPage = HIZB_STARTS[hizbIndex + 1] ? HIZB_STARTS[hizbIndex + 1].pageNumber - 1 : 604;
-                                                        } else {
-                                                            const juzIndex = selectedJuz.partNumber - 1;
-                                                            startPage = JUZ_STARTS[juzIndex]?.pageNumber || 1;
-                                                            endPage = JUZ_STARTS[juzIndex + 1] ? JUZ_STARTS[juzIndex + 1].pageNumber - 1 : 604;
-                                                        }
-                                                    }
+                                                    <>
+                                                        <button onClick={() => {
+                                                            let startPage = 1, endPage = 604;
+                                                            if (!isSurah) {
+                                                                if (isHizb) {
+                                                                    const hizbIndex = selectedJuz.partNumber - 1;
+                                                                    startPage = HIZB_STARTS[hizbIndex]?.pageNumber || 1;
+                                                                    endPage = HIZB_STARTS[hizbIndex + 1] ? HIZB_STARTS[hizbIndex + 1].pageNumber - 1 : 604;
+                                                                } else {
+                                                                    const juzIndex = selectedJuz.partNumber - 1;
+                                                                    startPage = JUZ_STARTS[juzIndex]?.pageNumber || 1;
+                                                                    endPage = JUZ_STARTS[juzIndex + 1] ? JUZ_STARTS[juzIndex + 1].pageNumber - 1 : 604;
+                                                                }
+                                                            }
 
-                                                    // Resume progress
-                                                    const savedProgress = useAppStore.getState().saukaProgress[selectedJuz.$id];
-                                                    let targetPage = startPage;
-                                                    if (!isSurah && savedProgress && parseInt(savedProgress) >= startPage && parseInt(savedProgress) <= endPage) {
-                                                        targetPage = parseInt(savedProgress);
-                                                    }
+                                                            // Resume progress
+                                                            const savedProgress = useAppStore.getState().saukaProgress[selectedJuz.$id];
+                                                            let targetPage = startPage;
+                                                            if (!isSurah && savedProgress && parseInt(savedProgress) >= startPage && parseInt(savedProgress) <= endPage) {
+                                                                targetPage = parseInt(savedProgress);
+                                                            }
 
-                                                    navigate(isSurah ? `/surah/${selectedJuz.partNumber}` : `/page/${targetPage}`, { 
-                                                        state: { 
-                                                            backToSauka: groupId, 
-                                                            saukaAssignmentId: selectedJuz.$id, 
-                                                            saukaPartNumber: selectedJuz.partNumber, 
-                                                            saukaUnit: unitName,
-                                                            saukaStartPage: startPage,
-                                                            saukaEndPage: endPage
-                                                        } 
-                                                    });
-                                                }} className="w-full flex items-center justify-center gap-2 rounded-xl bg-[var(--h-gold)] py-3.5 text-sm font-bold text-white hover:bg-[var(--h-gold)]/90">
-                                                    <BookOpen size={16} /> Start Reading
-                                                </button>
+                                                            navigate(isSurah ? `/surah/${selectedJuz.partNumber}` : `/page/${targetPage}`, { 
+                                                                state: { 
+                                                                    backToSauka: groupId, 
+                                                                    saukaAssignmentId: selectedJuz.$id, 
+                                                                    saukaPartNumber: selectedJuz.partNumber, 
+                                                                    saukaUnit: unitName,
+                                                                    saukaStartPage: startPage,
+                                                                    saukaEndPage: endPage
+                                                                } 
+                                                            });
+                                                        }} className="w-full flex items-center justify-center gap-2 rounded-xl bg-[var(--h-gold)] py-3.5 text-sm font-bold text-white hover:bg-[var(--h-gold)]/90">
+                                                            <BookOpen size={16} /> Read Now
+                                                        </button>
+                                                        <button onClick={() => handleComplete(selectedJuz.$id)} disabled={isActionLoading} className="w-full flex items-center justify-center gap-2 rounded-xl bg-[var(--h-green)] py-3.5 text-sm font-bold text-white hover:bg-[var(--h-green)]/90 disabled:opacity-50">
+                                                            <CheckCircle2 size={16} /> Mark as Complete
+                                                        </button>
+                                                    </>
                                                 )}
                                                 <button onClick={() => handleUnclaim(selectedJuz.$id)} disabled={isActionLoading} className="w-full py-2 text-xs font-semibold text-red-500 hover:text-red-600 disabled:opacity-50">
                                                     Unclaim (Drop)
