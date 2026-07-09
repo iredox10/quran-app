@@ -67,7 +67,8 @@ async function setup() {
                     { key: 'deadline', type: 'string', size: 255, required: false },
                     { key: 'intention', type: 'string', size: 1000, required: false },
                     { key: 'status', type: 'string', size: 50, required: true },
-                    { key: 'completedAt', type: 'string', size: 255, required: false }
+                    { key: 'completedAt', type: 'string', size: 255, required: false },
+                    { key: 'members', type: 'string', size: 255, required: false, array: true }
                 ]
             },
             {
@@ -122,7 +123,7 @@ async function setup() {
             for (const attr of col.attributes) {
                 try {
                     if (attr.type === 'string') {
-                        await databases.createStringAttribute(databaseId, col.id, attr.key, attr.size, attr.required);
+                        await databases.createStringAttribute(databaseId, col.id, attr.key, attr.size, attr.required, undefined, attr.array || false);
                     } else if (attr.type === 'integer') {
                         await databases.createIntegerAttribute(databaseId, col.id, attr.key, attr.required);
                     }

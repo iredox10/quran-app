@@ -131,12 +131,13 @@ export default function SaukaIndex() {
                 >
                     <ArrowLeft size={16} /> Back to Profile
                 </button>
-                <div className="mb-8 text-center">
-                    <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--h-teal-soft)] text-[var(--h-teal)]">
-                        <Users size={32} />
+                <div className="mb-10 text-center relative">
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-[var(--h-teal)] opacity-10 blur-[50px] rounded-full pointer-events-none" />
+                    <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-[24px] bg-gradient-to-br from-[var(--h-teal)] to-[var(--h-teal-mid)] text-white shadow-lg shadow-[var(--h-teal-soft)] relative z-10">
+                        <Users size={36} strokeWidth={2.5} />
                     </div>
-                    <h1 className="font-[var(--font-ui)] text-3xl font-bold text-[var(--h-ink)]">Sauka</h1>
-                    <p className="mt-2 text-sm text-[var(--h-ink-muted)]">Read the Quran together with friends and family.</p>
+                    <h1 className="font-[var(--font-ui)] text-4xl font-extrabold text-[var(--h-ink)] tracking-tight relative z-10">Sauka</h1>
+                    <p className="mt-3 text-[1.05rem] text-[var(--h-ink-mid)] font-medium max-w-sm mx-auto relative z-10">Connect, read, and complete the Noble Quran together.</p>
                 </div>
 
                 {error ? (
@@ -153,12 +154,31 @@ export default function SaukaIndex() {
                 ) : (
                     <>
                         {/* ── Actions ── */}
-                        <div className="mb-10 flex flex-wrap justify-center gap-4">
-                            <button onClick={() => setIsCreateOpen(true)} className="flex items-center gap-2 rounded-xl bg-[var(--h-teal)] px-6 py-3 font-semibold text-white shadow-sm transition-all hover:bg-[var(--h-teal-mid)] active:scale-95">
-                                <Plus size={18} /> Create Group
+                        <div className="mb-12 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <button onClick={() => setIsCreateOpen(true)} className="group flex items-center justify-between overflow-hidden rounded-2xl bg-gradient-to-br from-[var(--h-teal)] to-[var(--h-teal-mid)] p-6 text-left shadow-lg shadow-[var(--h-teal-soft)] transition-all hover:-translate-y-1 hover:shadow-xl hover:shadow-[var(--h-teal-soft)] relative active:scale-95 border-none cursor-pointer">
+                                <div className="relative z-10">
+                                    <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur-md">
+                                        <Plus size={20} strokeWidth={2.5} />
+                                    </div>
+                                    <h3 className="font-bold text-white text-lg mb-1">Create Group</h3>
+                                    <p className="text-white/80 text-sm font-medium">Start a new Khatmah</p>
+                                </div>
+                                <div className="absolute -right-6 -bottom-6 opacity-10 text-white group-hover:scale-110 transition-transform duration-500">
+                                    <Users size={120} />
+                                </div>
                             </button>
-                            <button onClick={() => setIsJoinOpen(true)} className="flex items-center gap-2 rounded-xl border-2 border-[var(--h-teal)] bg-transparent px-6 py-3 font-semibold text-[var(--h-teal)] transition-all hover:bg-[var(--h-teal-soft)] active:scale-95">
-                                <Hash size={18} /> Join via Code
+                            
+                            <button onClick={() => setIsJoinOpen(true)} className="group flex items-center justify-between overflow-hidden rounded-2xl border border-[var(--h-bone-dark)] bg-white p-6 text-left shadow-sm transition-all hover:-translate-y-1 hover:border-[var(--h-teal)] hover:shadow-md relative active:scale-95 cursor-pointer">
+                                <div className="relative z-10">
+                                    <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-[var(--h-teal-soft)] text-[var(--h-teal)]">
+                                        <Hash size={20} strokeWidth={2.5} />
+                                    </div>
+                                    <h3 className="font-bold text-[var(--h-ink)] text-lg mb-1">Join via Code</h3>
+                                    <p className="text-[var(--h-ink-mid)] text-sm font-medium">Enter an invite code</p>
+                                </div>
+                                <div className="absolute -right-6 -bottom-6 opacity-5 text-[var(--h-ink)] group-hover:scale-110 transition-transform duration-500">
+                                    <Hash size={120} />
+                                </div>
                             </button>
                         </div>
 
@@ -174,21 +194,29 @@ export default function SaukaIndex() {
                             ) : (
                                 <div className="grid gap-3 sm:grid-cols-2">
                                     {allGroups.map(g => (
-                                        <Link key={g.$id} to={`/sauka/${g.$id}`} className="group block rounded-2xl border border-[var(--h-bone-dark)] bg-[var(--h-cream)] p-5 no-underline transition-colors hover:border-[var(--h-gold)] hover:bg-white">
-                                            <div className="mb-3 flex items-start justify-between">
-                                                <div>
-                                                    <h3 className="font-[var(--font-ui)] text-lg font-bold text-[var(--h-ink)]">{g.title}</h3>
-                                                    <p className="mt-0.5 text-xs text-[var(--h-ink-muted)]">by {g.createdByName}</p>
+                                        <Link key={g.$id} to={`/sauka/${g.$id}`} className="group block rounded-[20px] border border-[var(--h-bone-dark)] bg-white p-5 no-underline shadow-sm transition-all hover:-translate-y-1 hover:border-[var(--h-teal)] hover:shadow-md">
+                                            <div className="mb-4 flex items-start justify-between">
+                                                <div className="pr-2">
+                                                    <h3 className="font-[var(--font-ui)] text-[1.3rem] font-bold text-[var(--h-ink)] leading-tight mb-1">{g.title}</h3>
+                                                    <p className="text-[0.8rem] text-[var(--h-ink-muted)] font-medium">by {g.createdByName}</p>
                                                 </div>
-                                                {g.status === 'completed' && <CheckCircle2 size={20} className="text-[var(--h-green)]" />}
+                                                {g.status === 'completed' ? (
+                                                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--h-green)]/10 text-[var(--h-green)]">
+                                                        <CheckCircle2 size={18} strokeWidth={2.5} />
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--h-gold)]/10 text-[var(--h-gold)]">
+                                                        <Loader2 size={16} className="animate-spin" />
+                                                    </div>
+                                                )}
                                             </div>
-                                            <div className="flex items-center gap-4 text-xs font-medium text-[var(--h-ink-muted)]">
-                                                <div className="flex items-center gap-1.5 rounded-lg bg-[var(--h-bone)] px-2 py-1">
-                                                    <Hash size={12} /> <span className="font-[var(--font-mono)] tracking-wider">{g.joinCode}</span>
+                                            <div className="flex flex-wrap items-center gap-2 text-[0.75rem] font-bold tracking-wide">
+                                                <div className="flex items-center gap-1.5 rounded-full bg-[var(--h-teal-soft)] px-3 py-1.5 text-[var(--h-teal)]">
+                                                    <Hash size={12} strokeWidth={3} /> <span className="font-[var(--font-mono)]">{g.joinCode}</span>
                                                 </div>
                                                 {g.deadline && (
-                                                    <div className="flex items-center gap-1.5">
-                                                        <Calendar size={12} /> {new Date(g.deadline).toLocaleDateString()}
+                                                    <div className="flex items-center gap-1.5 rounded-full bg-[var(--h-bone)] px-3 py-1.5 text-[var(--h-ink-mid)]">
+                                                        <Calendar size={12} strokeWidth={2.5} /> {new Date(g.deadline).toLocaleDateString()}
                                                     </div>
                                                 )}
                                             </div>

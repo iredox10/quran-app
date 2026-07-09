@@ -10,8 +10,10 @@
 
 @font-face {
   font-family: 'KFGQPC Hafs Uthmanic Script';
-   src: url('https://verses.quran.foundation/fonts/quran/hafs/uthmanic_hafs/UthmanicHafs1Ver18.woff2') format('woff2'),
-        url('https://verses.quran.foundation/fonts/quran/hafs/uthmanic_hafs/UthmanicHafs1Ver18.ttf') format('truetype');
+  src: local('KFGQPC Uthmanic Script HAFS'),
+       local('KFGQPC Uthmanic Script HAFS Regular'),
+       url('https://verses.quran.foundation/fonts/quran/hafs/uthmanic_hafs/UthmanicHafs1Ver18.woff2') format('woff2'),
+       url('https://verses.quran.foundation/fonts/quran/hafs/uthmanic_hafs/UthmanicHafs1Ver18.ttf') format('truetype');
   font-weight: normal;
   font-style: normal;
   font-display: swap;
@@ -32,6 +34,7 @@
   --color-glass-border: rgba(255, 255, 255, 0.3);
 
   --font-arabic: 'Scheherazade New', serif;
+  --font-hafs: 'KFGQPC Hafs Uthmanic Script', 'KFGQPC Uthmanic Script HAFS', 'Amiri Quran', serif;
   --font-ui: 'Cormorant Garamond', serif;
   --font-body: 'Piazzolla', serif;
   --font-mono: 'Geist Mono', monospace;
@@ -75,6 +78,7 @@
   --color-overlay: #EFECE4;
   --color-gold: #C6A87C;
   --font-arabic: 'Scheherazade New', serif;
+  --font-hafs: 'KFGQPC Hafs Uthmanic Script', 'KFGQPC Uthmanic Script HAFS', 'Amiri Quran', serif;
   --font-ui: 'Cormorant Garamond', serif;
   --font-body: 'Piazzolla', serif;
   --font-mono: 'Geist Mono', monospace;

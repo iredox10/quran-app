@@ -5,6 +5,23 @@ export const GROUPS_COLLECTION = 'sauka_groups';
 export const ASSIGNMENTS_COLLECTION = 'sauka_assignments';
 export const COMMENTS_COLLECTION = 'sauka_comments';
 
+let cachedUser = null;
+let cachedUserPromise = null;
+
+export async function getCachedUser() {
+    if (cachedUser) return cachedUser;
+    if (cachedUserPromise) return cachedUserPromise;
+    cachedUserPromise = account.get().then(u => {
+        cachedUser = u;
+        cachedUserPromise = null;
+        return u;
+    }).catch(e => {
+        cachedUserPromise = null;
+        throw e;
+    });
+    return cachedUserPromise;
+}
+
 function generateJoinCode() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     let code = '';
@@ -15,7 +32,7 @@ function generateJoinCode() {
 export const saukaService = {
     // ─── Create Group ───
     async createGroup(title, divisionType = 'juz', deadline = null, intention = '') {
-        const user = await account.get();
+        const user = await getCachedUser();
         const joinCode = generateJoinCode();
 
         const group = await databases.createDocument(databaseId, GROUPS_COLLECTION, ID.unique(), {
@@ -28,6 +45,7 @@ export const saukaService = {
             intention: intention || '',
             status: 'active',
             completedAt: '',
+            members: [user.$id],
         });
 
         // Create assignment docs
@@ -59,32 +77,39 @@ export const saukaService = {
     // ─── Get user's groups (created or participating) ───
     async getMyGroups() {
         try {
-            const user = await account.get();
+            const user = await getCachedUser();
 
-            // Groups I created
-            const created = await databases.listDocuments(databaseId, GROUPS_COLLECTION, [
-                Query.equal('createdBy', user.$id),
-                Query.orderDesc('$createdAt'),
-                Query.limit(50),
+            // Fetch all base user groups in parallel
+            const [created, memberGroups, myClaims] = await Promise.all([
+                databases.listDocuments(databaseId, GROUPS_COLLECTION, [
+                    Query.equal('createdBy', user.$id),
+                    Query.orderDesc('$createdAt'),
+                    Query.limit(50),
+                ]),
+                databases.listDocuments(databaseId, GROUPS_COLLECTION, [
+                    Query.contains('members', [user.$id]),
+                    Query.limit(50),
+                ]),
+                databases.listDocuments(databaseId, ASSIGNMENTS_COLLECTION, [
+                    Query.equal('claimedBy', user.$id),
+                    Query.limit(100),
+                ])
             ]);
 
-            // Juz I claimed
-            const myClaims = await databases.listDocuments(databaseId, ASSIGNMENTS_COLLECTION, [
-                Query.equal('claimedBy', user.$id),
-                Query.limit(100),
-            ]);
+            const createdGroupIds = created.documents.map(g => g.$id);
+            // Filter out groups we already have in `created`
+            const joinedGroups = memberGroups.documents.filter(g => !createdGroupIds.includes(g.$id));
 
             const claimedGroupIds = [...new Set(myClaims.documents.map(a => a.groupId))];
-            const createdGroupIds = created.documents.map(g => g.$id);
-            const joinedOnlyIds = claimedGroupIds.filter(id => !createdGroupIds.includes(id));
+            const memberGroupIds = memberGroups.documents.map(g => g.$id);
+            const legacyJoinedOnlyIds = claimedGroupIds.filter(id => !createdGroupIds.includes(id) && !memberGroupIds.includes(id));
 
-            let joinedGroups = [];
-            if (joinedOnlyIds.length > 0) {
-                const joined = await databases.listDocuments(databaseId, GROUPS_COLLECTION, [
-                    Query.equal('$id', joinedOnlyIds),
+            if (legacyJoinedOnlyIds.length > 0) {
+                const legacyJoined = await databases.listDocuments(databaseId, GROUPS_COLLECTION, [
+                    Query.equal('$id', legacyJoinedOnlyIds),
                     Query.limit(50),
                 ]);
-                joinedGroups = joined.documents;
+                joinedGroups.push(...legacyJoined.documents);
             }
 
             return {
@@ -115,19 +140,37 @@ export const saukaService = {
 
     // ─── Get group with assignments ───
     async getGroup(groupId) {
-        const group = await databases.getDocument(databaseId, GROUPS_COLLECTION, groupId);
-        const assignments = await databases.listDocuments(databaseId, ASSIGNMENTS_COLLECTION, [
-            Query.equal('groupId', groupId),
-            Query.orderAsc('partNumber'),
-            Query.limit(120),
+        let [group, assignmentsList, user] = await Promise.all([
+            databases.getDocument(databaseId, GROUPS_COLLECTION, groupId),
+            databases.listDocuments(databaseId, ASSIGNMENTS_COLLECTION, [
+                Query.equal('groupId', groupId),
+                Query.orderAsc('partNumber'),
+                Query.limit(120),
+            ]),
+            getCachedUser().catch(() => null)
         ]);
-        const user = await account.get();
-        return { group, assignments: assignments.documents, userId: user.$id };
+        const assignments = assignmentsList.documents;
+        
+        let userId = user ? user.$id : null;
+        if (userId) {
+            // Auto-join logic for persistence: add user to members array if not present
+            const members = group.members || [];
+            if (!members.includes(userId)) {
+                members.push(userId);
+                try {
+                    group = await databases.updateDocument(databaseId, GROUPS_COLLECTION, groupId, { members });
+                } catch (e) {
+                    console.error('Failed to add user to members array', e);
+                }
+            }
+        }
+        
+        return { group, assignments, userId };
     },
 
     // ─── Claim a Juz ───
     async claimJuz(assignmentId) {
-        const user = await account.get();
+        const user = await getCachedUser();
         return await databases.updateDocument(databaseId, ASSIGNMENTS_COLLECTION, assignmentId, {
             claimedBy: user.$id,
             claimedByName: user.name || 'Unknown',
@@ -214,7 +257,7 @@ export const saukaService = {
     },
 
     async addComment(groupId, text) {
-        const user = await account.get();
+        const user = await getCachedUser();
         return await databases.createDocument(databaseId, COMMENTS_COLLECTION, ID.unique(), {
             groupId,
             userId: user.$id,

@@ -543,10 +543,10 @@ export default function Page() {
 
                 <div className="flex flex-col items-center">
                     <span className="font-mono text-[0.65rem] tracking-[0.2em] text-[var(--text-muted)] uppercase mb-[0.2rem]">
-                        Page
+                        {backToSauka && saukaStartPage && saukaEndPage ? 'Progress' : 'Page'}
                     </span>
                     <span className="font-ui font-extrabold text-[var(--text-primary)] text-[1.2rem] leading-none">
-                        {pageNumber} <span className="text-[var(--text-muted)] text-[0.95rem] font-medium tracking-normal">/ {maxPageNumber}</span>
+                        {backToSauka && saukaStartPage && saukaEndPage ? (pageNumber - saukaStartPage + 1) : pageNumber} <span className="text-[var(--text-muted)] text-[0.95rem] font-medium tracking-normal">/ {backToSauka && saukaStartPage && saukaEndPage ? (saukaEndPage - saukaStartPage + 1) : maxPageNumber}</span>
                     </span>
                 </div>
 
