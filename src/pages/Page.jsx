@@ -372,18 +372,9 @@ export default function Page() {
                                 </div>
                             </div>
                             <div className="flex gap-2 items-center w-full sm:w-auto">
-                                <button
-                                    type="button"
-                                    disabled={isSaukaCompleting}
-                                    onClick={handleSaukaComplete}
-                                    className="flex-1 sm:flex-none justify-center min-h-9 px-4 py-2 rounded-full bg-[var(--h-teal)] text-white font-bold inline-flex items-center gap-2 text-[0.82rem] border-none cursor-pointer disabled:opacity-50"
-                                >
-                                    {isSaukaCompleting ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} aria-hidden="true" />}
-                                    Mark as Complete
-                                </button>
                                 <Link
                                     to={`/sauka/${backToSauka}`}
-                                    className="flex-1 sm:flex-none justify-center min-h-9 px-4 py-2 rounded-full bg-[var(--bg-secondary)] text-[var(--text-muted)] font-semibold inline-flex items-center gap-2 text-[0.78rem] no-underline"
+                                    className="flex-1 sm:flex-none justify-center min-h-9 px-4 py-2 rounded-full bg-[var(--bg-secondary)] text-[var(--text-muted)] font-semibold inline-flex items-center gap-2 text-[0.78rem] no-underline hover:bg-[var(--h-teal)] hover:text-white transition-colors"
                                 >
                                     ← Back to Sauka
                                 </Link>
@@ -529,6 +520,24 @@ export default function Page() {
             </AnimatePresence>
 
             {/* Old planner bar removed — now shown at top */}
+
+            {/* Sauka Completion Banner */}
+            {backToSauka && saukaEndPage && pageNumber >= saukaEndPage && (
+                <div className="mt-12 bg-gradient-to-br from-[var(--h-teal)] to-[#0f766e] rounded-2xl p-6 sm:p-8 text-center shadow-lg border border-[var(--h-teal)]/20 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--h-gold)] opacity-10 blur-[40px] rounded-full pointer-events-none" />
+                    <CheckCircle2 size={40} className="text-[var(--h-gold)] mx-auto mb-3" />
+                    <h3 className="font-ui text-2xl sm:text-3xl font-bold text-white mb-2">Alhamdulillah!</h3>
+                    <p className="text-[0.95rem] text-white/90 mb-6">You've reached the end of your assigned reading.</p>
+                    <button
+                        onClick={handleSaukaComplete}
+                        disabled={isSaukaCompleting}
+                        className="w-full sm:w-auto px-8 py-3.5 bg-white text-[var(--h-teal)] hover:bg-[var(--h-cream)] rounded-xl font-bold transition-all shadow-md active:scale-[0.98] disabled:opacity-50 inline-flex items-center justify-center gap-2 border-none cursor-pointer"
+                    >
+                        {isSaukaCompleting ? <Loader2 size={18} className="animate-spin" /> : <CheckCircle2 size={18} />}
+                        Mark Part as Complete
+                    </button>
+                </div>
+            )}
 
             <div className="flex justify-between items-center mt-12 mb-8 pt-8 border-t border-[var(--border-color)]">
                 <button
