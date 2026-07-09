@@ -127,8 +127,8 @@ function VerseItem({
     const renderWords = () => {
         if (!Array.isArray(verse.words) || verse.words.length === 0) {
             return tajweedEnabled && tajweedMap?.[verse.verse_key]
-                ? <span dangerouslySetInnerHTML={{ __html: tajweedMap[verse.verse_key] }} />
-                : <>{verseArabicText}</>;
+                ? <span dangerouslySetInnerHTML={{ __html: tajweedMap[verse.verse_key].trim() }} />
+                : <>{verseArabicText.trim()}</>;
         }
         return verse.words.map((word, index) => {
             const translationText = word.translation?.text || '';
@@ -137,9 +137,9 @@ function VerseItem({
                     data-word-translation={translationText}
                     style={{ cursor: translationText ? 'pointer' : 'auto', marginLeft: index < verse.words.length - 1 ? '0.3em' : '0' }}>
                     {tajweedEnabled && word.text_uthmani_tajweed ? (
-                        <span dangerouslySetInnerHTML={{ __html: sanitizeTajweedHtml(word.text_uthmani_tajweed) }} />
+                        <span dangerouslySetInnerHTML={{ __html: sanitizeTajweedHtml(word.text_uthmani_tajweed).trim() }} />
                     ) : (
-                        <>{getWordArabicText(word, mushaf)}</>
+                        <>{getWordArabicText(word, mushaf).trim()}</>
                     )}
                 </span>
             );

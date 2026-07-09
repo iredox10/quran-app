@@ -176,6 +176,7 @@ export const saukaService = {
             claimedByName: user.name || 'Unknown',
             status: 'in_progress',
             claimedAt: new Date().toISOString(),
+            progress: 0,
         });
     },
 
@@ -186,7 +187,20 @@ export const saukaService = {
             claimedByName: guestName,
             status: 'in_progress',
             claimedAt: new Date().toISOString(),
+            progress: 0,
         });
+    },
+
+    // ─── Update Progress ───
+    async updateProgress(assignmentId, progress) {
+        // progress is 0-100
+        try {
+            return await databases.updateDocument(databaseId, ASSIGNMENTS_COLLECTION, assignmentId, {
+                progress: Math.min(100, Math.max(0, Math.round(progress))),
+            });
+        } catch (e) {
+            console.error('Failed to update progress on backend', e);
+        }
     },
 
     // ─── Unclaim a Juz (admin or self) ───

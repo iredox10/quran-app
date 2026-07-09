@@ -437,7 +437,20 @@ export default function SaukaGroup() {
                             >
                                 {isInactive && <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)] animate-pulse" title="Inactive for over 3 days" />}
                                 <span className={`text-2xl font-bold font-ui ${j.status === 'completed' || (j.status === 'in_progress' && isClaimedByMe) ? 'text-white' : ''}`}>{j.partNumber}</span>
-                                {isClaimedByMe && j.status === 'in_progress' && (
+                                
+                                {/* Tiny Progress Bar & Percentage */}
+                                {j.status === 'in_progress' && typeof j.progress === 'number' && j.progress > 0 && (
+                                    <>
+                                        <div className="absolute top-1.5 right-1.5 text-[0.55rem] font-mono font-bold opacity-70">
+                                            {j.progress}%
+                                        </div>
+                                        <div className="absolute bottom-0 left-0 w-full h-[3px] bg-black/10 rounded-b-[18px] overflow-hidden">
+                                            <div className="h-full bg-white/60 transition-all duration-500" style={{ width: `${j.progress}%` }} />
+                                        </div>
+                                    </>
+                                )}
+
+                                {isClaimedByMe && j.status === 'in_progress' && !(j.progress > 0) && (
                                     <BookOpen size={14} className="absolute bottom-2 right-2 opacity-80" />
                                 )}
                                 {j.status === 'completed' && (
@@ -564,7 +577,18 @@ export default function SaukaGroup() {
                                         <div className="mb-6 flex flex-col items-center border-t border-[var(--h-bone-dark)]/30 pt-4">
                                             <p className="text-[0.6rem] text-[var(--h-ink-muted)] uppercase tracking-[0.2em] mb-1 font-[var(--font-mono)]">Status</p>
                                             <p className={`font-[var(--font-ui)] text-xl mb-0.5 ${selectedJuz.status === 'completed' ? 'text-[var(--h-green)]' : 'text-[var(--h-gold)]'}`}>{selectedJuz.status === 'completed' ? 'Completed' : 'In Progress'}</p>
-                                            <p className="text-[0.85rem] text-[var(--h-ink-mid)] italic">by {selectedJuz.claimedByName || 'Someone'}</p>
+                                            {selectedJuz.status === 'in_progress' && typeof selectedJuz.progress === 'number' && selectedJuz.progress > 0 && (
+                                                <div className="w-full max-w-[120px] mt-1.5 mb-1.5">
+                                                    <div className="flex justify-between text-[0.65rem] font-bold text-[var(--h-ink-muted)] mb-1">
+                                                        <span>Progress</span>
+                                                        <span>{selectedJuz.progress}%</span>
+                                                    </div>
+                                                    <div className="w-full h-1.5 bg-[var(--h-bone-dark)]/30 rounded-full overflow-hidden">
+                                                        <div className="h-full bg-[var(--h-gold)] rounded-full transition-all duration-500" style={{ width: `${selectedJuz.progress}%` }} />
+                                                    </div>
+                                                </div>
+                                            )}
+                                            <p className="text-[0.85rem] text-[var(--h-ink-mid)] italic mt-1">by {selectedJuz.claimedByName || 'Someone'}</p>
                                         </div>
 
                                         {(selectedJuz.claimedBy === userId || isAdmin) && selectedJuz.status === 'in_progress' && (

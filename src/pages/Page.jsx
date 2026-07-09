@@ -73,8 +73,18 @@ export default function Page() {
     useEffect(() => {
         if (backToSauka && saukaAssignmentId) {
             useAppStore.getState().setSaukaProgress(saukaAssignmentId, pageNumber);
+            
+            // Push progress to Appwrite for others to see
+            if (saukaStartPage && saukaEndPage) {
+                const totalPages = (saukaEndPage - saukaStartPage) + 1;
+                const pagesRead = (pageNumber - saukaStartPage) + 1;
+                const percent = Math.min(100, Math.max(0, (pagesRead / totalPages) * 100));
+                
+                // Fire and forget update
+                saukaService.updateProgress(saukaAssignmentId, percent).catch(() => {});
+            }
         }
-    }, [pageNumber, backToSauka, saukaAssignmentId]);
+    }, [pageNumber, backToSauka, saukaAssignmentId, saukaStartPage, saukaEndPage]);
 
     // App State
     const {
