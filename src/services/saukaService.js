@@ -30,8 +30,8 @@ function generateJoinCode() {
 }
 
 export const saukaService = {
-    // ─── Create Group ───
-    async createGroup(title, divisionType = 'juz', deadline = null, intention = '') {
+    // ─── Group Management ───
+    async createGroup(title, divisionType = 'juz', deadline = null, intention = '', isPublic = false) {
         const user = await getCachedUser();
         const joinCode = generateJoinCode();
 
@@ -46,6 +46,7 @@ export const saukaService = {
             status: 'active',
             completedAt: '',
             members: [user.$id],
+            isPublic
         });
 
         // Create assignment docs
@@ -177,6 +178,7 @@ export const saukaService = {
             status: 'in_progress',
             claimedAt: new Date().toISOString(),
             progress: 0,
+            lastActive: new Date().toISOString(),
         });
     },
 
@@ -188,6 +190,7 @@ export const saukaService = {
             status: 'in_progress',
             claimedAt: new Date().toISOString(),
             progress: 0,
+            lastActive: new Date().toISOString(),
         });
     },
 
@@ -197,6 +200,7 @@ export const saukaService = {
         try {
             return await databases.updateDocument(databaseId, ASSIGNMENTS_COLLECTION, assignmentId, {
                 progress: Math.min(100, Math.max(0, Math.round(progress))),
+                lastActive: new Date().toISOString(),
             });
         } catch (e) {
             console.error('Failed to update progress on backend', e);
@@ -214,29 +218,103 @@ export const saukaService = {
         });
     },
 
+    // ─── Auto Assign Remaining ───
+    async autoAssignRemaining(groupId) {
+        // 1. Fetch group to get members
+        const group = await databases.getDocument(databaseId, GROUPS_COLLECTION, groupId);
+        const members = group.members || [];
+        if (members.length === 0) throw new Error("No members in group to assign to.");
+
+        // 2. Fetch all assignments
+        const allAssignments = await databases.listDocuments(databaseId, ASSIGNMENTS_COLLECTION, [
+            Query.equal('groupId', groupId),
+            Query.limit(200)
+        ]);
+
+        // 3. Build a name map from existing claims
+        const nameMap = {};
+        allAssignments.documents.forEach(a => {
+            if (a.claimedBy && a.claimedByName) nameMap[a.claimedBy] = a.claimedByName;
+        });
+
+        // 4. Filter available assignments
+        const available = allAssignments.documents.filter(a => a.status === 'unclaimed');
+        if (available.length === 0) return 0; // Nothing to do
+
+        // 5. Shuffle members for random distribution
+        const shuffledMembers = [...members].sort(() => Math.random() - 0.5);
+
+        // 6. Assign round-robin
+        const promises = available.map((assignment, index) => {
+            const assigneeId = shuffledMembers[index % shuffledMembers.length];
+            const assigneeName = nameMap[assigneeId] || 'Assigned Member';
+
+            return databases.updateDocument(databaseId, ASSIGNMENTS_COLLECTION, assignment.$id, {
+                claimedBy: assigneeId,
+                claimedByName: assigneeName,
+                status: 'in_progress',
+                claimedAt: new Date().toISOString(),
+                progress: 0,
+                lastActive: new Date().toISOString()
+            });
+        });
+
+        await Promise.all(promises);
+        return available.length; // Return how many were assigned
+    },
+
     // ─── Mark Juz complete ───
     async completeJuz(assignmentId, groupId) {
         const updated = await databases.updateDocument(databaseId, ASSIGNMENTS_COLLECTION, assignmentId, {
             status: 'completed',
-            completedAt: new Date().toISOString(),
+            progress: 100,
+            lastActive: new Date().toISOString()
         });
-
-        // Check if all are done
+        
+        // Check if all are completed
         const totalParts = (await databases.getDocument(databaseId, GROUPS_COLLECTION, groupId)).divisionType === 'surah' ? 114 : 30;
         const all = await databases.listDocuments(databaseId, ASSIGNMENTS_COLLECTION, [
             Query.equal('groupId', groupId),
-            Query.equal('status', 'completed'),
-            Query.limit(120),
+            Query.limit(200)
         ]);
 
-        if (all.total === totalParts) {
+        const allCompleted = all.documents.length === totalParts && all.documents.every(a => a.status === 'completed');
+        if (allCompleted) {
             await databases.updateDocument(databaseId, GROUPS_COLLECTION, groupId, {
-                status: 'completed',
-                completedAt: new Date().toISOString(),
+                status: 'completed'
             });
         }
-
         return updated;
+    },
+
+    // ─── Start Next Round (Khatmah) ───
+    async startNextRound(groupId) {
+        const group = await databases.getDocument(databaseId, GROUPS_COLLECTION, groupId);
+        
+        // 1. Update group counters and status
+        await databases.updateDocument(databaseId, GROUPS_COLLECTION, groupId, {
+            status: 'active',
+            roundNumber: (group.roundNumber || 1) + 1,
+            khatmahsCompleted: (group.khatmahsCompleted || 0) + 1
+        });
+
+        // 2. Reset all assignments
+        const all = await databases.listDocuments(databaseId, ASSIGNMENTS_COLLECTION, [
+            Query.equal('groupId', groupId),
+            Query.limit(200)
+        ]);
+
+        const promises = all.documents.map(a => 
+            databases.updateDocument(databaseId, ASSIGNMENTS_COLLECTION, a.$id, {
+                status: 'unclaimed',
+                claimedBy: null,
+                claimedByName: null,
+                claimedAt: null,
+                progress: 0,
+                lastActive: null
+            })
+        );
+        await Promise.all(promises);
     },
 
     // ─── Delete group (admin only) ───
@@ -260,23 +338,24 @@ export const saukaService = {
         await databases.deleteDocument(databaseId, GROUPS_COLLECTION, groupId);
     },
 
-    // ─── Comments & Nudges ───
+    // ─── Comments (Nudges) ───
     async getComments(groupId) {
         const result = await databases.listDocuments(databaseId, COMMENTS_COLLECTION, [
             Query.equal('groupId', groupId),
-            Query.orderAsc('$createdAt'),
-            Query.limit(100),
+            Query.orderDesc('$createdAt'),
+            Query.limit(50)
         ]);
-        return result.documents;
+        return result.documents.reverse();
     },
 
-    async addComment(groupId, text) {
+    async addComment(groupId, text, audioUrl = null) {
         const user = await getCachedUser();
         return await databases.createDocument(databaseId, COMMENTS_COLLECTION, ID.unique(), {
             groupId,
             userId: user.$id,
-            userName: user.name || 'Unknown',
-            text
+            userName: user.name || 'Group Member',
+            text,
+            audioUrl
         });
     },
 

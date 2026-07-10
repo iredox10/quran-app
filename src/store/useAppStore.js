@@ -162,6 +162,20 @@ export const useAppStore = create(
             currentUser: null,
             setCurrentUser: (user) => set({ currentUser: user }),
 
+            globalAlert: null,
+            setGlobalAlert: (message) => set({ globalAlert: message }),
+
+            globalConfirm: null,
+            confirm: (message) => new Promise((resolve) => {
+                set({ globalConfirm: { message, resolve } });
+            }),
+            resolveConfirm: (result) => set((state) => {
+                if (state.globalConfirm?.resolve) {
+                    state.globalConfirm.resolve(result);
+                }
+                return { globalConfirm: null };
+            }),
+
             setTranslation: (id) => set({ translationId: id }),
             setReciter: (id) => set({ reciterId: id }),
             setFontSize: (size) => set({ fontSize: size }),

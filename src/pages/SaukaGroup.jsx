@@ -3,10 +3,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useParams, useNavigate } from 'react-router-dom';
 import { saukaService, ASSIGNMENTS_COLLECTION, COMMENTS_COLLECTION } from '../services/saukaService';
 import { JUZ_STARTS, HIZB_STARTS } from '../data/quranNavigation';
-import { client, databaseId } from '../services/appwrite';
+import { client, databaseId, storage, audioBucketId } from '../services/appwrite';
 import { useAppStore } from '../store/useAppStore';
-import { Loader2, ArrowLeft, ArrowRight, CheckCircle2, Clock, Share2, Copy, BookOpen, Trash2, MessageSquare, UserPlus } from 'lucide-react';
+import { Loader2, ArrowLeft, ArrowRight, CheckCircle2, Clock, Share2, Copy, BookOpen, Trash2, MessageSquare, UserPlus, Users, Mic, Square, X } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { ID } from 'appwrite';
 import { getVersesByPage } from '../services/api/quranApi';
 
 export default function SaukaGroup() {
@@ -30,6 +31,74 @@ export default function SaukaGroup() {
     const [isActionModalOpen, setIsActionModalOpen] = useState(false);
     const [previewText, setPreviewText] = useState('');
     const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+
+    // Audio Recording
+    const [isRecording, setIsRecording] = useState(false);
+    const [recordingTime, setRecordingTime] = useState(0);
+    const mediaRecorderRef = React.useRef(null);
+    const audioChunksRef = React.useRef([]);
+    const timerRef = React.useRef(null);
+
+    const startRecording = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const recorder = new MediaRecorder(stream);
+            mediaRecorderRef.current = recorder;
+            audioChunksRef.current = [];
+
+            recorder.ondataavailable = e => {
+                if (e.data.size > 0) audioChunksRef.current.push(e.data);
+            };
+
+            recorder.start();
+            setIsRecording(true);
+            setRecordingTime(0);
+            timerRef.current = setInterval(() => setRecordingTime(t => t + 1), 1000);
+        } catch (e) {
+            alert('Microphone access denied or unavailable.');
+        }
+    };
+
+    const stopRecordingAndSend = () => {
+        if (!mediaRecorderRef.current) return;
+        
+        mediaRecorderRef.current.onstop = async () => {
+            clearInterval(timerRef.current);
+            setIsRecording(false);
+            setIsActionLoading(true);
+
+            const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+            mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+
+            try {
+                const fileId = ID.unique();
+                const file = new File([audioBlob], `voice_note_${fileId}.webm`, { type: 'audio/webm' });
+                const uploadedFile = await storage.createFile(audioBucketId, fileId, file);
+                const audioUrl = storage.getFileView(audioBucketId, uploadedFile.$id).href;
+                
+                await saukaService.addComment(id, newComment.trim() || '🎤 Voice Note', audioUrl);
+                setNewComment('');
+                loadData();
+            } catch (e) {
+                console.error(e);
+                alert('Failed to send voice note.');
+            } finally {
+                setIsActionLoading(false);
+            }
+        };
+
+        mediaRecorderRef.current.stop();
+    };
+
+    const cancelRecording = () => {
+        if (!mediaRecorderRef.current) return;
+        mediaRecorderRef.current.onstop = () => {
+            clearInterval(timerRef.current);
+            setIsRecording(false);
+            mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+        };
+        mediaRecorderRef.current.stop();
+    };
 
     useEffect(() => {
         loadData();
@@ -91,6 +160,7 @@ export default function SaukaGroup() {
     };
 
     const handleComplete = async (assignmentId) => {
+        if (!(await useAppStore.getState().confirm("Are you sure you want to mark this part as completed? This will let the group know you've finished reading it."))) return;
         setIsActionLoading(true);
         try {
             await saukaService.completeJuz(assignmentId, groupId);
@@ -145,7 +215,7 @@ export default function SaukaGroup() {
     };
     
     const handleDeleteComment = async (commentId) => {
-        if (!confirm('Delete comment?')) return;
+        if (!(await useAppStore.getState().confirm('Delete comment?'))) return;
         try {
             if (commentId) {
                 await saukaService.deleteComment(commentId);
@@ -397,6 +467,13 @@ export default function SaukaGroup() {
                                     <span className="text-xl font-bold font-mono text-[var(--h-ink)] pt-1">{getDaysLeft(group.deadline)}</span>
                                 </div>
                             )}
+                            {group.khatmahsCompleted > 0 && (
+                                <div className="flex-1 min-w-[140px] flex flex-col items-start px-5 py-4 bg-white/60 border border-white/50 shadow-[0_4px_20px_rgba(184,146,74,0.15)] rounded-2xl relative overflow-hidden">
+                                    <div className="absolute top-0 right-0 w-16 h-16 bg-[var(--h-gold)] opacity-10 rounded-full blur-xl pointer-events-none" />
+                                    <span className="text-[0.65rem] font-extrabold tracking-[0.2em] text-[var(--h-gold)] uppercase mb-1">Completed Khatmahs</span>
+                                    <span className="text-2xl font-extrabold font-ui text-[var(--h-gold)] pt-1">{group.khatmahsCompleted}</span>
+                                </div>
+                            )}
                         </div>
                         {group.intention && (
                             <div className="mt-5 rounded-[16px] bg-[var(--h-teal)]/5 p-5 border border-[var(--h-teal)]/10">
@@ -407,21 +484,52 @@ export default function SaukaGroup() {
                     </div>
                     {group.status === 'completed' && (
                         <div className="bg-gradient-to-r from-[var(--h-green)] to-[#0ea5e9] px-8 py-5 text-center flex flex-col sm:flex-row items-center justify-between gap-4">
-                            <p className="text-white font-bold text-lg m-0">Alhamdulillah! This Khatmah is complete.</p>
-                            <button onClick={() => setIsDuaOpen(true)} className="rounded-full bg-white px-6 py-2.5 text-sm font-bold text-[var(--h-green)] transition-all hover:scale-105 shadow-md">
-                                Read Completion Dua
-                            </button>
+                            <p className="text-white font-bold text-lg m-0">Alhamdulillah! Round {group.roundNumber || 1} is complete.</p>
+                            <div className="flex gap-2">
+                                <button onClick={() => setIsDuaOpen(true)} className="rounded-full bg-white px-5 py-2.5 text-sm font-bold text-[var(--h-green)] transition-all hover:scale-105 shadow-md">
+                                    Read Completion Dua
+                                </button>
+                                {isAdmin && (
+                                    <button 
+                                        onClick={async () => {
+                                            if (!(await useAppStore.getState().confirm("This will archive current progress and start a fresh round. Continue?"))) return;
+                                            try {
+                                                await saukaService.startNextRound(id);
+                                                loadData();
+                                            } catch (e) { alert("Failed to start next round: " + e.message); }
+                                        }}
+                                        className="rounded-full bg-transparent border-2 border-white text-white px-5 py-2.5 text-sm font-bold transition-all hover:bg-white hover:text-[#0ea5e9] shadow-md"
+                                    >
+                                        Start Next Round
+                                    </button>
+                                )}
+                            </div>
                         </div>
                     )}
                 </div>
 
-                {/* ── Grid ── */}
-                {/* ── Grid ── */}
-                <h2 className="mb-5 px-2 font-[var(--font-mono)] text-[0.8rem] font-bold uppercase tracking-[0.15em] text-[var(--h-ink-muted)]">The {totalParts} {isSurah ? 'Surahs' : isHizb ? 'Hizbs' : 'Juz'}</h2>
+                <div className="mb-5 px-2 flex items-center justify-between">
+                    <h2 className="font-[var(--font-mono)] text-[0.8rem] font-bold uppercase tracking-[0.15em] text-[var(--h-ink-muted)]">The {totalParts} {isSurah ? 'Surahs' : isHizb ? 'Hizbs' : 'Juz'}</h2>
+                    {isAdmin && assignments.some(a => a.status === 'unclaimed') && (
+                        <button
+                            onClick={async () => {
+                                if (!(await useAppStore.getState().confirm("This will randomly assign all remaining unclaimed parts to members of this group. Are you sure?"))) return;
+                                try {
+                                    await saukaService.autoAssignRemaining(id);
+                                    loadData();
+                                } catch (e) { alert("Failed to auto-assign: " + e.message); }
+                            }}
+                            className="flex items-center gap-1.5 text-[0.7rem] font-bold uppercase tracking-wider bg-[var(--h-teal)]/10 text-[var(--h-teal)] hover:bg-[var(--h-teal)] hover:text-white px-3 py-1.5 rounded-full transition-all"
+                        >
+                            <Users size={14} /> Auto-Assign All
+                        </button>
+                    )}
+                </div>
                 <div className={`grid gap-3 sm:gap-4 ${isSurah ? 'grid-cols-4 min-[400px]:grid-cols-5 sm:grid-cols-8 md:grid-cols-12' : isHizb ? 'grid-cols-4 min-[400px]:grid-cols-5 sm:grid-cols-8 md:grid-cols-10' : 'grid-cols-4 sm:grid-cols-6 md:grid-cols-10'}`}>
                     {assignments.map(j => {
                         const isClaimedByMe = j.claimedBy === userId;
                         const isInactive = j.status === 'in_progress' && j.claimedAt && (new Date().getTime() - new Date(j.claimedAt).getTime()) > 3 * 24 * 60 * 60 * 1000;
+                        const isActiveNow = j.status === 'in_progress' && j.lastActive && (new Date().getTime() - new Date(j.lastActive).getTime()) < 15 * 60 * 1000;
                         return (
                             <motion.button
                                 key={j.$id}
@@ -435,7 +543,8 @@ export default function SaukaGroup() {
                                         : 'bg-white text-[var(--h-ink-mid)] border-white/50 hover:border-[var(--h-teal)] hover:shadow-md'
                                     }`}
                             >
-                                {isInactive && <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)] animate-pulse" title="Inactive for over 3 days" />}
+                                {isActiveNow && <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse" title="Reading right now!" />}
+                                {!isActiveNow && isInactive && <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)] animate-pulse" title="Inactive for over 3 days" />}
                                 <span className={`text-2xl font-bold font-ui ${j.status === 'completed' || (j.status === 'in_progress' && isClaimedByMe) ? 'text-white' : ''}`}>{j.partNumber}</span>
                                 
                                 {/* Tiny Progress Bar & Percentage */}
@@ -484,6 +593,11 @@ export default function SaukaGroup() {
                                         </div>
                                         <div className={`relative max-w-[85%] rounded-[20px] px-5 py-3 shadow-sm ${isMe ? 'bg-gradient-to-br from-[var(--h-teal)] to-[var(--h-teal-mid)] text-white rounded-tr-sm' : 'bg-[var(--h-cream)] border border-[var(--h-bone-dark)] text-[var(--h-ink-mid)] rounded-tl-sm'}`}>
                                             <p className={`text-[0.95rem] leading-relaxed ${isMe ? 'text-white' : 'text-[var(--h-ink-mid)]'}`}>{c.text}</p>
+                                            {c.audioUrl && (
+                                                <div className="mt-2">
+                                                    <audio controls src={c.audioUrl} className={`w-full h-8 ${isMe ? 'opacity-90' : 'opacity-80'}`} />
+                                                </div>
+                                            )}
                                         </div>
                                         {(isMe || isAdmin) && (
                                             <button onClick={() => handleDeleteComment(c.$id)} className={`absolute top-1/2 -translate-y-1/2 ${isMe ? '-left-8' : '-right-8'} text-red-500 opacity-0 transition-all hover:scale-110 group-hover/comment:opacity-100 p-1.5 bg-red-50 rounded-full`}>
@@ -496,12 +610,25 @@ export default function SaukaGroup() {
                         )}
                     </div>
 
-                    <form onSubmit={handleAddComment} className="flex gap-3 relative z-10">
-                        <input type="text" value={newComment} onChange={e => setNewComment(e.target.value)} placeholder="Type a message or nudge..." className="flex-1 rounded-[16px] border border-[var(--h-bone-dark)] bg-[var(--h-cream)] px-5 py-3.5 text-[0.95rem] text-[var(--h-ink)] outline-none focus:border-[var(--h-teal)] focus:bg-white focus:ring-4 focus:ring-[var(--h-teal)]/10 transition-all shadow-inner" />
-                        <button type="submit" disabled={isActionLoading || !newComment.trim()} className="rounded-[16px] bg-[var(--h-teal)] px-6 py-3.5 font-bold text-white transition-all hover:bg-[var(--h-teal-mid)] hover:shadow-lg hover:shadow-[var(--h-teal)]/20 active:scale-95 disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center">
-                            <ArrowRight size={20} strokeWidth={2.5} />
-                        </button>
-                    </form>
+                    {isRecording ? (
+                        <div className="flex items-center gap-3 p-4 rounded-[16px] border border-red-200 bg-red-50 relative z-10 shadow-inner">
+                            <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
+                            <span className="text-red-500 font-mono font-bold w-12">{Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}</span>
+                            <span className="flex-1 text-[0.8rem] font-bold text-red-400 uppercase tracking-widest text-center">Recording Voice Note...</span>
+                            <button onClick={cancelRecording} className="p-2 text-red-400 hover:text-red-600 transition-colors bg-white rounded-full shadow-sm"><X size={18} strokeWidth={3} /></button>
+                            <button onClick={stopRecordingAndSend} className="p-2 text-[var(--h-teal)] hover:text-white hover:bg-[var(--h-teal)] transition-colors bg-white rounded-full shadow-sm"><CheckCircle2 size={18} strokeWidth={3} /></button>
+                        </div>
+                    ) : (
+                        <form onSubmit={handleAddComment} className="flex gap-2 sm:gap-3 relative z-10">
+                            <button type="button" onClick={startRecording} className="rounded-[16px] border border-[var(--h-bone-dark)] bg-[var(--h-cream)] px-4 text-[var(--h-ink-mid)] hover:text-[var(--h-teal)] transition-all hover:bg-white flex items-center justify-center shrink-0">
+                                <Mic size={20} />
+                            </button>
+                            <input type="text" value={newComment} onChange={e => setNewComment(e.target.value)} placeholder="Type a message or nudge..." className="flex-1 min-w-0 rounded-[16px] border border-[var(--h-bone-dark)] bg-[var(--h-cream)] px-4 py-3.5 text-[0.95rem] text-[var(--h-ink)] outline-none focus:border-[var(--h-teal)] focus:bg-white focus:ring-4 focus:ring-[var(--h-teal)]/10 transition-all shadow-inner" />
+                            <button type="submit" disabled={isActionLoading || !newComment.trim()} className="rounded-[16px] bg-[var(--h-teal)] px-5 py-3.5 font-bold text-white transition-all hover:bg-[var(--h-teal-mid)] hover:shadow-lg hover:shadow-[var(--h-teal)]/20 active:scale-95 disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center shrink-0">
+                                <ArrowRight size={20} strokeWidth={2.5} />
+                            </button>
+                        </form>
+                    )}
                 </div>
             </motion.div>
 

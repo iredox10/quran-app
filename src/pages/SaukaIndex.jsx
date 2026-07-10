@@ -11,6 +11,8 @@ export default function SaukaIndex() {
     const navigate = useNavigate();
 
     const [groups, setGroups] = useState({ created: [], joined: [], userId: null });
+    const [publicGroups, setPublicGroups] = useState([]);
+    const [activeTab, setActiveTab] = useState('my_groups'); // 'my_groups' or 'public'
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState('');
 
@@ -20,6 +22,7 @@ export default function SaukaIndex() {
     const [createIntention, setCreateIntention] = useState('');
     const [createDivisionType, setCreateDivisionType] = useState('juz');
     const [createDeadline, setCreateDeadline] = useState('');
+    const [createIsPublic, setCreateIsPublic] = useState(false);
     const [isCreating, setIsCreating] = useState(false);
 
     // Join Modal
@@ -46,11 +49,15 @@ export default function SaukaIndex() {
         try {
             setIsLoading(true);
             setError('');
-            const data = await saukaService.getMyGroups();
+            const [data, publicData] = await Promise.all([
+                saukaService.getMyGroups(),
+                saukaService.getPublicGroups()
+            ]);
             if (!data.userId) {
                 throw new Error("User not authenticated.");
             }
             setGroups(data);
+            setPublicGroups(publicData);
         } catch (e) {
             console.error(e);
             setError('Please sign in from the Profile page to use Group Khatmah.');
@@ -64,11 +71,12 @@ export default function SaukaIndex() {
         if (!createTitle.trim()) return;
         setIsCreating(true);
         try {
-            const group = await saukaService.createGroup(createTitle.trim(), createDivisionType, createDeadline, createIntention.trim());
+            const group = await saukaService.createGroup(createTitle.trim(), createDivisionType, createDeadline, createIntention.trim(), createIsPublic);
             setIsCreateOpen(false);
             setCreateTitle('');
             setCreateIntention('');
             setCreateDeadline('');
+            setCreateIsPublic(false);
             navigate(`/sauka/${group.$id}`);
         } catch (e) {
             console.error(e);
@@ -182,18 +190,37 @@ export default function SaukaIndex() {
                             </button>
                         </div>
 
+                        {/* ── Tabs ── */}
+                        <div className="mb-6 flex items-center gap-2 border-b border-[var(--h-bone-dark)] pb-2">
+                            <button
+                                onClick={() => setActiveTab('my_groups')}
+                                className={`px-4 py-2 text-sm font-bold transition-all rounded-t-xl ${activeTab === 'my_groups' ? 'bg-[var(--h-teal)] text-white' : 'text-[var(--h-ink-mid)] hover:bg-[var(--h-cream)]'}`}
+                            >
+                                My Groups
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('public')}
+                                className={`px-4 py-2 text-sm font-bold transition-all rounded-t-xl ${activeTab === 'public' ? 'bg-[var(--h-teal)] text-white' : 'text-[var(--h-ink-mid)] hover:bg-[var(--h-cream)]'}`}
+                            >
+                                Explore Public
+                            </button>
+                        </div>
+
                         {/* ── List ── */}
                         <div className="mb-6">
-                            <h2 className="mb-4 px-2 font-[var(--font-mono)] text-xs uppercase tracking-widest text-[var(--h-ink-muted)]">Your Groups</h2>
                             {isLoading ? (
                                 <div className="flex h-32 items-center justify-center text-[var(--h-gold)]"><Loader2 className="animate-spin" size={24} /></div>
-                            ) : allGroups.length === 0 ? (
+                            ) : activeTab === 'my_groups' && allGroups.length === 0 ? (
                                 <div className="rounded-2xl border border-[var(--h-bone-dark)] border-dashed py-12 text-center text-sm text-[var(--h-ink-muted)]">
                                     You haven't joined any groups yet.
                                 </div>
+                            ) : activeTab === 'public' && publicGroups.length === 0 ? (
+                                <div className="rounded-2xl border border-[var(--h-bone-dark)] border-dashed py-12 text-center text-sm text-[var(--h-ink-muted)]">
+                                    No public groups available at the moment.
+                                </div>
                             ) : (
                                 <div className="grid gap-3 sm:grid-cols-2">
-                                    {allGroups.map(g => (
+                                    {(activeTab === 'my_groups' ? allGroups : publicGroups).map(g => (
                                         <Link key={g.$id} to={`/sauka/${g.$id}`} className="group block rounded-[20px] border border-[var(--h-bone-dark)] bg-white p-5 no-underline shadow-sm transition-all hover:-translate-y-1 hover:border-[var(--h-teal)] hover:shadow-md">
                                             <div className="mb-4 flex items-start justify-between">
                                                 <div className="pr-2">
@@ -258,6 +285,12 @@ export default function SaukaIndex() {
                                     <div>
                                         <label className="mb-1.5 block text-xs font-semibold text-[var(--h-ink-mid)]">Target Date (Optional)</label>
                                         <input type="date" value={createDeadline} onChange={e => setCreateDeadline(e.target.value)} className="w-full rounded-xl border border-[var(--h-bone-dark)] bg-[var(--h-cream)] px-4 py-3 text-sm text-[var(--h-ink)] outline-none focus:border-[var(--h-teal)]" />
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <input type="checkbox" id="isPublic" checked={createIsPublic} onChange={e => setCreateIsPublic(e.target.checked)} className="w-5 h-5 rounded border-[var(--h-bone-dark)] text-[var(--h-teal)] focus:ring-[var(--h-teal)]" />
+                                        <label htmlFor="isPublic" className="text-sm font-semibold text-[var(--h-ink-mid)] select-none cursor-pointer">
+                                            Make this group public <span className="block text-xs font-normal text-[var(--h-ink-muted)] mt-0.5">Anyone can find and join this group</span>
+                                        </label>
                                     </div>
                                 </div>
                                 <div className="mt-8 flex gap-3">

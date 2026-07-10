@@ -528,14 +528,33 @@ export default function Page() {
                     <CheckCircle2 size={40} className="text-[var(--h-gold)] mx-auto mb-3" />
                     <h3 className="font-ui text-2xl sm:text-3xl font-bold text-white mb-2">Alhamdulillah!</h3>
                     <p className="text-[0.95rem] text-white/90 mb-6">You've reached the end of your assigned reading.</p>
-                    <button
-                        onClick={handleSaukaComplete}
-                        disabled={isSaukaCompleting}
-                        className="w-full sm:w-auto px-8 py-3.5 bg-white text-[var(--h-teal)] hover:bg-[var(--h-cream)] rounded-xl font-bold transition-all shadow-md active:scale-[0.98] disabled:opacity-50 inline-flex items-center justify-center gap-2 border-none cursor-pointer"
-                    >
-                        {isSaukaCompleting ? <Loader2 size={18} className="animate-spin" /> : <CheckCircle2 size={18} />}
-                        Mark Part as Complete
-                    </button>
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                        <button
+                            onClick={handleSaukaComplete}
+                            disabled={isSaukaCompleting}
+                            className="w-full sm:w-auto px-8 py-3.5 bg-white text-[var(--h-teal)] hover:bg-[var(--h-cream)] rounded-xl font-bold transition-all shadow-md active:scale-[0.98] disabled:opacity-50 inline-flex items-center justify-center gap-2 border-none cursor-pointer"
+                        >
+                            {isSaukaCompleting ? <Loader2 size={18} className="animate-spin" /> : <CheckCircle2 size={18} />}
+                            Mark Part as Complete
+                        </button>
+                        <button
+                            onClick={() => {
+                                if (navigator.share) {
+                                    navigator.share({
+                                        title: 'Khatmah Progress',
+                                        text: `Alhamdulillah! I just finished reading my assigned part for our Group Khatmah. Join us and earn rewards!`,
+                                        url: window.location.origin
+                                    }).catch(console.error);
+                                } else {
+                                    alert("Sharing is not supported on this browser.");
+                                }
+                            }}
+                            className="w-full sm:w-auto px-8 py-3.5 bg-transparent border-2 border-white/50 text-white hover:bg-white/10 rounded-xl font-bold transition-all shadow-sm active:scale-[0.98] inline-flex items-center justify-center gap-2 cursor-pointer"
+                        >
+                            <Share2 size={18} />
+                            Share Achievement
+                        </button>
+                    </div>
                 </div>
             )}
 

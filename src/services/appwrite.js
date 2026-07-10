@@ -1,9 +1,10 @@
-import { Client, Account, Databases, Query } from 'appwrite';
+import { Client, Account, Databases, Query, Storage } from 'appwrite';
 
 const endpoint = import.meta.env.VITE_APPWRITE_ENDPOINT || 'https://cloud.appwrite.io/v1';
 const projectId = import.meta.env.VITE_APPWRITE_PROJECT_ID;
 export const databaseId = import.meta.env.VITE_APPWRITE_DATABASE_ID || 'quran_db';
 export const collectionId = import.meta.env.VITE_APPWRITE_USER_DATA_COLLECTION_ID || 'user_sync';
+export const audioBucketId = 'audio_notes';
 
 export const client = new Client();
 export const isAppwriteConfigured = !!projectId;
@@ -16,6 +17,7 @@ if (isAppwriteConfigured) {
 
 export const account = new Account(client);
 export const databases = new Databases(client);
+export const storage = new Storage(client);
 
 // Auth Service Actions
 export const authService = {

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
 import BottomNav from './components/BottomNav';
@@ -20,14 +20,22 @@ import FloatingPomodoro from './components/FloatingPomodoro';
 import SaukaIndex from './pages/SaukaIndex';
 import SaukaGroup from './pages/SaukaGroup';
 import CloudSync from './components/CloudSync';
+import AlertModal from './components/ui/AlertModal';
+import ConfirmModal from './components/ui/ConfirmModal';
+import { useAppStore } from './store/useAppStore';
 
-import React, { useState } from 'react';
 import SplashScreen from './components/ui/SplashScreen';
 
 function App() {
   const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
+    // Override default window.alert for a better UX
+    const originalAlert = window.alert;
+    window.alert = (message) => {
+      useAppStore.getState().setGlobalAlert(message);
+    };
+
     async function requestPersistentStorage() {
       if (navigator.storage && navigator.storage.persist) {
         const isPersisted = await navigator.storage.persisted();
@@ -53,7 +61,10 @@ function App() {
     };
     window.addEventListener('appinstalled', onInstalled);
 
-    return () => window.removeEventListener('appinstalled', onInstalled);
+    return () => {
+      window.removeEventListener('appinstalled', onInstalled);
+      window.alert = originalAlert;
+    };
   }, []);
 
   return (
@@ -83,6 +94,8 @@ function App() {
       <BottomNav />
       <FloatingPomodoro />
       <TajweedTooltip />
+      <AlertModal />
+      <ConfirmModal />
     </BrowserRouter>
   );
 }

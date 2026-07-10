@@ -6,7 +6,7 @@ import { getChapter, getVerses, getChapterAudio, getChapterTafsirs, getTajweedVe
 import { getJuzByPage, getHizbByPage } from '../data/quranNavigation';
 import { useAppStore } from '../store/useAppStore';
 import { ArrowLeft, ArrowRight, Play, Pause, BookOpen, Bookmark, Info, X, Download, Minus, Plus, Settings2, Target, CheckCircle2, Loader2, Copy, Share2, Brain, Eye, EyeOff, Highlighter, Type, ScrollText } from 'lucide-react';
-import { AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Helmet } from 'react-helmet-async';
 import { useSwipeable } from 'react-swipeable';
 import VerseRow from '../components/VerseRow';
@@ -589,36 +589,6 @@ export default function Surah() {
                                     {isDownloading ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
                                 </button>
                             )}
-                            <button onClick={() => setAutoScroll(!autoScroll)} className={`flex items-center justify-center h-10 w-10 rounded-full transition-all duration-300 ${autoScroll ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-secondary)]'}`} title="Auto-scroll">
-                                <ScrollText size={18} />
-                            </button>
-                            <button onClick={() => setIsSettingsOpen(true)} className="flex items-center justify-center h-10 w-10 rounded-full transition-all duration-300 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-secondary)]" title="All settings">
-                                <Settings2 size={18} />
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Inline self-contained reading toolbar */}
-                    <div className="sticky top-[var(--nav-height,56px)] z-[500] -mx-4 px-4 py-2 mb-2 bg-[var(--bg-surface)]/95 backdrop-blur-md border-y border-[var(--border-color)]">
-                        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-0.5">
-                            <ToolbarToggle active={readingMode} onClick={() => setReadingMode(!readingMode)} title="Toggle reading (Arabic-only) mode"><BookOpen size={15} /> {readingMode ? 'Arabic' : 'Translation'}</ToolbarToggle>
-                            <ToolbarToggle active={isTajweedActive} onClick={() => setTajweed(!tajweedEnabled)} title="Toggle Tajweed colors" disabled={!mushaf.supportsTajweedToggle}><Highlighter size={15} /> Tajweed</ToolbarToggle>
-                            <div className="flex items-center gap-1 shrink-0">
-                                <ToolbarStep onClick={() => setFontSize(Math.max(1, fontSize - 1))} title="Decrease Arabic size"><Minus size={15} /></ToolbarStep>
-                                <span className="text-[0.7rem] font-semibold text-[var(--text-muted)] w-5 text-center"><Type size={13} className="inline" /></span>
-                                <ToolbarStep onClick={() => setFontSize(Math.min(8, fontSize + 1))} title="Increase Arabic size"><Plus size={15} /></ToolbarStep>
-                            </div>
-                            {!readingMode && (
-                                <div className="flex items-center gap-1 shrink-0">
-                                    <ToolbarStep onClick={() => setTranslationFontSize(Math.max(1, (translationFontSize || 2) - 1))} title="Decrease translation size"><Minus size={15} /></ToolbarStep>
-                                    <span className="text-[0.7rem] font-semibold text-[var(--text-muted)] w-5 text-center">aA</span>
-                                    <ToolbarStep onClick={() => setTranslationFontSize(Math.min(8, (translationFontSize || 2) + 1))} title="Increase translation size"><Plus size={15} /></ToolbarStep>
-                                </div>
-                            )}
-                            <div className="w-[150px] shrink-0"><CustomSelect value={translationId} onChange={setTranslation} options={TRANSLATIONS.map(t => ({ value: t.id, label: t.name }))} /></div>
-                            <div className="w-[150px] shrink-0"><CustomSelect value={tafsirId} onChange={setTafsirId} options={TAFSIRS.map(t => ({ value: t.id, label: t.name }))} /></div>
-                            <div className="w-[150px] shrink-0"><CustomSelect value={reciterId} onChange={setReciter} groups={Object.values(reciterGroups)} /></div>
-                            <ToolbarToggle active={memorizeMode} onClick={() => setMemorizeMode(!memorizeMode)} title="Memorization mode"><Brain size={15} /> Memorize</ToolbarToggle>
                         </div>
                     </div>
 
@@ -709,14 +679,33 @@ export default function Surah() {
                                 <CheckCircle2 size={40} className="text-[var(--h-gold)] mx-auto mb-3" />
                                 <h3 className="font-ui text-2xl sm:text-3xl font-bold text-white mb-2">Alhamdulillah!</h3>
                                 <p className="text-[0.95rem] text-white/90 mb-6">You've reached the end of your assigned reading.</p>
-                                <button
-                                    onClick={handleSaukaComplete}
-                                    disabled={isSaukaCompleting}
-                                    className="w-full sm:w-auto px-8 py-3.5 bg-white text-[var(--h-teal)] hover:bg-[var(--h-cream)] rounded-xl font-bold transition-all shadow-md active:scale-[0.98] disabled:opacity-50 inline-flex items-center justify-center gap-2 border-none cursor-pointer"
-                                >
-                                    {isSaukaCompleting ? <Loader2 size={18} className="animate-spin" /> : <CheckCircle2 size={18} />}
-                                    Mark Part as Complete
-                                </button>
+                                <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                                    <button
+                                        onClick={handleSaukaComplete}
+                                        disabled={isSaukaCompleting}
+                                        className="w-full sm:w-auto px-8 py-3.5 bg-white text-[var(--h-teal)] hover:bg-[var(--h-cream)] rounded-xl font-bold transition-all shadow-md active:scale-[0.98] disabled:opacity-50 inline-flex items-center justify-center gap-2 border-none cursor-pointer"
+                                    >
+                                        {isSaukaCompleting ? <Loader2 size={18} className="animate-spin" /> : <CheckCircle2 size={18} />}
+                                        Mark Part as Complete
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            if (navigator.share) {
+                                                navigator.share({
+                                                    title: 'Khatmah Progress',
+                                                    text: `Alhamdulillah! I just finished reading my assigned Surah for our Group Khatmah. Join us and earn rewards!`,
+                                                    url: window.location.origin
+                                                }).catch(console.error);
+                                            } else {
+                                                alert("Sharing is not supported on this browser.");
+                                            }
+                                        }}
+                                        className="w-full sm:w-auto px-8 py-3.5 bg-transparent border-2 border-white/50 text-white hover:bg-white/10 rounded-xl font-bold transition-all shadow-sm active:scale-[0.98] inline-flex items-center justify-center gap-2 cursor-pointer"
+                                    >
+                                        <Share2 size={18} />
+                                        Share Achievement
+                                    </button>
+                                </div>
                             </div>
                         )}
 
