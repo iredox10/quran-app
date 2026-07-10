@@ -390,8 +390,8 @@ export default function Home() {
                 {activeGoals.length > 0 && (
                     <div className="mb-8 space-y-3">
                         <div className="flex items-center gap-2 mb-2 px-1">
-                            <Target size={16} className="text-[var(--h-gold)]" />
-                            <h2 className="font-ui font-bold text-[1.1rem] text-[var(--h-ink)]">Today's Goals</h2>
+                            <Users size={16} className="text-[var(--h-gold)]" />
+                            <h2 className="font-ui font-bold text-[1.1rem] text-[var(--h-ink)]">My Sauka Readings</h2>
                         </div>
                         {activeGoals.map(goal => (
                             <Link key={goal.$id} to={`/sauka/${goal.groupId}`} className="block rounded-[20px] border-[1.5px] border-[var(--h-gold)] bg-[var(--h-gold)]/5 p-4 transition-all duration-200 hover:-translate-y-1 hover:shadow-sm">
