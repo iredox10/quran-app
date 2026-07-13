@@ -18,6 +18,7 @@ import { saukaService } from '../services/saukaService';
 import PageTourModal from '../components/ui/PageTourModal';
 import GestureTip from '../components/ui/GestureTip';
 import CustomSelect from '../components/ui/CustomSelect';
+import ShareVerseModal from '../components/ui/ShareVerseModal';
 
 /* ── Inline pickers (mirror SettingsDrawer lists) ── */
 const TRANSLATIONS = [
@@ -89,7 +90,7 @@ function VerseItem({
     tajweedEnabled, tajweedMap, activeTafsir, setActiveTafsir, isTafsirFetching,
     showPageDivider, tafsirs, isAudioPlaying, mushaf, onPlayVerse,
     collections, addCollection, addToCollection, memorizedAyahs, toggleMemorizedAyah,
-    memorizeMode, bookmark, setBookmark, addRecentlyRead
+    memorizeMode, bookmark, setBookmark, addRecentlyRead, onShare
 }) {
     const { ref, inView } = useInView({ threshold: 0.5, triggerOnce: false });
     const [showCollectionModal, setShowCollectionModal] = useState(false);
@@ -153,18 +154,8 @@ function VerseItem({
         });
     };
 
-    const buildShareText = () => {
-        const arabic = getVerseArabicText(verse, mushaf);
-        const translation = stripHtml(verse.translations?.[0]?.text);
-        return `${arabic}\n\n${translation}\n\n— ${chapter?.name_simple || `Surah ${verse.verse_key.split(':')[0]}`} (${verse.verse_key})`;
-    };
-    const handleCopy = async () => {
-        try { await navigator.clipboard.writeText(buildShareText()); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* noop */ }
-    };
-    const handleShare = async () => {
-        const text = buildShareText();
-        if (navigator.share) { try { await navigator.share({ title: `Quran ${verse.verse_key}`, text }); } catch { /* dismissed */ } }
-        else handleCopy();
+    const handleShare = () => {
+        onShare?.(verse);
     };
 
     if (readingMode) {
@@ -226,12 +217,6 @@ function VerseItem({
                                 {revealed ? <EyeOff size={18} /> : <Eye size={18} />}
                             </button>
                         )}
-                        <button className="flex h-8 w-8 items-center justify-center rounded-full transition-all duration-200 hover:bg-[var(--bg-secondary)] hover:shadow-[var(--shadow-sm)]" style={{ color: isMemorized ? 'var(--accent-primary)' : 'var(--text-muted)' }} title={isMemorized ? "Memorized — remove" : "Mark as memorized"} onClick={() => toggleMemorizedAyah(verse.verse_key)}>
-                            <Brain size={18} fill={isMemorized ? 'currentColor' : 'none'} />
-                        </button>
-                        <button className="flex h-8 w-8 items-center justify-center rounded-full transition-all duration-200 hover:bg-[var(--bg-secondary)] hover:shadow-[var(--shadow-sm)]" style={{ color: copied ? 'var(--accent-primary)' : 'var(--text-muted)' }} title={copied ? "Copied!" : "Copy verse"} onClick={handleCopy}>
-                            {copied ? <CheckCircle2 size={18} /> : <Copy size={18} />}
-                        </button>
                         <button className="flex h-8 w-8 items-center justify-center rounded-full transition-all duration-200 hover:bg-[var(--bg-secondary)] hover:shadow-[var(--shadow-sm)] text-[var(--text-muted)]" title="Share verse" onClick={handleShare}>
                             <Share2 size={18} />
                         </button>
@@ -364,6 +349,7 @@ export default function Surah() {
     const [showAudioSetup, setShowAudioSetup] = useState(false);
     const [pendingPlaylist, setPendingPlaylist] = useState([]);
     const [memorizeMode, setMemorizeMode] = useState(false);
+    const [sharingVerse, setSharingVerse] = useState(null);
 
     const { data: chapter, isLoading: isChapterLoading } = useQuery({ queryKey: ['chapter', id], queryFn: () => getChapter(id) });
     const { data: allChapters } = useQuery({ queryKey: ['chapters'], queryFn: getChapters, staleTime: Infinity });
@@ -604,7 +590,7 @@ export default function Surah() {
                                     <div className="h-full rounded-full bg-[var(--accent-primary)] transition-all duration-500" style={{ width: `${totalInSurah ? (memorizedInSurah / totalInSurah) * 100 : 0}%` }} />
                                 </div>
                             </div>
-                            <span className="text-[0.7rem] text-[var(--text-muted)]">Tap <Brain size={12} className="inline" /> per ayah · blur to test</span>
+                            <span className="text-[0.7rem] text-[var(--text-muted)]">Blur mode active to test memory</span>
                         </div>
                     )}
 
@@ -663,6 +649,7 @@ export default function Surah() {
                                         toggleMemorizedAyah={toggleMemorizedAyah}
                                         memorizeMode={memorizeMode}
                                         hifdhHistory={hifdhHistory}
+                                        onShare={setSharingVerse}
                                     />
                                 );
                             })}
@@ -748,6 +735,15 @@ export default function Surah() {
             </AnimatePresence>
 
             <AudioSetupModal isOpen={showAudioSetup} onClose={() => setShowAudioSetup(false)} pendingPlaylist={pendingPlaylist} audioSettings={audioSettings} updateAudioSettings={updateAudioSettings} handleStartPlaying={handleStartPlaying} chapterName={chapter?.name_simple} />
+            
+            {sharingVerse && (
+                <ShareVerseModal
+                    verse={sharingVerse}
+                    chapter={chapter}
+                    mushaf={mushafId}
+                    onClose={() => setSharingVerse(null)}
+                />
+            )}
         </div>
     );
 }
