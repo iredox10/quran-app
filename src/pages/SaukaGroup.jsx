@@ -5,7 +5,7 @@ import { saukaService, ASSIGNMENTS_COLLECTION, COMMENTS_COLLECTION } from '../se
 import { JUZ_STARTS, HIZB_STARTS } from '../data/quranNavigation';
 import { client, databaseId, storage, audioBucketId } from '../services/appwrite';
 import { useAppStore } from '../store/useAppStore';
-import { Loader2, ArrowLeft, ArrowRight, CheckCircle2, Clock, Share2, Copy, BookOpen, Trash2, MessageSquare, UserPlus, Users, Mic, Square, X } from 'lucide-react';
+import { Loader2, ArrowLeft, ArrowRight, CheckCircle2, Clock, Share2, Copy, BookOpen, Trash2, MessageSquare, UserPlus, Users, Mic, Square, X, Check, CheckCheck } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { ID } from 'appwrite';
 import { getVersesByPage } from '../services/api/quranApi';
@@ -38,6 +38,14 @@ export default function SaukaGroup() {
     const mediaRecorderRef = React.useRef(null);
     const audioChunksRef = React.useRef([]);
     const timerRef = React.useRef(null);
+    const chatEndRef = React.useRef(null);
+
+    // Auto-scroll chat
+    useEffect(() => {
+        if (chatEndRef.current) {
+            chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
+    }, [comments, isRecording]);
 
     const startRecording = async () => {
         try {
@@ -65,25 +73,43 @@ export default function SaukaGroup() {
         mediaRecorderRef.current.onstop = async () => {
             clearInterval(timerRef.current);
             setIsRecording(false);
-            setIsActionLoading(true);
-
-            const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+            
+            const mimeType = mediaRecorderRef.current.mimeType || 'audio/webm';
+            const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
             mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
 
+            const fileId = ID.unique();
+            const ext = mimeType.includes('mp4') ? 'mp4' : mimeType.includes('ogg') ? 'ogg' : 'webm';
+            const file = new File([audioBlob], `voice_note_${fileId}.${ext}`, { type: mimeType });
+            
+            // Generate a local blob URL for instant preview
+            const localUrl = URL.createObjectURL(audioBlob);
+            const tempId = `temp-${Date.now()}`;
+            
+            // Instantly inject a placeholder comment (Optimistic UI)
+            const tempComment = {
+                $id: tempId,
+                userId: data?.userId || 'me',
+                userName: 'You',
+                text: '🎤 Voice Note (Uploading...)',
+                audioUrl: localUrl,
+                $createdAt: new Date().toISOString(),
+                isTemp: true
+            };
+            setComments(prev => [tempComment, ...prev]);
+
             try {
-                const fileId = ID.unique();
-                const file = new File([audioBlob], `voice_note_${fileId}.webm`, { type: 'audio/webm' });
+                // Background upload without blocking UI
                 const uploadedFile = await storage.createFile(audioBucketId, fileId, file);
-                const audioUrl = storage.getFileView(audioBucketId, uploadedFile.$id).href;
+                const audioUrl = storage.getFileView(audioBucketId, uploadedFile.$id);
                 
-                await saukaService.addComment(id, newComment.trim() || '🎤 Voice Note', audioUrl);
-                setNewComment('');
-                loadData();
+                await saukaService.addComment(groupId, '🎤 Voice Note', audioUrl);
+                // The realtime subscription will fetch the true database record and replace tempComment!
             } catch (e) {
                 console.error(e);
                 alert('Failed to send voice note.');
-            } finally {
-                setIsActionLoading(false);
+                // Remove placeholder if it fails
+                setComments(prev => prev.filter(c => c.$id !== tempId));
             }
         };
 
@@ -200,17 +226,29 @@ export default function SaukaGroup() {
 
     const handleAddComment = async (e) => {
         e.preventDefault();
-        if (!newComment.trim()) return;
-        setIsActionLoading(true);
+        const text = newComment.trim();
+        if (!text) return;
+        
+        setNewComment(''); // Instant optimistic UI clear
+        
+        const tempId = `temp-text-${Date.now()}`;
+        const tempComment = {
+            $id: tempId,
+            userId: data?.userId || 'me',
+            userName: 'You',
+            text: text,
+            $createdAt: new Date().toISOString(),
+            isTemp: true
+        };
+        setComments(prev => [tempComment, ...prev]);
+
         try {
-            await saukaService.addComment(groupId, newComment.trim());
-            setNewComment('');
-            const commentsData = await saukaService.getComments(groupId);
-            setComments(commentsData);
+            await saukaService.addComment(groupId, text);
+            // Realtime subscription will automatically pull the new comment!
         } catch (e) {
             alert('Failed to post comment.');
-        } finally {
-            setIsActionLoading(false);
+            setNewComment(text); // Restore text on failure
+            setComments(prev => prev.filter(c => c.$id !== tempId));
         }
     };
     
@@ -392,11 +430,11 @@ export default function SaukaGroup() {
                 {/* ── Top Info Card ── */}
                 <button 
                     onClick={() => navigate('/sauka')} 
-                    className="mb-6 flex w-fit items-center gap-2 rounded-xl border border-[var(--h-bone-dark)] bg-[var(--h-cream)] px-4 py-2 text-sm font-semibold text-[var(--h-ink-mid)] transition-colors hover:bg-white hover:text-[var(--h-ink)]"
+                    className="mb-6 flex w-fit items-center gap-2 rounded-xl border border-[var(--h-bone-dark)] bg-[var(--h-cream)] px-4 py-2 text-sm font-semibold text-[var(--h-ink-mid)] transition-colors hover:bg-[var(--h-white)] hover:text-[var(--h-ink)]"
                 >
                     <ArrowLeft size={16} /> Back to Sauka
                 </button>
-                <div className="mb-10 overflow-hidden rounded-[24px] border border-white/20 bg-white/40 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.05)] relative">
+                <div className="mb-10 overflow-hidden rounded-[24px] border border-[var(--h-bone-dark)] bg-[var(--h-cream)]/60 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.05)] relative">
                     <div className="absolute top-0 right-0 w-64 h-64 bg-[var(--h-teal)] opacity-[0.03] blur-[60px] rounded-full pointer-events-none" />
                     <div className="absolute bottom-0 left-0 w-48 h-48 bg-[var(--h-gold)] opacity-[0.03] blur-[50px] rounded-full pointer-events-none" />
                     
@@ -408,7 +446,7 @@ export default function SaukaGroup() {
                             </div>
                         </div>
                         
-                        <div className="flex flex-col sm:flex-row items-center gap-10 mb-8 p-6 bg-white/50 rounded-2xl border border-white/40 shadow-[inset_0_2px_10px_rgba(255,255,255,0.3)]">
+                        <div className="flex flex-col sm:flex-row items-center gap-10 mb-8 p-6 bg-[var(--h-white)]/50 rounded-2xl border border-[var(--h-bone-dark)] shadow-[inset_0_2px_10px_rgba(0,0,0,0.02)]">
                             {/* Circular Progress */}
                             <div className="relative flex h-32 w-32 shrink-0 items-center justify-center rounded-full bg-[var(--h-teal)]/5 shadow-[inset_0_4px_10px_rgba(0,0,0,0.02)]">
                                 <svg className="absolute inset-0 h-full w-full -rotate-90 drop-shadow-md" viewBox="0 0 100 100">
@@ -452,23 +490,23 @@ export default function SaukaGroup() {
                         </div>
 
                         <div className="flex flex-wrap gap-4 mb-4">
-                            <div className="flex-1 min-w-[140px] flex flex-col items-start px-5 py-4 bg-white/60 border border-white/50 shadow-sm rounded-2xl relative transition-all hover:bg-white/80">
+                            <div className="flex-1 min-w-[140px] flex flex-col items-start px-5 py-4 bg-[var(--h-white)]/60 border border-[var(--h-bone-dark)] shadow-sm rounded-2xl relative transition-all hover:bg-[var(--h-white)]/80">
                                 <span className="text-[0.65rem] font-extrabold tracking-[0.2em] text-[var(--h-teal)] uppercase mb-1">Join Code</span>
                                 <span className="text-2xl font-bold font-mono tracking-widest cursor-pointer text-[var(--h-ink)]" onClick={copyCode}>
                                     {group.joinCode} {copied ? '✓' : ''}
                                 </span>
-                                <button onClick={handleShareInvite} className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-white p-2.5 text-[var(--h-teal)] shadow-sm hover:bg-[var(--h-teal)] hover:text-white transition-colors" title="Share Invite">
+                                <button onClick={handleShareInvite} className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-[var(--h-cream)] p-2.5 text-[var(--h-teal)] shadow-sm hover:bg-[var(--h-teal)] hover:text-white transition-colors" title="Share Invite">
                                     <Share2 size={18} strokeWidth={2.5} />
                                 </button>
                             </div>
                             {group.deadline && (
-                                <div className="flex-1 min-w-[140px] flex flex-col items-start px-5 py-4 bg-white/60 border border-white/50 shadow-sm rounded-2xl">
+                                <div className="flex-1 min-w-[140px] flex flex-col items-start px-5 py-4 bg-[var(--h-white)]/60 border border-[var(--h-bone-dark)] shadow-sm rounded-2xl">
                                     <span className="text-[0.65rem] font-extrabold tracking-[0.2em] text-[var(--h-teal)] uppercase mb-1">Deadline</span>
                                     <span className="text-xl font-bold font-mono text-[var(--h-ink)] pt-1">{getDaysLeft(group.deadline)}</span>
                                 </div>
                             )}
                             {group.khatmahsCompleted > 0 && (
-                                <div className="flex-1 min-w-[140px] flex flex-col items-start px-5 py-4 bg-white/60 border border-white/50 shadow-[0_4px_20px_rgba(184,146,74,0.15)] rounded-2xl relative overflow-hidden">
+                                <div className="flex-1 min-w-[140px] flex flex-col items-start px-5 py-4 bg-[var(--h-white)]/60 border border-[var(--h-bone-dark)] shadow-[0_4px_20px_rgba(184,146,74,0.15)] rounded-2xl relative overflow-hidden">
                                     <div className="absolute top-0 right-0 w-16 h-16 bg-[var(--h-gold)] opacity-10 rounded-full blur-xl pointer-events-none" />
                                     <span className="text-[0.65rem] font-extrabold tracking-[0.2em] text-[var(--h-gold)] uppercase mb-1">Completed Khatmahs</span>
                                     <span className="text-2xl font-extrabold font-ui text-[var(--h-gold)] pt-1">{group.khatmahsCompleted}</span>
@@ -486,7 +524,7 @@ export default function SaukaGroup() {
                         <div className="bg-gradient-to-r from-[var(--h-green)] to-[#0ea5e9] px-8 py-5 text-center flex flex-col sm:flex-row items-center justify-between gap-4">
                             <p className="text-white font-bold text-lg m-0">Alhamdulillah! Round {group.roundNumber || 1} is complete.</p>
                             <div className="flex gap-2">
-                                <button onClick={() => setIsDuaOpen(true)} className="rounded-full bg-white px-5 py-2.5 text-sm font-bold text-[var(--h-green)] transition-all hover:scale-105 shadow-md">
+                                <button onClick={() => setIsDuaOpen(true)} className="rounded-full bg-[var(--h-white)] px-5 py-2.5 text-sm font-bold text-[var(--h-green)] transition-all hover:scale-105 shadow-md">
                                     Read Completion Dua
                                 </button>
                                 {isAdmin && (
@@ -498,7 +536,7 @@ export default function SaukaGroup() {
                                                 loadData();
                                             } catch (e) { alert("Failed to start next round: " + e.message); }
                                         }}
-                                        className="rounded-full bg-transparent border-2 border-white text-white px-5 py-2.5 text-sm font-bold transition-all hover:bg-white hover:text-[#0ea5e9] shadow-md"
+                                        className="rounded-full bg-transparent border-2 border-[var(--h-white)] text-white px-5 py-2.5 text-sm font-bold transition-all hover:bg-[var(--h-white)] hover:text-[#0ea5e9] shadow-md"
                                     >
                                         Start Next Round
                                     </button>
@@ -539,8 +577,8 @@ export default function SaukaGroup() {
                                 className={`relative flex aspect-square flex-col items-center justify-center p-2 rounded-[18px] shadow-[0_4px_12px_rgba(0,0,0,0.03)] border transition-all duration-300 ${j.status === 'completed'
                                     ? 'bg-gradient-to-br from-[var(--h-green)] to-[#14b8a6] text-white border-transparent shadow-[0_8px_16px_rgba(16,185,129,0.2)]'
                                     : j.status === 'in_progress'
-                                        ? isClaimedByMe ? 'bg-gradient-to-br from-[var(--h-gold)] to-[#d97706] text-white border-transparent shadow-[0_8px_16px_rgba(184,146,74,0.2)]' : 'bg-white/80 text-gray-400 border-gray-200 opacity-60 grayscale-[50%]'
-                                        : 'bg-white text-[var(--h-ink-mid)] border-white/50 hover:border-[var(--h-teal)] hover:shadow-md'
+                                        ? isClaimedByMe ? 'bg-gradient-to-br from-[var(--h-gold)] to-[#d97706] text-white border-transparent shadow-[0_8px_16px_rgba(184,146,74,0.2)]' : 'bg-[var(--h-white)]/80 text-gray-400 border-gray-200 opacity-60 grayscale-[50%]'
+                                        : 'bg-[var(--h-white)] text-[var(--h-ink-mid)] border-[var(--h-white)]/50 hover:border-[var(--h-teal)] hover:shadow-md'
                                     }`}
                             >
                                 {isActiveNow && <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse" title="Reading right now!" />}
@@ -554,7 +592,7 @@ export default function SaukaGroup() {
                                             {j.progress}%
                                         </div>
                                         <div className="absolute bottom-0 left-0 w-full h-[3px] bg-black/10 rounded-b-[18px] overflow-hidden">
-                                            <div className="h-full bg-white/60 transition-all duration-500" style={{ width: `${j.progress}%` }} />
+                                            <div className="h-full bg-[var(--h-white)]/60 transition-all duration-500" style={{ width: `${j.progress}%` }} />
                                         </div>
                                     </>
                                 )}
@@ -571,36 +609,53 @@ export default function SaukaGroup() {
                 </div>
 
                 {/* ── Comments / Nudges ── */}
-                <div className="mt-8 mb-6 rounded-[24px] border border-[var(--h-bone-dark)] bg-white p-6 shadow-sm relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--h-gold)] opacity-5 blur-[40px] rounded-full pointer-events-none" />
+                <div className="mt-8 mb-6 rounded-[24px] border border-[var(--h-bone-dark)] bg-[var(--h-cream)] shadow-inner relative flex flex-col h-[500px] overflow-hidden">
+                    {/* Background Pattern */}
+                    <div className="absolute inset-0 opacity-20 pointer-events-none" style={{ backgroundImage: 'radial-gradient(var(--h-bone-dark) 1px, transparent 1px)', backgroundSize: '16px 16px' }} />
                     
-                    <h2 className="mb-6 font-[var(--font-ui)] text-[1.4rem] font-extrabold text-[var(--h-ink)]">Group Activity</h2>
+                    <div className="px-6 pt-5 pb-2 shrink-0 bg-[var(--h-cream)]/50 backdrop-blur-md border-b border-[var(--h-bone-dark)] relative z-10 flex items-center justify-between">
+                        <h2 className="font-[var(--font-ui)] text-[1.1rem] font-bold text-[var(--h-ink)]">Group Chat</h2>
+                        <div className="text-[0.7rem] font-mono text-[var(--h-teal)] font-bold px-2 py-1 bg-[var(--h-teal)]/10 rounded-lg">{comments.length} Messages</div>
+                    </div>
                     
-                    <div className="mb-6 space-y-4 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
+                    <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 custom-scrollbar relative z-10 flex flex-col-reverse">
+                        <div ref={chatEndRef} className="h-1 shrink-0" />
                         {comments.length === 0 ? (
-                            <div className="text-center py-8">
+                            <div className="text-center py-10 my-auto">
                                 <MessageSquare size={32} className="mx-auto text-[var(--h-bone-dark)] mb-3" />
-                                <p className="text-[0.95rem] text-[var(--h-ink-muted)]">No comments yet. Start the conversation!</p>
+                                <p className="text-[0.95rem] text-[var(--h-ink-muted)]">No messages yet. Say salam!</p>
                             </div>
                         ) : (
                             comments.map(c => {
                                 const isMe = c.userId === userId;
                                 return (
-                                    <div key={c.$id} className={`flex flex-col relative group/comment ${isMe ? 'items-end' : 'items-start'}`}>
-                                        <div className="flex items-baseline gap-2 mb-1 px-1">
-                                            <span className="font-bold text-[0.8rem] text-[var(--h-ink)]">{isMe ? 'You' : c.userName}</span>
-                                            <span className="text-[0.65rem] text-[var(--h-ink-muted)] font-medium uppercase tracking-wider">{new Date(c.$createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                                        </div>
-                                        <div className={`relative max-w-[85%] rounded-[20px] px-5 py-3 shadow-sm ${isMe ? 'bg-gradient-to-br from-[var(--h-teal)] to-[var(--h-teal-mid)] text-white rounded-tr-sm' : 'bg-[var(--h-cream)] border border-[var(--h-bone-dark)] text-[var(--h-ink-mid)] rounded-tl-sm'}`}>
-                                            <p className={`text-[0.95rem] leading-relaxed ${isMe ? 'text-white' : 'text-[var(--h-ink-mid)]'}`}>{c.text}</p>
+                                    <div key={c.$id} className={`flex flex-col relative group/comment ${isMe ? 'items-end' : 'items-start'} max-w-[85%] ${isMe ? 'ml-auto' : 'mr-auto'}`}>
+                                        <div className={`relative px-3.5 py-2.5 shadow-sm min-w-[100px] ${isMe ? 'bg-[var(--h-teal)] text-white rounded-[16px] rounded-tr-[4px]' : 'bg-[var(--h-white)] border border-[var(--h-bone-dark)] text-[var(--h-ink-mid)] rounded-[16px] rounded-tl-[4px]'}`}>
+                                            
+                                            {!isMe && (
+                                                <div className="text-[0.75rem] font-bold text-[var(--h-teal)] mb-0.5 leading-tight">{c.userName}</div>
+                                            )}
+                                            
+                                            <p className={`text-[0.95rem] leading-snug whitespace-pre-wrap pb-3 ${isMe ? 'text-white/95' : 'text-[var(--h-ink)]'}`}>
+                                                {c.text}
+                                            </p>
+                                            
                                             {c.audioUrl && (
-                                                <div className="mt-2">
-                                                    <audio controls src={c.audioUrl} className={`w-full h-8 ${isMe ? 'opacity-90' : 'opacity-80'}`} />
+                                                <div className="mt-1 mb-4">
+                                                    <audio controls src={c.audioUrl} className={`h-11 w-full min-w-[220px] sm:min-w-[260px] rounded-full ${isMe ? 'opacity-90' : 'opacity-80'}`} />
                                                 </div>
                                             )}
+                                            
+                                            <div className={`absolute bottom-1.5 right-2.5 flex items-center gap-1 text-[0.65rem] font-medium uppercase tracking-wider ${isMe ? 'text-white/70' : 'text-[var(--h-ink-muted)]'}`}>
+                                                {new Date(c.$createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                                {isMe && (
+                                                    c.isTemp ? <Clock size={12} className="opacity-70" /> : <CheckCheck size={14} className={isMe ? 'text-white' : 'text-[var(--h-gold)]'} />
+                                                )}
+                                            </div>
                                         </div>
+                                        
                                         {(isMe || isAdmin) && (
-                                            <button onClick={() => handleDeleteComment(c.$id)} className={`absolute top-1/2 -translate-y-1/2 ${isMe ? '-left-8' : '-right-8'} text-red-500 opacity-0 transition-all hover:scale-110 group-hover/comment:opacity-100 p-1.5 bg-red-50 rounded-full`}>
+                                            <button onClick={() => handleDeleteComment(c.$id)} className={`absolute top-1/2 -translate-y-1/2 ${isMe ? '-left-10' : '-right-10'} text-red-500 opacity-0 transition-all hover:scale-110 group-hover/comment:opacity-100 p-2 bg-[var(--h-white)] rounded-full shadow-sm`}>
                                                 <Trash2 size={14} />
                                             </button>
                                         )}
@@ -610,25 +665,27 @@ export default function SaukaGroup() {
                         )}
                     </div>
 
-                    {isRecording ? (
-                        <div className="flex items-center gap-3 p-4 rounded-[16px] border border-red-200 bg-red-50 relative z-10 shadow-inner">
-                            <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
-                            <span className="text-red-500 font-mono font-bold w-12">{Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}</span>
-                            <span className="flex-1 text-[0.8rem] font-bold text-red-400 uppercase tracking-widest text-center">Recording Voice Note...</span>
-                            <button onClick={cancelRecording} className="p-2 text-red-400 hover:text-red-600 transition-colors bg-white rounded-full shadow-sm"><X size={18} strokeWidth={3} /></button>
-                            <button onClick={stopRecordingAndSend} className="p-2 text-[var(--h-teal)] hover:text-white hover:bg-[var(--h-teal)] transition-colors bg-white rounded-full shadow-sm"><CheckCircle2 size={18} strokeWidth={3} /></button>
-                        </div>
-                    ) : (
-                        <form onSubmit={handleAddComment} className="flex gap-2 sm:gap-3 relative z-10">
-                            <button type="button" onClick={startRecording} className="rounded-[16px] border border-[var(--h-bone-dark)] bg-[var(--h-cream)] px-4 text-[var(--h-ink-mid)] hover:text-[var(--h-teal)] transition-all hover:bg-white flex items-center justify-center shrink-0">
-                                <Mic size={20} />
-                            </button>
-                            <input type="text" value={newComment} onChange={e => setNewComment(e.target.value)} placeholder="Type a message or nudge..." className="flex-1 min-w-0 rounded-[16px] border border-[var(--h-bone-dark)] bg-[var(--h-cream)] px-4 py-3.5 text-[0.95rem] text-[var(--h-ink)] outline-none focus:border-[var(--h-teal)] focus:bg-white focus:ring-4 focus:ring-[var(--h-teal)]/10 transition-all shadow-inner" />
-                            <button type="submit" disabled={isActionLoading || !newComment.trim()} className="rounded-[16px] bg-[var(--h-teal)] px-5 py-3.5 font-bold text-white transition-all hover:bg-[var(--h-teal-mid)] hover:shadow-lg hover:shadow-[var(--h-teal)]/20 active:scale-95 disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center shrink-0">
-                                <ArrowRight size={20} strokeWidth={2.5} />
-                            </button>
-                        </form>
-                    )}
+                    <div className="shrink-0 px-4 py-3 bg-[var(--h-cream)]/80 backdrop-blur-md border-t border-[var(--h-bone-dark)] relative z-10">
+                        {isRecording ? (
+                            <div className="flex items-center gap-3 p-3 rounded-[20px] border border-red-500/20 bg-red-500/10 shadow-inner">
+                                <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse ml-2" />
+                                <span className="text-red-500 font-mono font-bold w-12 text-sm">{Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}</span>
+                                <span className="flex-1 text-[0.85rem] font-bold text-red-500 uppercase tracking-widest text-center truncate">Recording...</span>
+                                <button onClick={cancelRecording} className="p-2 text-red-500 hover:text-red-700 transition-colors bg-[var(--h-white)] rounded-full shadow-sm"><X size={18} strokeWidth={3} /></button>
+                                <button onClick={stopRecordingAndSend} className="p-2 text-white bg-[var(--h-teal)] hover:bg-[var(--h-teal-mid)] transition-colors rounded-full shadow-md"><Check size={18} strokeWidth={3} /></button>
+                            </div>
+                        ) : (
+                            <form onSubmit={handleAddComment} className="flex gap-2 relative">
+                                <button type="button" onClick={startRecording} className="rounded-full w-[46px] h-[46px] border border-[var(--h-bone-dark)] bg-[var(--h-white)] text-[var(--h-ink-mid)] hover:text-[var(--h-teal)] hover:border-[var(--h-teal)] transition-all flex items-center justify-center shrink-0 shadow-sm">
+                                    <Mic size={20} />
+                                </button>
+                                <input type="text" value={newComment} onChange={e => setNewComment(e.target.value)} placeholder="Type a message..." className="flex-1 min-w-0 rounded-[24px] border border-[var(--h-bone-dark)] bg-[var(--h-white)] px-5 py-3 text-[0.95rem] text-[var(--h-ink)] outline-none focus:border-[var(--h-teal)] focus:ring-2 focus:ring-[var(--h-teal)]/20 transition-all shadow-inner" />
+                                <button type="submit" disabled={isActionLoading || !newComment.trim()} className="rounded-full w-[46px] h-[46px] bg-[var(--h-teal)] text-white transition-all hover:bg-[var(--h-teal-mid)] hover:shadow-md active:scale-95 disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center shrink-0 shadow-sm">
+                                    <ArrowRight size={20} strokeWidth={2.5} />
+                                </button>
+                            </form>
+                        )}
+                    </div>
                 </div>
             </motion.div>
 
@@ -761,7 +818,7 @@ export default function SaukaGroup() {
                                                         }} className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-[var(--h-gold)] hover:bg-[#b08f5c] py-2.5 text-[0.95rem] font-medium text-white transition-all active:scale-[0.98] shadow-sm">
                                                             <BookOpen size={14} /> Read
                                                         </button>
-                                                        <button onClick={() => handleComplete(selectedJuz.$id)} disabled={isActionLoading} className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-white border border-[var(--h-bone-dark)] py-2.5 text-[0.95rem] font-medium text-[var(--h-ink)] hover:bg-[var(--h-cream)] transition-all active:scale-[0.98] disabled:opacity-50 shadow-sm">
+                                                        <button onClick={() => handleComplete(selectedJuz.$id)} disabled={isActionLoading} className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-[var(--h-white)] border border-[var(--h-bone-dark)] py-2.5 text-[0.95rem] font-medium text-[var(--h-ink)] hover:bg-[var(--h-cream)] transition-all active:scale-[0.98] disabled:opacity-50 shadow-sm">
                                                             <CheckCircle2 size={14} /> Done
                                                         </button>
                                                     </div>

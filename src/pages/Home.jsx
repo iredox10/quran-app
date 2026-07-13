@@ -416,11 +416,11 @@ export default function Home() {
                 )}
 
                 <div className="mb-10 grid grid-cols-2 gap-2 sm:gap-3">
-                    <Link to="/sauka" className="flex flex-col items-center justify-center gap-2 rounded-[18px] border border-[var(--h-bone-dark)] bg-white p-4 text-center transition-all duration-200 hover:-translate-y-1 hover:border-[var(--h-teal)] hover:shadow-sm">
+                    <Link to="/sauka" className="flex flex-col items-center justify-center gap-2 rounded-[18px] border border-[var(--h-bone-dark)] bg-[var(--h-white)] p-4 text-center transition-all duration-200 hover:-translate-y-1 hover:border-[var(--h-teal)] hover:shadow-sm">
                         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--h-teal)]/10 text-[var(--h-teal)]"><Users size={20} /></div>
                         <span className="font-ui text-[0.85rem] font-bold text-[var(--h-ink)]">Sauka Groups</span>
                     </Link>
-                    <Link to="/library" className="flex flex-col items-center justify-center gap-2 rounded-[18px] border border-[var(--h-bone-dark)] bg-white p-4 text-center transition-all duration-200 hover:-translate-y-1 hover:border-[var(--h-ink)] hover:shadow-sm">
+                    <Link to="/library" className="flex flex-col items-center justify-center gap-2 rounded-[18px] border border-[var(--h-bone-dark)] bg-[var(--h-white)] p-4 text-center transition-all duration-200 hover:-translate-y-1 hover:border-[var(--h-ink)] hover:shadow-sm">
                         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--h-ink)]/5 text-[var(--h-ink)]"><Bookmark size={20} /></div>
                         <span className="font-ui text-[0.85rem] font-bold text-[var(--h-ink)]">Bookmarks</span>
                     </Link>

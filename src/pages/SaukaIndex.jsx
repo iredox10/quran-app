@@ -119,7 +119,7 @@ export default function SaukaIndex() {
             }
             setShowAuthModal(false);
             setEmail(''); setPassword(''); setName('');
-            loadGroups(); // reload the groups after successful login
+            window.location.reload(); // hard reload to clear all cached states and render the Sauka page
         } catch (err) { 
             setAuthError(err.message || 'Authentication failed'); 
         } finally { 
@@ -135,7 +135,7 @@ export default function SaukaIndex() {
                 {/* ── Header ── */}
                 <button 
                     onClick={() => navigate('/profile')} 
-                    className="mb-6 flex w-fit items-center gap-2 rounded-xl border border-[var(--h-bone-dark)] bg-[var(--h-cream)] px-4 py-2 text-sm font-semibold text-[var(--h-ink-mid)] transition-colors hover:bg-white hover:text-[var(--h-ink)]"
+                    className="mb-6 flex w-fit items-center gap-2 rounded-xl border border-[var(--h-bone-dark)] bg-[var(--h-cream)] px-4 py-2 text-sm font-semibold text-[var(--h-ink-mid)] transition-colors hover:bg-[var(--h-white)] hover:text-[var(--h-ink)]"
                 >
                     <ArrowLeft size={16} /> Back to Profile
                 </button>
@@ -165,7 +165,7 @@ export default function SaukaIndex() {
                         <div className="mb-12 grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <button onClick={() => setIsCreateOpen(true)} className="group flex items-center justify-between overflow-hidden rounded-2xl bg-gradient-to-br from-[var(--h-teal)] to-[var(--h-teal-mid)] p-6 text-left shadow-lg shadow-[var(--h-teal-soft)] transition-all hover:-translate-y-1 hover:shadow-xl hover:shadow-[var(--h-teal-soft)] relative active:scale-95 border-none cursor-pointer">
                                 <div className="relative z-10">
-                                    <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur-md">
+                                    <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-[var(--h-white)]/20 text-white backdrop-blur-md">
                                         <Plus size={20} strokeWidth={2.5} />
                                     </div>
                                     <h3 className="font-bold text-white text-lg mb-1">Create Group</h3>
@@ -176,7 +176,7 @@ export default function SaukaIndex() {
                                 </div>
                             </button>
                             
-                            <button onClick={() => setIsJoinOpen(true)} className="group flex items-center justify-between overflow-hidden rounded-2xl border border-[var(--h-bone-dark)] bg-white p-6 text-left shadow-sm transition-all hover:-translate-y-1 hover:border-[var(--h-teal)] hover:shadow-md relative active:scale-95 cursor-pointer">
+                            <button onClick={() => setIsJoinOpen(true)} className="group flex items-center justify-between overflow-hidden rounded-2xl border border-[var(--h-bone-dark)] bg-[var(--h-white)] p-6 text-left shadow-sm transition-all hover:-translate-y-1 hover:border-[var(--h-teal)] hover:shadow-md relative active:scale-95 cursor-pointer">
                                 <div className="relative z-10">
                                     <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-[var(--h-teal-soft)] text-[var(--h-teal)]">
                                         <Hash size={20} strokeWidth={2.5} />
@@ -221,8 +221,8 @@ export default function SaukaIndex() {
                             ) : (
                                 <div className="grid gap-3 sm:grid-cols-2">
                                     {(activeTab === 'my_groups' ? allGroups : publicGroups).map(g => (
-                                        <Link key={g.$id} to={`/sauka/${g.$id}`} className="group block rounded-[20px] border border-[var(--h-bone-dark)] bg-white p-5 no-underline shadow-sm transition-all hover:-translate-y-1 hover:border-[var(--h-teal)] hover:shadow-md">
-                                            <div className="mb-4 flex items-start justify-between">
+                                        <Link key={g.$id} to={`/sauka/${g.$id}`} className="group block rounded-[20px] border border-[var(--h-bone-dark)] bg-[var(--h-white)] p-5 no-underline shadow-sm transition-all hover:-translate-y-1 hover:border-[var(--h-teal)] hover:shadow-md">
+                                            <div className="flex items-start justify-between gap-4">
                                                 <div className="pr-2">
                                                     <h3 className="font-[var(--font-ui)] text-[1.3rem] font-bold text-[var(--h-ink)] leading-tight mb-1">{g.title}</h3>
                                                     <p className="text-[0.8rem] text-[var(--h-ink-muted)] font-medium">by {g.createdByName}</p>
@@ -341,17 +341,20 @@ export default function SaukaIndex() {
                                 
                                 {authMode === 'register' && (
                                     <div>
-                                        <label className="mb-1.5 block text-xs font-semibold text-[var(--h-ink-mid)]">Your Name</label>
-                                        <input type="text" value={name} onChange={e => setName(e.target.value)} required placeholder="e.g. Ahmad" className="w-full rounded-xl border border-[var(--h-bone-dark)] bg-white px-4 py-3 text-sm text-[var(--h-ink)] outline-none focus:border-[var(--h-teal)]" />
+                                        <p className="mb-2 text-sm font-semibold text-[var(--h-ink)]">Name</p>
+                                        <div className="relative">
+                                            <div className="absolute inset-y-0 left-0 flex items-center pl-4 text-[var(--h-ink-muted)]"><Users size={16} /></div>
+                                            <input type="text" value={name} onChange={e => setName(e.target.value)} required placeholder="e.g. Ahmad" className="w-full rounded-xl border border-[var(--h-bone-dark)] bg-[var(--h-white)] px-4 py-3 text-sm text-[var(--h-ink)] outline-none focus:border-[var(--h-teal)]" />
+                                        </div>
                                     </div>
                                 )}
                                 <div>
-                                    <label className="mb-1.5 block text-xs font-semibold text-[var(--h-ink-mid)]">Email Address</label>
-                                    <input type="email" value={email} onChange={e => setEmail(e.target.value)} required placeholder="you@example.com" className="w-full rounded-xl border border-[var(--h-bone-dark)] bg-white px-4 py-3 text-sm text-[var(--h-ink)] outline-none focus:border-[var(--h-teal)]" />
+                                    <p className="mb-2 text-sm font-semibold text-[var(--h-ink)]">Email</p>
+                                    <input type="email" value={email} onChange={e => setEmail(e.target.value)} required placeholder="you@example.com" className="w-full rounded-xl border border-[var(--h-bone-dark)] bg-[var(--h-white)] px-4 py-3 text-sm text-[var(--h-ink)] outline-none focus:border-[var(--h-teal)]" />
                                 </div>
                                 <div>
-                                    <label className="mb-1.5 block text-xs font-semibold text-[var(--h-ink-mid)]">Password</label>
-                                    <input type="password" value={password} onChange={e => setPassword(e.target.value)} required minLength={8} placeholder="••••••••" className="w-full rounded-xl border border-[var(--h-bone-dark)] bg-white px-4 py-3 text-sm text-[var(--h-ink)] outline-none focus:border-[var(--h-teal)]" />
+                                    <p className="mb-2 text-sm font-semibold text-[var(--h-ink)]">Password</p>
+                                    <input type="password" value={password} onChange={e => setPassword(e.target.value)} required minLength={8} placeholder="••••••••" className="w-full rounded-xl border border-[var(--h-bone-dark)] bg-[var(--h-white)] px-4 py-3 text-sm text-[var(--h-ink)] outline-none focus:border-[var(--h-teal)]" />
                                 </div>
                                 
                                 <button type="submit" disabled={isAuthLoading} className="mt-2 w-full flex justify-center items-center rounded-xl bg-[var(--h-teal)] py-3.5 text-sm font-bold text-white hover:bg-[var(--h-teal)]/90 disabled:opacity-50">
