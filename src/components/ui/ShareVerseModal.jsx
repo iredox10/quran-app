@@ -115,8 +115,9 @@ const ShareVerseModal = ({ verse, chapter, mushaf = 1, onClose }) => {
                         <div className="relative z-10 flex h-full flex-col items-center text-center">
                             
                             {/* Logo / App Name */}
-                            <div className="mb-6 flex items-center gap-2 text-[#c6a87c]/80">
-                                <span className="font-['Outfit',sans-serif] text-[0.8rem] font-bold tracking-[0.2em] uppercase">Quran Nur</span>
+                            <div className="mb-6 flex flex-col items-center gap-3 text-[#c6a87c]/80">
+                                <img src="/logo-192.png" alt="Quran Nur Logo" className="h-16 w-16 object-contain drop-shadow-[0_0_15px_rgba(198,168,124,0.2)]" />
+                                <span className="font-['Outfit',sans-serif] text-[0.7rem] font-bold tracking-[0.25em] uppercase opacity-80">Quran Nur</span>
                             </div>
 
                             {/* Arabic Verse */}
