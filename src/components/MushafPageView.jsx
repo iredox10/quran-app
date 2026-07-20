@@ -1,8 +1,8 @@
-import { useMemo } from 'react';
+import { useMemo, memo } from 'react';
 import { getWordArabicText } from '../utils/quranText';
 import { State } from 'ts-fsrs';
 
-export default function MushafPageView({ verses, mushaf, arabicFont, fontSize, activeAudioVerseKey, isHeatmapMode, hifdhHistory, assignedVerseKeys }) {
+const MushafPageView = memo(({ verses, mushaf, arabicFont, fontSize, activeAudioVerseKey, isHeatmapMode, hifdhHistory, assignedVerseKeys, isPlain = false, isDecorative = false }) => {
   const lines = useMemo(() => {
     const lineMap = new Map();
 
@@ -55,27 +55,22 @@ export default function MushafPageView({ verses, mushaf, arabicFont, fontSize, a
     }
   };
 
-  return (
-    <div className="mx-auto max-w-[840px] rounded-[24px] border border-[var(--border-color)] bg-[var(--bg-surface)] p-6 shadow-[var(--shadow-md)]">
-      <div className="mb-4 text-[0.8rem] uppercase tracking-[0.08em] text-[var(--text-muted)]">
-        {mushaf.name} · line-grouped page scaffolding
-      </div>
-
-      <div className="flex flex-col gap-[0.3rem]">
+  const content = (
+      <div className={`flex flex-col ${isPlain ? (isDecorative ? 'h-full justify-center' : 'h-full justify-evenly') : ''}`} style={{ gap: isPlain ? (isDecorative ? '1cqi' : '0') : '0.3rem' }}>
         {lines.map((line) => (
           <div
             key={line.lineNumber}
             data-line-number={line.lineNumber}
-            className="flex min-h-[2.8rem] items-center justify-between gap-[0.4rem] text-justify"
-            style={{ direction: 'rtl' }}
+            className={`flex items-center ${isDecorative ? 'justify-center flex-wrap' : 'justify-between'} ${isDecorative ? '' : 'text-justify'} ${isPlain ? '' : 'min-h-[2.8rem]'}`}
+            style={{ direction: 'rtl', gap: isPlain ? (isDecorative ? '0.5cqi' : '0.4cqi') : '0.4rem' }}
           >
             {line.words.map((word) => (
               <span
                 key={word.key}
                 style={{
                   fontFamily: arabicFont,
-                  fontSize: `${fontSize * 0.4 + 1.35}rem`,
-                  lineHeight: 1.95,
+                  fontSize: isPlain ? `${fontSize * 0.2 + 3.5}cqi` : `${fontSize * 0.4 + 1.35}rem`,
+                  lineHeight: isPlain ? 1.6 : 1.95,
                   whiteSpace: 'nowrap',
                   transition: 'all 0.3s ease',
                   backgroundColor: word.verseKey === activeAudioVerseKey ? 'var(--accent-light)' : (getHeatmapColor(word.verseKey) || 'transparent'),
@@ -94,6 +89,20 @@ export default function MushafPageView({ verses, mushaf, arabicFont, fontSize, a
           </div>
         ))}
       </div>
+  );
+
+  if (isPlain) {
+      return content;
+  }
+
+  return (
+    <div className="mx-auto max-w-[840px] rounded-[24px] border border-[var(--border-color)] bg-[var(--bg-surface)] p-6 shadow-[var(--shadow-md)]">
+      <div className="mb-4 text-[0.8rem] uppercase tracking-[0.08em] text-[var(--text-muted)]">
+        {mushaf.name} · line-grouped page scaffolding
+      </div>
+      {content}
     </div>
   );
-}
+});
+
+export default MushafPageView;

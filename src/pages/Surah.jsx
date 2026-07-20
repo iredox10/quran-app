@@ -19,7 +19,7 @@ import PageTourModal from '../components/ui/PageTourModal';
 import GestureTip from '../components/ui/GestureTip';
 import CustomSelect from '../components/ui/CustomSelect';
 import ShareVerseModal from '../components/ui/ShareVerseModal';
-
+import MushafFlipBook from '../components/MushafFlipBook';
 /* ── Inline pickers (mirror SettingsDrawer lists) ── */
 const TRANSLATIONS = [
     { id: 85, name: 'English · M.A.S. Abdel Haleem' },
@@ -321,7 +321,7 @@ export default function Surah() {
 
     const {
         translationId, setTranslation, reciterId, setReciter, fontSize, setFontSize, translationFontSize, setTranslationFontSize,
-        readingMode, setReadingMode,
+        readingMode, setReadingMode, mushafMode,
         bookmark, setBookmark,
         addRecentlyRead,
         setIsPlaying, currentAudioUrl, isPlaying,
@@ -546,37 +546,39 @@ export default function Surah() {
             <AnimatePresence mode="wait" initial={false} custom={swipeDirectionRef.current}>
                 <motion.div key={id} custom={swipeDirectionRef.current} variants={pageVariants} initial="enter" animate="center" exit="exit" transition={pageTransition} className="will-change-[transform,opacity]">
 
-                    <div className="flex flex-col items-center text-center w-full pt-8 pb-8 mb-6 border-b border-[var(--border-color)]">
-                        <div className="flex items-center justify-center gap-3 mb-2">
-                            <h1 className="font-ui font-extrabold text-[2.2rem] text-[var(--text-primary)] tracking-tight leading-none">{chapter?.name_simple}</h1>
-                            <span className="font-arabic text-[2.5rem] text-[var(--accent-primary)] leading-none mt-[-0.5rem]">{chapter?.name_arabic}</span>
-                        </div>
-                        <div className="flex items-center justify-center flex-wrap gap-2 font-mono text-[0.65rem] font-medium text-[var(--text-secondary)] uppercase tracking-[0.15em] mb-5">
-                            <span className="font-bold text-[var(--accent-primary)]">Surah {chapter?.id}</span>
-                            <span className="text-[var(--text-muted)] opacity-50">●</span>
-                            <span>{chapter?.translated_name.name}</span>
-                            <span className="text-[var(--text-muted)] opacity-50">●</span>
-                            <span>{chapter?.verses_count} Ayahs</span>
-                            <span className="text-[var(--text-muted)] opacity-50">●</span>
-                            <span>{chapter?.revelation_place}</span>
-                            {verses && verses.length > 0 && (
-                                <>
-                                    <span className="text-[var(--text-muted)] opacity-50">●</span>
-                                    <span>Starts Juz {getJuzByPage(verses[0].page_number).id} • Hizb {getHizbByPage(verses[0].page_number).id}</span>
-                                </>
-                            )}
-                        </div>
-                        <div className="flex items-center justify-center gap-1 bg-[var(--bg-surface)] p-1.5 rounded-full border border-[var(--border-color)] shadow-sm">
-                            <button onClick={handlePlayClick} className="flex items-center justify-center h-10 w-10 rounded-full bg-[var(--accent-primary)] text-white transition-all duration-300 hover:scale-105 shadow-[0_4px_12px_rgba(198,168,124,0.3)] cursor-pointer" title={isCurrentAudio && isPlaying ? "Pause Audio" : "Play Audio"}>
-                                {isCurrentAudio && isPlaying ? <Pause size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" className="ml-0.5" />}
-                            </button>
-                            {!isDownloaded && (
-                                <button id="download-audio-btn" onClick={handleDownloadSurah} disabled={isDownloading} className={`flex items-center justify-center h-10 w-10 rounded-full transition-all duration-300 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] ${isDownloading ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`} title={isDownloading ? "Downloading..." : "Download Audio"}>
-                                    {isDownloading ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
+                    {!mushafMode && (
+                        <div className="flex flex-col items-center text-center w-full pt-8 pb-8 mb-6 border-b border-[var(--border-color)]">
+                            <div className="flex items-center justify-center gap-3 mb-2">
+                                <h1 className="font-ui font-extrabold text-[2.2rem] text-[var(--text-primary)] tracking-tight leading-none">{chapter?.name_simple}</h1>
+                                <span className="font-arabic text-[2.5rem] text-[var(--accent-primary)] leading-none mt-[-0.5rem]">{chapter?.name_arabic}</span>
+                            </div>
+                            <div className="flex items-center justify-center flex-wrap gap-2 font-mono text-[0.65rem] font-medium text-[var(--text-secondary)] uppercase tracking-[0.15em] mb-5">
+                                <span className="font-bold text-[var(--accent-primary)]">Surah {chapter?.id}</span>
+                                <span className="text-[var(--text-muted)] opacity-50">●</span>
+                                <span>{chapter?.translated_name.name}</span>
+                                <span className="text-[var(--text-muted)] opacity-50">●</span>
+                                <span>{chapter?.verses_count} Ayahs</span>
+                                <span className="text-[var(--text-muted)] opacity-50">●</span>
+                                <span>{chapter?.revelation_place}</span>
+                                {verses && verses.length > 0 && (
+                                    <>
+                                        <span className="text-[var(--text-muted)] opacity-50">●</span>
+                                        <span>Starts Juz {getJuzByPage(verses[0].page_number).id} • Hizb {getHizbByPage(verses[0].page_number).id}</span>
+                                    </>
+                                )}
+                            </div>
+                            <div className="flex items-center justify-center gap-1 bg-[var(--bg-surface)] p-1.5 rounded-full border border-[var(--border-color)] shadow-sm">
+                                <button onClick={handlePlayClick} className="flex items-center justify-center h-10 w-10 rounded-full bg-[var(--accent-primary)] text-white transition-all duration-300 hover:scale-105 shadow-[0_4px_12px_rgba(198,168,124,0.3)] cursor-pointer" title={isCurrentAudio && isPlaying ? "Pause Audio" : "Play Audio"}>
+                                    {isCurrentAudio && isPlaying ? <Pause size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" className="ml-0.5" />}
                                 </button>
-                            )}
+                                {!isDownloaded && (
+                                    <button id="download-audio-btn" onClick={handleDownloadSurah} disabled={isDownloading} className={`flex items-center justify-center h-10 w-10 rounded-full transition-all duration-300 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] ${isDownloading ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`} title={isDownloading ? "Downloading..." : "Download Audio"}>
+                                        {isDownloading ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
+                                    </button>
+                                )}
+                            </div>
                         </div>
-                    </div>
+                    )}
 
                     {memorizeMode && (
                         <div className="mx-4 mb-4 flex items-center gap-3 rounded-[14px] bg-[var(--accent-light)] border border-[var(--accent-primary)]/30 px-4 py-3">
@@ -609,7 +611,10 @@ export default function Surah() {
                         </div>
                     )}
 
-                    <div id="verses-container" className="px-4 flex-col" style={{ display: readingMode ? 'block' : 'flex' }}>
+                    {mushafMode ? (
+                        <MushafFlipBook startingPage={chapter?.pages?.[0] || 1} />
+                    ) : (
+                        <div id="verses-container" className="px-4 flex-col" style={{ display: readingMode ? 'block' : 'flex' }}>
                         {chapter?.id !== 1 && chapter?.id !== 9 && (
                             <div className="quran-text text-center mb-12 text-accent" style={{ fontSize: `clamp(${fontSize * 0.2 + 1.2}rem, 4vw + ${fontSize * 0.2}rem, ${fontSize * 0.4 + 2}rem)`, fontFamily: arabicFont }}>
                                 بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ
@@ -713,6 +718,7 @@ export default function Surah() {
                             </div>
                         )}
                     </div>
+                    )}
                 </motion.div>
             </AnimatePresence>
 

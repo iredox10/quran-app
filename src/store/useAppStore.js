@@ -181,6 +181,8 @@ export const useAppStore = create(
             setFontSize: (size) => set({ fontSize: size }),
             setTranslationFontSize: (size) => set({ translationFontSize: size }),
             setReadingMode: (mode) => set({ readingMode: mode }),
+            mushafMode: false,
+            setMushafMode: (mode) => set({ mushafMode: mode }),
             setSelectedMushaf: (mushafId) => set((state) => {
                 const mushaf = getMushafById(mushafId);
                 const nextFontId = getCompatibleArabicFontId(mushaf.id, state.arabicFontId || getArabicFontByFamily(state.arabicFont)?.id);

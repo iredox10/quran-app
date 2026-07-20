@@ -308,7 +308,8 @@ export default function SettingsDrawer({ isOpen, onClose }) {
         tajweedEnabled, setTajweed, tafsirId, setTafsirId,
         localAudioDirHandle, setLocalAudioDirHandle,
         currentUser, setCurrentUser,
-        wordTooltipBehavior, setWordTooltipBehavior
+        wordTooltipBehavior, setWordTooltipBehavior,
+        mushafMode, setMushafMode
     } = useAppStore();
 
     const mushaf = getMushafById(mushafId);
@@ -471,6 +472,12 @@ export default function SettingsDrawer({ isOpen, onClose }) {
                                         <div className="overflow-hidden rounded-[12px] border border-[var(--border-color)] bg-[var(--bg-primary)]">
                                             <SelectionRow label="Arabic Font" value={selectedFont?.name || 'Default'} onClick={() => setActiveView(VIEWS.arabicFont)} />
                                             <SelectionRow label="Tafsir" value={selectedTafsir ? `${selectedTafsir.name}` : ''} onClick={() => setActiveView(VIEWS.tafsir)} />
+                                            <ToggleRow
+                                                label="3D Mushaf Mode"
+                                                hint="Read page-by-page like a physical Mushaf"
+                                                checked={mushafMode}
+                                                onToggle={() => setMushafMode(!mushafMode)}
+                                            />
                                             <Coachmark id="tajweed-toggle" label="Try Tajweed" className="block w-full" position="top-left">
                                                 <ToggleRow
                                                     label="Tajweed"
