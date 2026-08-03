@@ -9,6 +9,7 @@ import { ArrowLeft, ArrowRight, Play, Pause, BookOpen, Bookmark, Info, X, Downlo
 import { motion, AnimatePresence } from 'framer-motion';
 import { Helmet } from 'react-helmet-async';
 import { useSwipeable } from 'react-swipeable';
+import { resolveAudioUrl, getVerseFileName } from '../utils/audioUrl';
 import VerseRow from '../components/VerseRow';
 import AudioSetupModal from '../components/AudioSetupModal';
 import AutoScroller from '../components/AutoScroller';
@@ -403,9 +404,8 @@ export default function Surah() {
     const activeAudioVerseKey = isPlayerVisible && isCurrentSurahPlaying && audioPlaylist[audioTrackIndex] ? audioPlaylist[audioTrackIndex].verseKey : null;
 
     const buildPlaylist = useCallback((verses, id) => verses.map(v => {
-        let url = v.audio?.url ? (v.audio.url.startsWith('http') ? v.audio.url : `https://verses.quran.com/${v.audio.url}`) : null;
-        const [surahNum, ayahNum] = v.verse_key.split(':');
-        const fileName = `${String(surahNum).padStart(3, '0')}${String(ayahNum).padStart(3, '0')}.mp3`;
+        let url = v.audio?.url ? resolveAudioUrl(v.audio.url) : null;
+        const fileName = getVerseFileName(v.verse_key);
         let localUrl = null;
         if (localAudioDirHandle) localUrl = `local-audio://${fileName}`;
         else if (customAudioBaseUrl) url = `${customAudioBaseUrl.replace(/\/$/, '')}/${fileName}`;
@@ -646,7 +646,7 @@ export default function Surah() {
                                         tafsirId={tafsirId}
                                         showPageDivider={showPageDivider}
                                         tafsirs={tafsirs}
-                                        isAudioPlaying={activeAudioVerseKey === verse.verse_key}
+                                        isAudioPlaying={activeAudioVerseKey === verse.verse_key && isPlaying}
                                         onPlayVerse={handlePlayVerse}
                                         collections={collections}
                                         addCollection={addCollection}

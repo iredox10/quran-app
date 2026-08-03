@@ -11,6 +11,7 @@ import { getVersesByPage, getTajweedVersesByPage, getChapters, getPageTafsirs } 
 import { useAppStore } from '../store/useAppStore';
 import { getMushafById, isTajweedEnabledForMushaf } from '../config/mushaf';
 import { sanitizeTajweedHtml } from '../utils/quranText';
+import { resolveAudioUrl, getVerseFileName } from '../utils/audioUrl';
 import { getAssignmentProgress, getAssignmentResumePageNumber } from '../utils/planner';
 
 import VerseRow from '../components/VerseRow';
@@ -394,9 +395,8 @@ export default function PlannerReader() {
             setIsPlayerVisible(true);
         } else {
             const playlist = assignedVerses.map(v => {
-                let url = v.audio?.url ? (v.audio.url.startsWith('http') ? v.audio.url : `https://verses.quran.com/${v.audio.url}`) : null;
-                const [surahNum, ayahNum] = v.verse_key.split(':');
-                const fileName = `${String(surahNum).padStart(3, '0')}${String(ayahNum).padStart(3, '0')}.mp3`;
+                let url = v.audio?.url ? resolveAudioUrl(v.audio.url) : null;
+                const fileName = getVerseFileName(v.verse_key);
                 let localUrl = null;
 
                 if (localAudioDirHandle) {
@@ -425,9 +425,8 @@ export default function PlannerReader() {
 
     const handlePlayVerse = useCallback((verse) => {
         const playlist = assignedVerses.map(v => {
-            let url = v.audio?.url ? (v.audio.url.startsWith('http') ? v.audio.url : `https://verses.quran.com/${v.audio.url}`) : null;
-            const [surahNum, ayahNum] = v.verse_key.split(':');
-            const fileName = `${String(surahNum).padStart(3, '0')}${String(ayahNum).padStart(3, '0')}.mp3`;
+            let url = v.audio?.url ? resolveAudioUrl(v.audio.url) : null;
+            const fileName = getVerseFileName(v.verse_key);
             let localUrl = null;
 
             if (localAudioDirHandle) {
@@ -496,9 +495,8 @@ export default function PlannerReader() {
         if (shouldAutoPlayNextRef.current && assignedVerses.length > 0 && !isPageLoading) {
             shouldAutoPlayNextRef.current = false;
             const playlist = assignedVerses.map(v => {
-                let url = v.audio?.url ? (v.audio.url.startsWith('http') ? v.audio.url : `https://verses.quran.com/${v.audio.url}`) : null;
-                const [surahNum, ayahNum] = v.verse_key.split(':');
-                const fileName = `${String(surahNum).padStart(3, '0')}${String(ayahNum).padStart(3, '0')}.mp3`;
+                let url = v.audio?.url ? resolveAudioUrl(v.audio.url) : null;
+                const fileName = getVerseFileName(v.verse_key);
                 let localUrl = null;
                 if (localAudioDirHandle) {
                     localUrl = `local-audio://${fileName}`;
@@ -799,7 +797,7 @@ export default function PlannerReader() {
                                                     tafsirId={tafsirId}
                                                     showPageDivider={false}
                                                     mushaf={mushaf}
-                                                    isAudioPlaying={activeAudioVerseKey === verse.verse_key}
+                                                    isAudioPlaying={activeAudioVerseKey === verse.verse_key && isPlaying}
                                                     onPlayVerse={handlePlayVerse}
                                                     onPlannerBookmark={handlePlannerBookmarkToggle}
                                                     isPlannerBookmark={plannerBookmarks[planner?.id]?.some(b => b.verseKey === verse.verse_key)}

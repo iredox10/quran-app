@@ -1,10 +1,12 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
 import { Play, Pause, X, Music, SkipBack, SkipForward, Square, Settings2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import CustomSelect from './ui/CustomSelect';
 import { getLocalAudioUrl } from '../utils/localAudio';
+import { RECITERS } from '../config/reciters';
+import { buildReciterUrl, getVerseFileName } from '../utils/audioUrl';
 
 const DELAY_OPTIONS = [0, 1, 2, 3, 5, 10];
 const REPEAT_OPTIONS = [1, 2, 3, 5, 10, -1];
@@ -13,9 +15,10 @@ const SPEED_OPTIONS = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
 export default function GlobalAudioPlayer() {
     const {
         currentAudioUrl, audioPlaylist, audioTrackIndex, isPlaying, audioSettings,
-        setAudioTrackIndex, updateAudioSettings, setIsPlaying, stopAudio,
+        setAudioPlaylist, setAudioTrackIndex, updateAudioSettings, setIsPlaying, stopAudio,
         isPlayerVisible, setIsPlayerVisible,
-        localAudioDirHandle
+        localAudioDirHandle, customAudioBaseUrl,
+        reciterId, setReciter
     } = useAppStore();
 
     const audioRef = useRef(null);
@@ -31,6 +34,16 @@ export default function GlobalAudioPlayer() {
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [currentAyaLoopCount, setCurrentAyaLoopCount] = useState(0);
     const [currentSelectionLoopCount, setCurrentSelectionLoopCount] = useState(0);
+
+    const reciterGroups = useMemo(() => {
+        const grouped = RECITERS.reduce((acc, r) => {
+            const style = r.style || 'Other';
+            if (!acc[style]) acc[style] = { label: style, items: [] };
+            acc[style].items.push({ value: r.id, label: r.name });
+            return acc;
+        }, {});
+        return Object.values(grouped);
+    }, []);
 
     const ayahOptions = audioPlaylist.map((v, i) => ({ value: i, label: v.verseKey || String(i) }));
     const repeatOptions = REPEAT_OPTIONS.map(opt => ({ value: opt, label: opt === -1 ? '∞ Infinite' : `${opt}×` }));
@@ -107,6 +120,11 @@ export default function GlobalAudioPlayer() {
 
     const handleStop = () => { stopAudio(); setIsPlayerVisible(false); setIsSettingsOpen(false); };
 
+    // Guard so pause events caused by our own track changes are not treated as external pauses.
+    // The element fires `emptied` whenever the src changes, so we arm the guard there —
+    // this also covers playlists replaced from other pages (handlePlayVerse etc.).
+    const externalPauseGuardRef = useRef(0);
+
     const handleEnded = () => {
         if (currentAudioUrl) { setIsPlaying(false); return; }
         if (!audioPlaylist.length) return;
@@ -157,6 +175,64 @@ export default function GlobalAudioPlayer() {
         if (audioTrackIndex > start) { setAudioTrackIndex(audioTrackIndex - 1); setCurrentAyaLoopCount(0); }
         else if (audioRef.current) audioRef.current.currentTime = 0;
     };
+
+    // Rebuild the playlist with the selected reciter, keeping the current track position
+    const handleReciterChange = (newReciterId) => {
+        setReciter(newReciterId);
+        if (audioPlaylist.length === 0) return;
+        const rebuilt = audioPlaylist.map(item => {
+            const fileName = getVerseFileName(item.verseKey);
+            const url = customAudioBaseUrl
+                ? `${customAudioBaseUrl.replace(/\/$/, '')}/${fileName}`
+                : buildReciterUrl(newReciterId, item.verseKey);
+            const localUrl = localAudioDirHandle ? `local-audio://${fileName}` : null;
+            return { ...item, url, localUrl };
+        }).filter(item => item.url);
+        if (rebuilt.length > 0) {
+            setAudioPlaylist(rebuilt, Math.min(audioTrackIndex, rebuilt.length - 1));
+        }
+    };
+
+    // Sync isPlaying from the media element (earbuds / OS media controls)
+    const handleMediaPlay = () => setIsPlaying(true);
+    const handleMediaPause = () => {
+        if (Date.now() < externalPauseGuardRef.current) return;
+        if (audioRef.current?.ended) return; // natural end — handleEnded advances
+        setIsPlaying(false);
+    };
+
+    // Media Session (earbuds / lock screen controls)
+    useEffect(() => {
+        if (!('mediaSession' in navigator)) return;
+        navigator.mediaSession.metadata = new MediaMetadata({
+            title: currentTitle,
+            artist: audioPlaylist[audioTrackIndex]?.surahId
+                ? `Surah ${audioPlaylist[audioTrackIndex].surahId} · Ayah ${audioPlaylist[audioTrackIndex]?.verseNumber || ''}`
+                : 'Quran Nur',
+            album: 'Quran Nur',
+        });
+    }, [currentTitle, audioPlaylist, audioTrackIndex]);
+
+    useEffect(() => {
+        if (!('mediaSession' in navigator)) return;
+        const ms = navigator.mediaSession;
+        ms.setActionHandler('play', () => { if (hasAudio) setIsPlaying(true); });
+        ms.setActionHandler('pause', () => { if (hasAudio) setIsPlaying(false); });
+        ms.setActionHandler('nexttrack', () => { if (hasAudio) handleNext(); });
+        ms.setActionHandler('previoustrack', () => { if (hasAudio) handlePrev(); });
+        return () => {
+            ms.setActionHandler('play', null);
+            ms.setActionHandler('pause', null);
+            ms.setActionHandler('nexttrack', null);
+            ms.setActionHandler('previoustrack', null);
+        };
+    });
+
+    useEffect(() => {
+        if ('mediaSession' in navigator) {
+            navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+        }
+    }, [isPlaying]);
 
     return (
         <>
@@ -266,6 +342,18 @@ export default function GlobalAudioPlayer() {
 
                                 {/* Scrollable body */}
                                 <div className="flex-1 overflow-y-auto px-6 pb-6 grid gap-6">
+                                    {/* Reciter */}
+                                    <div>
+                                        <label className="mb-[0.6rem] block text-[0.8rem] font-semibold uppercase tracking-[0.05em] text-[var(--text-muted)]">
+                                            Reciter (Qari)
+                                        </label>
+                                        <CustomSelect
+                                            value={reciterId}
+                                            onChange={handleReciterChange}
+                                            groups={reciterGroups}
+                                        />
+                                    </div>
+
                                     {/* Range */}
                                     <div>
                                         <label className="mb-[0.6rem] block text-[0.8rem] font-semibold uppercase tracking-[0.05em] text-[var(--text-muted)]">
@@ -364,6 +452,9 @@ export default function GlobalAudioPlayer() {
                 <audio
                     ref={audioRef}
                     src={resolvedAudioUrl}
+                    onPlay={handleMediaPlay}
+                    onPause={handleMediaPause}
+                    onEmptied={() => { externalPauseGuardRef.current = Date.now() + 500; }}
                     onEnded={handleEnded}
                     onError={(e) => {
                         console.error("Audio playback error", e);

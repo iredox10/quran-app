@@ -11,6 +11,7 @@ import { JUZ_STARTS, getJuzByPage, getHizbByPage } from '../data/quranNavigation
 import { useAppStore } from '../store/useAppStore';
 import { getMushafById, isTajweedEnabledForMushaf } from '../config/mushaf';
 import { sanitizeTajweedHtml } from '../utils/quranText';
+import { resolveAudioUrl, getVerseFileName } from '../utils/audioUrl';
 import { saukaService } from '../services/saukaService';
 
 import VerseRow from '../components/VerseRow';
@@ -187,9 +188,8 @@ export default function Page() {
         } else {
             // Setup the playlist for this page's verses
             const playlist = verses.map(v => {
-                let url = v.audio?.url ? (v.audio.url.startsWith('http') ? v.audio.url : `https://verses.quran.com/${v.audio.url}`) : null;
-                const [surahNum, ayahNum] = v.verse_key.split(':');
-                const fileName = `${String(surahNum).padStart(3, '0')}${String(ayahNum).padStart(3, '0')}.mp3`;
+                let url = v.audio?.url ? resolveAudioUrl(v.audio.url) : null;
+                const fileName = getVerseFileName(v.verse_key);
                 let localUrl = null;
 
                 if (localAudioDirHandle) {
@@ -509,7 +509,7 @@ export default function Page() {
                                                     tafsirId={tafsirId}
                                                     showPageDivider={false} // since it's exactly 1 page
                                                     mushaf={mushaf}
-                                                    isAudioPlaying={activeAudioVerseKey === verse.verse_key}
+                                                    isAudioPlaying={activeAudioVerseKey === verse.verse_key && isPlaying}
                                                 />
                                             </React.Fragment>
                                         );
