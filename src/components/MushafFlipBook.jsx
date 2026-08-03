@@ -11,11 +11,11 @@ import { getJuzByPage } from '../data/quranNavigation';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 const TOTAL_PAGES = 604;
-const MUSHAF_ASPECT_RATIO = 4 / 3; // height / width — standard Mushaf page
 const DECORATIVE_PAGES = new Set([1, 2]); // Al-Fatihah + first page of Al-Baqarah
+const MUSHAF_ASPECT_RATIO = 0.75; // width / height — standard mushaf page
 
 // ─── Decorative Page Content (Pages 1 & 2) ──────────────────────────────────
-const DecorativePageContent = React.memo(({ pageNumber, mushaf, arabicFont, fontSize }) => {
+const DecorativePageContent = React.memo(({ pageNumber, mushaf, arabicFont, fontSize, contentWidth }) => {
     const { data: chapters } = useQuery({
         queryKey: ['chapters'],
         queryFn: getChapters,
@@ -45,7 +45,7 @@ const DecorativePageContent = React.memo(({ pageNumber, mushaf, arabicFont, font
 
     return (
         <div className="h-full w-full p-[2cqi] bg-[#fdfaf6] dark:bg-[#1a1814] @container flex">
-            <div className="flex-1 flex flex-col relative border-[0.8cqi] border-double border-[#b68d40]/70 dark:border-[#c6a87c]/40 rounded-[1.5cqi] outline outline-[0.15cqi] outline-offset-[-1cqi] outline-[#b68d40]/40 shadow-inner px-[3cqi] py-[3cqi]">
+            <div className="flex-1 flex flex-col relative border-[0.8cqi] border-double border-[#b68d40]/70 dark:border-[#c6a87c]/40 rounded-[1.5cqi] outline outline-[0.15cqi] outline-offset-[-1cqi] outline-[#b68d40]/40 shadow-inner px-[3cqi] py-[3cqi] mx-auto @container" style={{ maxWidth: contentWidth, width: '100%' }}>
 
                 {/* Surah Title Banner */}
                 <div className="flex justify-center items-center mb-[3cqi] shrink-0">
@@ -85,7 +85,7 @@ const DecorativePageContent = React.memo(({ pageNumber, mushaf, arabicFont, font
 });
 
 // ─── Standard Page Content (Pages 3–604) ─────────────────────────────────────
-const StandardPageContent = React.memo(({ pageNumber, mushaf, arabicFont, fontSize }) => {
+const StandardPageContent = React.memo(({ pageNumber, mushaf, arabicFont, fontSize, contentWidth }) => {
     const { data: chapters } = useQuery({
         queryKey: ['chapters'],
         queryFn: getChapters,
@@ -119,7 +119,7 @@ const StandardPageContent = React.memo(({ pageNumber, mushaf, arabicFont, fontSi
 
     return (
         <div className="h-full w-full p-[1.5cqi] bg-[#fdfaf6] dark:bg-[#1a1814] @container flex">
-            <div className={`flex-1 flex flex-col relative border-[0.8cqi] border-double border-[#b68d40]/70 dark:border-[#c6a87c]/40 rounded-[1.5cqi] outline outline-[0.15cqi] outline-offset-[-1cqi] outline-[#b68d40]/40 shadow-inner ${isRightPage ? 'pl-[4cqi] pr-[2cqi]' : 'pr-[4cqi] pl-[2cqi]'} py-[1.5cqi]`}>
+            <div className={`flex-1 flex flex-col relative border-[0.8cqi] border-double border-[#b68d40]/70 dark:border-[#c6a87c]/40 rounded-[1.5cqi] outline outline-[0.15cqi] outline-offset-[-1cqi] outline-[#b68d40]/40 shadow-inner ${isRightPage ? 'pl-[4cqi] pr-[2cqi]' : 'pr-[4cqi] pl-[2cqi]'} py-[1.5cqi] mx-auto @container`} style={{ maxWidth: contentWidth, width: '100%' }}>
 
                 {/* Header */}
                 <div className="flex justify-between items-center px-[2cqi] mb-[1cqi] shrink-0">
@@ -155,7 +155,7 @@ const StandardPageContent = React.memo(({ pageNumber, mushaf, arabicFont, fontSi
 });
 
 // ─── Page Wrapper (forwardRef required by react-pageflip) ────────────────────
-const PageWrapper = React.forwardRef(({ number, isActive, mushaf, arabicFont, fontSize }, ref) => {
+const PageWrapper = React.forwardRef(({ number, isActive, mushaf, arabicFont, fontSize, contentWidth }, ref) => {
     const isDecorative = DECORATIVE_PAGES.has(number);
 
     return (
@@ -170,6 +170,7 @@ const PageWrapper = React.forwardRef(({ number, isActive, mushaf, arabicFont, fo
                         mushaf={mushaf}
                         arabicFont={arabicFont}
                         fontSize={fontSize}
+                        contentWidth={contentWidth}
                     />
                 ) : (
                     <StandardPageContent
@@ -177,6 +178,7 @@ const PageWrapper = React.forwardRef(({ number, isActive, mushaf, arabicFont, fo
                         mushaf={mushaf}
                         arabicFont={arabicFont}
                         fontSize={fontSize}
+                        contentWidth={contentWidth}
                     />
                 )
             ) : (
@@ -195,27 +197,6 @@ export default function MushafFlipBook({ startingPage = 1 }) {
     const arabicFont = getArabicFontFamily(arabicFontId, mushaf.defaultFontId);
     const flipBookRef = useRef(null);
 
-    // ── Pages array: simple sequential 1..604 ──
-    // react-pageflip-rtl handles RTL ordering internally via rtl={true}
-    const pages = useMemo(() => {
-        const arr = [];
-        for (let i = 1; i <= TOTAL_PAGES; i++) {
-            arr.push(i);
-        }
-        return arr;
-    }, []);
-
-    // ── Active pages for lazy loading ──
-    // Use a wide ±5 window to robustly handle cover offset and RTL index remapping
-    const [activePages, setActivePages] = useState(() => {
-        const idx = startingPage - 1;
-        const set = new Set();
-        for (let i = Math.max(0, idx - 5); i <= Math.min(TOTAL_PAGES - 1, idx + 5); i++) {
-            set.add(i);
-        }
-        return set;
-    });
-
     // ── Viewport tracking for responsive sizing ──
     const [viewport, setViewport] = useState({
         width: typeof window !== 'undefined' ? window.innerWidth : 1200,
@@ -233,51 +214,104 @@ export default function MushafFlipBook({ startingPage = 1 }) {
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
-    // ── Responsive book dimensions ──
     const isMobile = viewport.width < viewport.height;
+
+    // ── Pages array mapping for LTR Swipe with RTL visual layout ──
+    // By using rtl={false}, Swipe Left = Next, Swipe Right = Prev.
+    // To maintain Arabic reading order (Right page first, Left page second),
+    // we map the internal pages array so standard spreads show correctly.
+    const pages = useMemo(() => {
+        const arr = [];
+        if (isMobile) {
+            // Portrait (single page view): Natural order. Swipe Left goes to next internal page.
+            for (let i = 1; i <= TOTAL_PAGES; i++) {
+                arr.push(i);
+            }
+        } else {
+            // Landscape (two page spread): Even indices (1, 3, 5) are Left, Odd (2, 4, 6) are Right.
+            // We want [Right=1, Left=2], [Right=3, Left=4], etc.
+            for (let i = 1; i <= TOTAL_PAGES; i += 2) {
+                if (i + 1 <= TOTAL_PAGES) {
+                    arr.push(i + 1); // Rendered on Left
+                }
+                arr.push(i);     // Rendered on Right
+            }
+        }
+        return arr;
+    }, [isMobile]);
+
+    // ── Active logical page tracking ──
+    const [activeLogicalPage, setActiveLogicalPage] = useState(startingPage);
+
+    // ── Compute internal FlipBook index for the active logical page ──
+    const initialFlipbookIndex = useMemo(() => {
+        const pageIndexInArray = pages.findIndex(p => p === activeLogicalPage);
+        return pageIndexInArray !== -1 ? pageIndexInArray + 1 : 1; // +1 for the Front Cover at index 0
+    }, [pages, activeLogicalPage]);
+
+    const [activeFlipbookIdx, setActiveFlipbookIdx] = useState(initialFlipbookIndex);
+
+    // Sync active internal index when layout changes (Mobile <-> Desktop)
+    useEffect(() => {
+        setActiveFlipbookIdx(initialFlipbookIndex);
+    }, [initialFlipbookIndex]);
+
+    // ── Page flip handler ──
+    const onPage = useCallback((e) => {
+        const flipbookIdx = e.data;
+        setActiveFlipbookIdx(flipbookIdx);
+
+        // Update the active logical page based on what is currently shown
+        const pagesIdx = Math.max(0, flipbookIdx - 1);
+        if (pages[pagesIdx]) {
+            // In Desktop, the spread shows two pages. We always consider the lowest page number in the spread as active
+            // so if they rotate to portrait, they don't skip a page.
+            if (!isMobile && pages[pagesIdx + 1]) {
+                setActiveLogicalPage(Math.min(pages[pagesIdx], pages[pagesIdx + 1]));
+            } else {
+                setActiveLogicalPage(pages[pagesIdx]);
+            }
+        }
+    }, [pages, isMobile]);
+
+    // ── Pre-compute active indices for lazy rendering (±4 pages around current) ──
+    const activeIndices = useMemo(() => {
+        const pagesIdx = Math.max(0, activeFlipbookIdx - 1);
+        const set = new Set();
+        for (let i = pagesIdx - 4; i <= pagesIdx + 5; i++) {
+            if (i >= 0 && i < TOTAL_PAGES) {
+                set.add(i);
+            }
+        }
+        return set;
+    }, [activeFlipbookIdx]);
+
+    // ── Responsive book dimensions ──
+    // With size="stretch", these props only define the page aspect ratio —
+    // the book scales to fill its container. Using the viewport's own ratio
+    // makes the spread fill exactly 100vw x 100vh with no side margins.
     const bookDimensions = useMemo(() => {
         if (isMobile) {
-            // Single-page mode: fill the screen
             return {
                 width: viewport.width,
                 height: viewport.height,
             };
         } else {
-            // Desktop two-page spread: each page takes half the width
-            // Constrain to Mushaf aspect ratio (height = width * 4/3)
-            const maxPageWidth = Math.floor(viewport.width / 2);
-            const maxPageHeight = viewport.height;
-
-            let pageWidth = maxPageWidth;
-            let pageHeight = Math.round(pageWidth * MUSHAF_ASPECT_RATIO);
-
-            // If height exceeds viewport, scale down
-            if (pageHeight > maxPageHeight) {
-                pageHeight = maxPageHeight;
-                pageWidth = Math.round(pageHeight / MUSHAF_ASPECT_RATIO);
-            }
-
             return {
-                width: pageWidth,
-                height: pageHeight,
+                width: viewport.width / 2,
+                height: viewport.height,
             };
         }
     }, [isMobile, viewport.width, viewport.height]);
 
-    // ── Page flip handler ──
-    const onPage = useCallback((e) => {
-        const flipbookIdx = e.data;
-        // Account for the cover page: pages array index = flipbook index - 1
-        const pagesIdx = Math.max(0, flipbookIdx - 1);
-        const newActive = new Set();
-        // Wide ±5 window ensures both pages of the spread + prefetch are always active
-        for (let i = pagesIdx - 5; i <= pagesIdx + 5; i++) {
-            if (i >= 0 && i < TOTAL_PAGES) {
-                newActive.add(i);
-            }
-        }
-        setActivePages(newActive);
-    }, []);
+    // Natural mushaf content width for the current page height. The text and
+    // ornaments use cqi units tied to this width, so keeping it at the real
+    // mushaf proportion (width = height * 0.75) prevents the Quran from being
+    // clipped at the bottom when the page stretches to fill the viewport.
+    const contentWidth = useMemo(
+        () => Math.floor(bookDimensions.height * MUSHAF_ASPECT_RATIO),
+        [bookDimensions.height]
+    );
 
     return createPortal(
         <div className="fixed inset-0 z-[2000] flex h-[100dvh] w-[100dvw] items-center justify-center bg-[#fdfaf6] dark:bg-[#1a1814] overflow-hidden">
@@ -303,8 +337,8 @@ export default function MushafFlipBook({ startingPage = 1 }) {
                 showCover={true}
                 mobileScrollSupport={true}
                 usePortrait={isMobile}
-                rtl={true}
-                startPage={startingPage - 1}
+                rtl={false} // We handle RTL visual layout manually so we get standard LTR Swipe gestures (Swipe Left = Next)
+                startPage={initialFlipbookIndex}
                 onFlip={onPage}
                 className="shadow-2xl"
                 ref={flipBookRef}
@@ -318,15 +352,16 @@ export default function MushafFlipBook({ startingPage = 1 }) {
                     </div>
                 </div>
 
-                {/* All 604 pages — in natural order, RTL handled by the library */}
+                {/* All 604 mapped pages */}
                 {pages.map((pageNum, idx) => (
                     <PageWrapper
-                        key={pageNum}
+                        key={`${pageNum}-${idx}`}
                         number={pageNum}
-                        isActive={activePages.has(idx)}
+                        isActive={activeIndices.has(idx)}
                         mushaf={mushaf}
                         arabicFont={arabicFont}
                         fontSize={fontSize}
+                        contentWidth={contentWidth}
                     />
                 ))}
 
