@@ -813,7 +813,7 @@ export default function PlannerReader() {
                     </div>
                     
                     {/* Mark Item Done Button (if not auto-marked or explicitly requested) */}
-                    {!isCurrentItemComplete && !progress.isComplete && (
+                    {!isCurrentItemComplete && !progress.isComplete && (planner.unitType !== 'surah' || pageNumber >= maxPageNumber) && (
                         <div className="flex justify-center mb-8">
                             <button
                                 onClick={() => markPlannerItemComplete(assignment.dayNumber, currentItem.rangeValue)}
