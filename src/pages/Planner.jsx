@@ -94,8 +94,8 @@ function RingProgress({ percent, size = 200, stroke = 9, children }) {
 
 const TOTAL_QURAN_PAGES = 604;
 
-function getPaceStats(durationDays, excludeDays = [], startDateStr = null) {
-    const dailyPages = Math.ceil(TOTAL_QURAN_PAGES / durationDays);
+function getPaceStats(durationDays, excludeDays = [], startDateStr = null, totalUnits = TOTAL_QURAN_PAGES) {
+    const dailyPages = Math.ceil(totalUnits / durationDays);
     const perPrayer = Math.ceil(dailyPages / 5);
     let endDate = startDateStr ? new Date(`${startDateStr}T00:00:00`) : new Date();
     let daysFound = 0;
@@ -112,16 +112,6 @@ function getPaceStats(durationDays, excludeDays = [], startDateStr = null) {
     
     const endLabel = endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     return { dailyPages, perPrayer, endLabel };
-}
-
-function getPrayerByTime() {
-    const now = new Date();
-    const t = now.getHours() * 60 + now.getMinutes();
-    if (t >= 3 * 60 + 30 && t < 12 * 60) return 'Fajr';
-    if (t >= 12 * 60 && t < 15 * 60 + 30) return 'Dhuhr';
-    if (t >= 15 * 60 + 30 && t < 18 * 60) return 'Asr';
-    if (t >= 18 * 60 && t < 20 * 60) return 'Maghrib';
-    return 'Isha';
 }
 
 const PACES = [
@@ -216,7 +206,7 @@ function IntentionView({ onBegin, onViewActive, chapters, hasExistingPlan, plann
     };
 
     const activeDays = showCustom ? computedDuration : PACES.find(p => p.id === selected)?.durationDays || 60;
-    const activeStats = getPaceStats(activeDays, showCustom ? excludeDays : [], showCustom ? startDate : undefined);
+    const activeStats = getPaceStats(activeDays, showCustom ? excludeDays : [], showCustom ? startDate : undefined, showCustom ? totalUnits : TOTAL_QURAN_PAGES);
 
     return (
         <div className="flex min-h-dvh flex-col overflow-hidden bg-[var(--plr-paper)] pb-8 font-body text-[var(--plr-ink)]">
@@ -597,8 +587,8 @@ function buildPrayerSlots(planner, todayAssignment, prayerTimes, prayerSettings)
     return slots;
 }
 
-function ActiveView({ planner, planners, activePlannerId, onSwitchPlan, onDelete, setPlannerAssignmentProgress, togglePlannerDayComplete, chapters, onBack }) {
-    const { prayerTimes, setPrayerTimes, location, setLocation, shiftPlannerSchedule, setPlanner, prayerSettings, plannerReflections, plannerBookmarks, rebalanceActivePlanner } = useAppStore();
+function ActiveView({ planner, planners, activePlannerId, onSwitchPlan, onDelete, setPlannerAssignmentProgress, chapters, onBack }) {
+    const { prayerTimes, setPrayerTimes, location, setLocation, setPlanner, prayerSettings, plannerReflections, plannerBookmarks, plannerSessionTimers, rebalanceActivePlanner } = useAppStore();
     const overview = useMemo(() => getPlannerOverview(planner), [planner]);
     const metrics = useMemo(() => getPlannerSuccessMetrics(planner), [planner]);
     const difficulty = useMemo(() => getDifficultyIndicators(planner?.assignments), [planner]) || {};
@@ -608,6 +598,7 @@ function ActiveView({ planner, planners, activePlannerId, onSwitchPlan, onDelete
 
     const [showAdjustPace, setShowAdjustPace] = useState(false);
     const [newDuration, setNewDuration] = useState(planner.durationDays);
+    const minNewDuration = Math.max(1, Math.min(planner.durationDays, (metrics?.completedCount || 0) + 1));
     const [showSettings, setShowSettings] = useState(false);
     const [activeTab, setActiveTab] = useState('today');
     const [selectedDay, setSelectedDay] = useState(null);
@@ -729,6 +720,15 @@ function ActiveView({ planner, planners, activePlannerId, onSwitchPlan, onDelete
     };
 
     const nextPrayer = prayerSlots.find(s => s.status === 'current' || s.status === 'upcoming');
+    const todaySessionSeconds = todayAssignment ? (plannerSessionTimers?.[planner.id]?.[todayAssignment.dayNumber]?.totalSeconds || 0) : 0;
+    const formatSessionTime = (sec) => {
+        const h = Math.floor(sec / 3600);
+        const m = Math.floor((sec % 3600) / 60);
+        const s = sec % 60;
+        if (h > 0) return `${h}h ${m}m`;
+        if (m > 0) return `${m}m ${s}s`;
+        return `${s}s`;
+    };
     const daySubtitle = (() => {
         if (overview?.isFinishedWindow && !nextAssignment) return 'Plan complete! 🎉';
         if (!todayAssignment) return 'Starting soon…';
@@ -877,6 +877,12 @@ function ActiveView({ planner, planners, activePlannerId, onSwitchPlan, onDelete
                                             <span className="w-2 h-6 rounded-full bg-[var(--accent-primary)] inline-block shadow-[0_0_8px_var(--accent-primary)]" />
                                             Daily Ritual
                                         </h2>
+                                        {todaySessionSeconds > 0 && (
+                                            <span className="font-mono text-[0.7rem] font-bold text-[var(--plr-teal)] bg-[var(--plr-teal)]/10 border border-[var(--plr-teal)]/20 rounded-full px-3 py-1" title="Total reading time today">
+                                                <svg className="w-3 h-3 inline mr-1 -mt-0.5" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="2" /><path d="M12 6v6l4 2" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
+                                                {formatSessionTime(todaySessionSeconds)}
+                                            </span>
+                                        )}
                                         <div className="flex gap-2">
                                             {navigator.share && (
                                                 <button onClick={handleShareProgress} className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border-[1.5px] border-[var(--h-bone-dark)] bg-[var(--h-white)] text-[var(--text-secondary)] hover:bg-[var(--h-bone)] hover:text-[var(--text-primary)] transition-colors" title="Share Progress">
@@ -1244,8 +1250,8 @@ function ActiveView({ planner, planners, activePlannerId, onSwitchPlan, onDelete
                                 <div className="mb-8 flex flex-col gap-3">
                                     <label className="font-mono text-[0.75rem] font-bold uppercase tracking-[0.15em] text-[var(--accent-primary)]">New Total Days</label>
                                     <div className="relative group">
-                                        <input type="number" min="1" max="1000" className="w-full rounded-[16px] border-[2px] border-[var(--h-bone-dark)] bg-[var(--h-white)] px-5 py-4 font-ui text-[1.5rem] font-bold text-[var(--text-primary)] outline-none transition-all duration-300 focus:border-[var(--h-teal)] focus:shadow-[0_0_15px_rgba(var(--accent-primary-rgb),0.1)]"
-                                            value={newDuration} onChange={e => setNewDuration(parseInt(e.target.value) || 1)} />
+                                        <input type="number" min={minNewDuration} max="1000" className="w-full rounded-[16px] border-[2px] border-[var(--h-bone-dark)] bg-[var(--h-white)] px-5 py-4 font-ui text-[1.5rem] font-bold text-[var(--text-primary)] outline-none transition-all duration-300 focus:border-[var(--h-teal)] focus:shadow-[0_0_15px_rgba(var(--accent-primary-rgb),0.1)]"
+                                            value={newDuration} onChange={e => setNewDuration(Math.max(minNewDuration, parseInt(e.target.value) || minNewDuration))} />
                                         <div className="absolute right-5 top-1/2 -translate-y-1/2 font-mono text-[0.8rem] text-[var(--text-muted)] pointer-events-none">DAYS</div>
                                     </div>
                                 </div>
@@ -1383,7 +1389,7 @@ function ActiveView({ planner, planners, activePlannerId, onSwitchPlan, onDelete
         </div>
     );
 }
-function ActiveViewWrapper({ planner, planners, activePlannerId, onSwitchPlan, onDelete, onBack, setPlannerAssignmentProgress, togglePlannerDayComplete, chapters }) {
+function ActiveViewWrapper({ planner, planners, activePlannerId, onSwitchPlan, onDelete, onBack, setPlannerAssignmentProgress, chapters }) {
     return (
         <ActiveView
             planner={planner}
@@ -1393,7 +1399,6 @@ function ActiveViewWrapper({ planner, planners, activePlannerId, onSwitchPlan, o
             onDelete={onDelete}
             onBack={onBack}
             setPlannerAssignmentProgress={setPlannerAssignmentProgress}
-            togglePlannerDayComplete={togglePlannerDayComplete}
             chapters={chapters}
         />
     );
@@ -1404,7 +1409,7 @@ export default function Planner() {
     const {
         setNavHeaderTitle, planner, planners, activePlannerId,
         setPlanner, setActivePlanner, deletePlanner,
-        setPlannerAssignmentProgress, togglePlannerDayComplete,
+        setPlannerAssignmentProgress,
         incrementPageVisit
     } = useAppStore();
 
@@ -1467,7 +1472,6 @@ export default function Planner() {
                             onDelete={() => setConfirmDelete(true)}
                             onBack={() => setView('intention')}
                             setPlannerAssignmentProgress={setPlannerAssignmentProgress}
-                            togglePlannerDayComplete={togglePlannerDayComplete}
                             chapters={chapters}
                         />
                     </motion.div>

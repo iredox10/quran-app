@@ -40,3 +40,32 @@ export const buildReciterUrl = (reciterId, verseKey) => {
     }
     return `https://verses.quran.com/${path}/${fileName}`;
 };
+
+// Build a player playlist entry list from an array of verses.
+// Shared by Surah/Page/PlannerReader so URL resolution stays in one place.
+export const buildVersesPlaylist = (verses, {
+    pageNumber = null,
+    localAudioDirHandle = null,
+    customAudioBaseUrl = null,
+    fallbackChapterId = null,
+} = {}) => verses.map(v => {
+    let url = v.audio?.url ? resolveAudioUrl(v.audio.url) : null;
+    const fileName = getVerseFileName(v.verse_key);
+    let localUrl = null;
+
+    if (localAudioDirHandle) {
+        localUrl = `local-audio://${fileName}`;
+    } else if (customAudioBaseUrl) {
+        url = `${customAudioBaseUrl.replace(/\/$/, '')}/${fileName}`;
+    }
+
+    const item = {
+        surahId: fallbackChapterId || parseInt(v.verse_key.split(':')[0], 10),
+        verseKey: v.verse_key,
+        verseNumber: v.verse_number,
+        url,
+        localUrl
+    };
+    if (pageNumber != null) item.pageNumber = pageNumber;
+    return item;
+}).filter(v => v.url);

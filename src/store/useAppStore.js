@@ -555,7 +555,6 @@ export const useAppStore = create(
                 return buildPlannerState(nextPlanners, planner.id);
             }),
             setReadingPreferences: (prefs) => set((state) => ({ readingPreferences: { ...state.readingPreferences, ...prefs } })),
-            updatePrayerSettings: (prefs) => set((state) => ({ prayerSettings: { ...state.prayerSettings, ...prefs } })),
             toggleIntentionPrompt: () => set((state) => ({ intentionPromptEnabled: !state.intentionPromptEnabled })),
             adjustActivePlannerPace: (newDurationDays) => set((state) => replaceActivePlanner(state, (activePlanner) => adjustPlannerPace(activePlanner, newDurationDays))),
             rebalanceActivePlanner: (strategy) => set((state) => replaceActivePlanner(state, (activePlanner) => rebalancePlanner(activePlanner, strategy))),
@@ -574,38 +573,6 @@ export const useAppStore = create(
                 const nextPlanners = (state.planners || []).filter((planner) => planner.id !== state.activePlannerId);
                 return buildPlannerState(nextPlanners, nextPlanners[0]?.id || null);
             }),
-            togglePlannerDayComplete: (dayNumber) => set((state) => replaceActivePlanner(state, (activePlanner) => {
-                const assignment = activePlanner.assignments.find((item) => item.dayNumber === dayNumber);
-                if (!assignment) {
-                    return activePlanner;
-                }
-
-                const totalItems = assignment.items.length;
-                const assignmentProgress = { ...(activePlanner.assignmentProgress || {}) };
-                const assignmentCompletedItems = { ...(activePlanner.assignmentCompletedItems || {}) };
-                const assignmentCompletedAt = { ...(activePlanner.assignmentCompletedAt || {}) };
-                const isComplete = activePlanner.completedDays.includes(dayNumber);
-                assignmentProgress[dayNumber] = isComplete ? 0 : totalItems;
-                assignmentCompletedItems[dayNumber] = isComplete ? [] : assignment.items.map((item) => item.rangeValue);
-                if (isComplete) {
-                    delete assignmentCompletedAt[dayNumber];
-                } else {
-                    assignmentCompletedAt[dayNumber] = new Date().toISOString().split('T')[0];
-                }
-
-                const completedDays = activePlanner.assignments
-                    .filter((item) => (assignmentProgress[item.dayNumber] || 0) >= item.items.length)
-                    .map((item) => item.dayNumber)
-                    .sort((a, b) => a - b);
-
-                return {
-                    ...activePlanner,
-                    assignmentProgress,
-                    assignmentCompletedItems,
-                    assignmentCompletedAt,
-                    completedDays,
-                };
-            })),
             setPlannerAssignmentProgress: (dayNumber, completedCount) => set((state) => replaceActivePlanner(state, (activePlanner) => {
                 const assignment = activePlanner.assignments.find((item) => item.dayNumber === dayNumber);
                 if (!assignment) {
@@ -816,30 +783,6 @@ export const useAppStore = create(
             location: null,
             setLocation: (loc) => set({ location: loc }),
 
-            shiftPlannerSchedule: (planId, daysToShift) => set((state) => updatePlannerCollection(state, ({ planners, activePlannerId, activePlanner }) => {
-                const targetId = planId || activePlannerId;
-                const nextPlanners = planners.map((p) => {
-                    if (p.id === targetId) {
-                        const currentStart = new Date(p.startDate);
-                        currentStart.setDate(currentStart.getDate() + daysToShift);
-                        
-                        const newAssignments = p.assignments.map(a => {
-                            const d = new Date(currentStart);
-                            d.setDate(d.getDate() + (a.dayNumber - 1));
-                            return { ...a, date: d.toISOString().split('T')[0] };
-                        });
-
-                        return {
-                            ...p,
-                            startDate: currentStart.toISOString().split('T')[0],
-                            assignments: newAssignments
-                        };
-                    }
-                    return p;
-                });
-                return buildPlannerState(nextPlanners, activePlannerId);
-            })),
-
             updatePlanner: (planId, updates) => set((state) => updatePlannerCollection(state, ({ planners, activePlannerId }) => {
                 const targetId = planId || activePlannerId;
                 const nextPlanners = planners.map(p => p.id === targetId ? { ...p, ...updates } : p);
@@ -864,7 +807,7 @@ export const useAppStore = create(
             archivedPlanners: [],
             setArchivedPlanners: (planners) => set({ archivedPlanners: planners }),
 
-            prayerSettings: { activePrayers: ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'], readPreference: 'After' },
+            prayerSettings: { activePrayers: ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'], readPreference: 'after' },
             updatePrayerSettings: (settings) => set((state) => ({ prayerSettings: { ...state.prayerSettings, ...settings } })),
 
             intentionPromptEnabled: true,
@@ -944,7 +887,7 @@ export function getSyncableState(state) {
         prayerTimes: state.prayerTimes || null,
         location: state.location || null,
         archivedPlanners: state.archivedPlanners || [],
-        prayerSettings: state.prayerSettings || { activePrayers: ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'], readPreference: 'After' },
+        prayerSettings: state.prayerSettings || { activePrayers: ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'], readPreference: 'after' },
         intentionPromptEnabled: state.intentionPromptEnabled ?? true,
         plannerReflections: state.plannerReflections || {},
         plannerBookmarks: state.plannerBookmarks || {},

@@ -11,7 +11,7 @@ import { getVersesByPage, getTajweedVersesByPage, getChapters, getPageTafsirs } 
 import { useAppStore } from '../store/useAppStore';
 import { getMushafById, isTajweedEnabledForMushaf } from '../config/mushaf';
 import { sanitizeTajweedHtml } from '../utils/quranText';
-import { resolveAudioUrl, getVerseFileName } from '../utils/audioUrl';
+import { buildVersesPlaylist } from '../utils/audioUrl';
 import { getAssignmentProgress, getAssignmentResumePageNumber } from '../utils/planner';
 
 import VerseRow from '../components/VerseRow';
@@ -299,14 +299,48 @@ export default function PlannerReader() {
         timerSecondsRef.current = timerSeconds;
     }, [timerSeconds]);
 
+    // Time already accumulated for this day before this session started
+    const baseSecondsRef = useRef(0);
+    useEffect(() => {
+        if (!planner || !assignment) return;
+        baseSecondsRef.current = useAppStore.getState().plannerSessionTimers?.[planner.id]?.[assignment.dayNumber]?.totalSeconds || 0;
+    }, [planner?.id, assignment?.dayNumber]);
+
+    // Persist incrementally so a killed PWA/tab loses at most the last save interval
+    const savedSecondsRef = useRef(0);
+    const saveTimerProgress = useCallback(() => {
+        if (!planner || !assignment) return;
+        const delta = timerSecondsRef.current - savedSecondsRef.current;
+        if (delta <= 0) return;
+        useAppStore.getState().stopPlannerTimer(planner.id, assignment.dayNumber, delta);
+        savedSecondsRef.current = timerSecondsRef.current;
+    }, [planner, assignment]);
+
+    useEffect(() => {
+        if (!isTimerRunning) return;
+        const interval = setInterval(saveTimerProgress, 30_000);
+        return () => clearInterval(interval);
+    }, [isTimerRunning, saveTimerProgress]);
+
+    useEffect(() => {
+        const handlePageHide = () => saveTimerProgress();
+        const handleVisibility = () => {
+            if (document.visibilityState === 'hidden') saveTimerProgress();
+        };
+        window.addEventListener('pagehide', handlePageHide);
+        document.addEventListener('visibilitychange', handleVisibility);
+        return () => {
+            window.removeEventListener('pagehide', handlePageHide);
+            document.removeEventListener('visibilitychange', handleVisibility);
+        };
+    }, [saveTimerProgress]);
+
     useEffect(() => {
         if (!planner || !assignment) return;
         const pid = planner.id;
         const dnum = assignment.dayNumber;
         return () => {
-            if (timerSecondsRef.current > 0) {
-               useAppStore.getState().stopPlannerTimer(pid, dnum, timerSecondsRef.current);
-            }
+            useAppStore.getState().stopPlannerTimer(pid, dnum, timerSecondsRef.current - savedSecondsRef.current);
         };
     }, [planner?.id, assignment?.dayNumber]);
 
@@ -394,26 +428,7 @@ export default function PlannerReader() {
             setIsPlaying(!isPlaying);
             setIsPlayerVisible(true);
         } else {
-            const playlist = assignedVerses.map(v => {
-                let url = v.audio?.url ? resolveAudioUrl(v.audio.url) : null;
-                const fileName = getVerseFileName(v.verse_key);
-                let localUrl = null;
-
-                if (localAudioDirHandle) {
-                    localUrl = `local-audio://${fileName}`;
-                } else if (customAudioBaseUrl) {
-                    url = `${customAudioBaseUrl.replace(/\/$/, '')}/${fileName}`;
-                }
-
-                return {
-                    pageNumber: pageNumber,
-                    surahId: parseInt(surahNum),
-                    verseKey: v.verse_key,
-                    verseNumber: v.verse_number,
-                    url,
-                    localUrl
-                };
-            }).filter(v => v.url);
+            const playlist = buildVersesPlaylist(assignedVerses, { pageNumber, localAudioDirHandle, customAudioBaseUrl });
 
             if (playlist.length > 0) {
                 setPendingPlaylist(playlist);
@@ -424,19 +439,11 @@ export default function PlannerReader() {
     }, [verses, isCurrentPagePlaying, isPlaying, pageNumber, localAudioDirHandle, customAudioBaseUrl, setIsPlaying, setIsPlayerVisible, updateAudioSettings]);
 
     const handlePlayVerse = useCallback((verse) => {
-        const playlist = assignedVerses.map(v => {
-            let url = v.audio?.url ? resolveAudioUrl(v.audio.url) : null;
-            const fileName = getVerseFileName(v.verse_key);
-            let localUrl = null;
-
-            if (localAudioDirHandle) {
-                localUrl = `local-audio://${fileName}`;
-            } else if (customAudioBaseUrl) {
-                url = `${customAudioBaseUrl.replace(/\/$/, '')}/${fileName}`;
-            }
-
-            return { surahId: currentChapter?.id || Number(surahNum), verseKey: v.verse_key, verseNumber: v.verse_number, url, localUrl };
-        }).filter(v => v.url);
+        const playlist = buildVersesPlaylist(assignedVerses, {
+            localAudioDirHandle,
+            customAudioBaseUrl,
+            fallbackChapterId: currentChapter?.id
+        });
 
         if (playlist.length === 0) return;
 
@@ -494,24 +501,7 @@ export default function PlannerReader() {
     useEffect(() => {
         if (shouldAutoPlayNextRef.current && assignedVerses.length > 0 && !isPageLoading) {
             shouldAutoPlayNextRef.current = false;
-            const playlist = assignedVerses.map(v => {
-                let url = v.audio?.url ? resolveAudioUrl(v.audio.url) : null;
-                const fileName = getVerseFileName(v.verse_key);
-                let localUrl = null;
-                if (localAudioDirHandle) {
-                    localUrl = `local-audio://${fileName}`;
-                } else if (customAudioBaseUrl) {
-                    url = `${customAudioBaseUrl.replace(/\/$/, '')}/${fileName}`;
-                }
-                return {
-                    pageNumber: pageNumber,
-                    surahId: parseInt(surahNum),
-                    verseKey: v.verse_key,
-                    verseNumber: v.verse_number,
-                    url,
-                    localUrl
-                };
-            }).filter(v => v.url);
+            const playlist = buildVersesPlaylist(assignedVerses, { pageNumber, localAudioDirHandle, customAudioBaseUrl });
 
             if (playlist.length > 0) {
                 setAudioPlaylist(playlist, 0);
@@ -653,7 +643,19 @@ export default function PlannerReader() {
                                         </div>
                                     )}
 
-                                    <div className="flex flex-col items-end shrink-0 min-w-0">
+                                    <div className="flex items-center gap-2 shrink-0 min-w-0">
+                                        <button
+                                            onClick={() => setIsTimerRunning(r => !r)}
+                                            className="flex items-center gap-1.5 rounded-full border border-[var(--plr-teal)]/20 bg-[var(--plr-teal)]/10 px-2.5 py-1 font-mono text-[0.7rem] sm:text-[0.8rem] font-bold text-[var(--plr-teal)] whitespace-nowrap cursor-pointer transition-colors hover:bg-[var(--plr-teal)]/20"
+                                            title={isTimerRunning ? 'Pause session timer' : 'Resume session timer'}
+                                        >
+                                            {isTimerRunning ? (
+                                                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" rx="1" /><rect x="14" y="4" width="4" height="16" rx="1" /></svg>
+                                            ) : (
+                                                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5.14v13.72c0 .8.87 1.3 1.56.9l11.3-6.86a1.05 1.05 0 0 0 0-1.8L9.56 4.24A1.05 1.05 0 0 0 8 5.14z" /></svg>
+                                            )}
+                                            {formatTimer(baseSecondsRef.current + timerSeconds)}
+                                        </button>
                                         <div className="font-ui text-[0.9rem] sm:text-[1rem] font-bold text-[var(--plr-teal)] whitespace-nowrap">
                                             {pct}% <span className="hidden sm:inline">Achieved</span>
                                         </div>

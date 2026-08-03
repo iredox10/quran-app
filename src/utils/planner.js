@@ -70,25 +70,6 @@ function resolveItemPageBounds(item, unitType, chapters = []) {
   return getLookupPageBounds(unitType, item?.rangeValue, chapters);
 }
 
-function resolveAssignmentPageBounds(assignment, chapters = []) {
-  if (assignment?.pageStart && assignment?.pageEnd) {
-    return { pageStart: assignment.pageStart, pageEnd: assignment.pageEnd };
-  }
-
-  const itemBounds = (assignment?.items || [])
-    .map((item) => resolveItemPageBounds(item, assignment.unitType, chapters))
-    .filter((item) => item.pageStart && item.pageEnd);
-
-  if (!itemBounds.length) {
-    return { pageStart: null, pageEnd: null };
-  }
-
-  return {
-    pageStart: Math.min(...itemBounds.map((item) => item.pageStart)),
-    pageEnd: Math.max(...itemBounds.map((item) => item.pageEnd)),
-  };
-}
-
 export function formatPlannerDate(date) {
   const value = typeof date === 'string' ? new Date(`${date}T00:00:00`) : date;
   const y = value.getFullYear();
@@ -346,6 +327,29 @@ export function adjustPlannerPace(planner, newDurationDays) {
     return rebalancePlanner(planner, 'custom_pace', newDurationDays);
 }
 
+function splitAssignmentReadPages(plan, a) {
+    const prog = getAssignmentProgress(plan, a);
+    const explicitReadPages = Array.isArray(plan?.assignmentReadPages?.[a.dayNumber])
+        ? plan.assignmentReadPages[a.dayNumber]
+        : [];
+    const readPages = [];
+    const unreadPages = [];
+
+    a.items.forEach(item => {
+        const pStart = item.pageStart || 1;
+        const pEnd = item.pageEnd || pStart;
+        for (let p = pStart; p <= pEnd; p++) {
+            if (explicitReadPages.includes(p) || prog.completedRangeValues?.includes(item.rangeValue)) {
+                readPages.push(p);
+            } else {
+                unreadPages.push(p);
+            }
+        }
+    });
+
+    return { readPages, unreadPages };
+}
+
 export function rebalancePlanner(planner, strategy, customDurationDays = null) {
     const today = formatPlannerDate(new Date());
     const excludeDays = planner.excludeDays || [];
@@ -361,23 +365,7 @@ export function rebalancePlanner(planner, strategy, customDurationDays = null) {
             return;
         }
         
-        const explicitReadPages = Array.isArray(planner?.assignmentReadPages?.[a.dayNumber])
-            ? planner.assignmentReadPages[a.dayNumber]
-            : [];
-        const readPages = [];
-        const unreadPages = [];
-        
-        a.items.forEach(item => {
-            const pStart = item.pageStart || 1;
-            const pEnd = item.pageEnd || pStart;
-            for (let p = pStart; p <= pEnd; p++) {
-                if (explicitReadPages.includes(p) || prog.completedRangeValues?.includes(item.rangeValue)) {
-                    readPages.push(p);
-                } else {
-                    unreadPages.push(p);
-                }
-            }
-        });
+        const { readPages, unreadPages } = splitAssignmentReadPages(planner, a);
         
         if (readPages.length > 0 && unreadPages.length > 0) {
             const readGroups = groupContiguousPages(readPages);
@@ -419,7 +407,12 @@ export function rebalancePlanner(planner, strategy, customDurationDays = null) {
     if (strategy === 'extend' || strategy === 'custom_pace') {
         let chunkSize = 1;
         if (strategy === 'custom_pace' && customDurationDays != null) {
-            const remainingNewDays = Math.max(1, customDurationDays - preservedAssignments.length);
+            // A new total shorter than the already-completed days is impossible;
+            // refuse to rebalance rather than dump the whole pool into one day.
+            if (customDurationDays < preservedAssignments.length + 1) {
+                return planner;
+            }
+            const remainingNewDays = customDurationDays - preservedAssignments.length;
             chunkSize = Math.ceil(unreadPagePool.length / remainingNewDays);
         } else {
             const originalDaySize = Math.ceil(
@@ -518,22 +511,7 @@ export function rebalancePlanner(planner, strategy, customDurationDays = null) {
         const prog = getAssignmentProgress(planner, a);
         if (prog.isComplete) return;
         
-        const explicitReadPages = Array.isArray(planner?.assignmentReadPages?.[a.dayNumber])
-            ? planner.assignmentReadPages[a.dayNumber]
-            : [];
-        let readPages = []; let unreadPages = [];
-        
-        a.items.forEach(item => {
-            const pStart = item.pageStart || 1;
-            const pEnd = item.pageEnd || pStart;
-            for (let p = pStart; p <= pEnd; p++) {
-                if (explicitReadPages.includes(p) || prog.completedRangeValues?.includes(item.rangeValue)) {
-                    readPages.push(p);
-                } else {
-                    unreadPages.push(p);
-                }
-            }
-        });
+        const { readPages, unreadPages } = splitAssignmentReadPages(planner, a);
         
         if (readPages.length > 0 && unreadPages.length > 0 && a.date === today) {
             hasPartialToday = true;
@@ -614,43 +592,6 @@ export function rebalancePlanner(planner, strategy, customDurationDays = null) {
     };
 }
 
-export function getPlannerPageContext(plan, pageNumber, chapters = []) {
-  if (!plan) {
-    return null;
-  }
-
-  const assignment = plan.assignments.find((item) => {
-    const bounds = resolveAssignmentPageBounds(item, chapters);
-    return bounds.pageStart && bounds.pageEnd && pageNumber >= bounds.pageStart && pageNumber <= bounds.pageEnd;
-  });
-  if (!assignment) {
-    return null;
-  }
-
-  const assignmentBounds = resolveAssignmentPageBounds(assignment, chapters);
-  const currentItemIndex = assignment.items.findIndex((item) => {
-    const bounds = resolveItemPageBounds(item, assignment.unitType, chapters);
-    return bounds.pageStart && bounds.pageEnd && pageNumber >= bounds.pageStart && pageNumber <= bounds.pageEnd;
-  });
-  const currentItem = assignment.items[currentItemIndex] || assignment.items[0] || null;
-  const progress = getAssignmentProgress(plan, assignment);
-  const currentItemBounds = currentItem ? resolveItemPageBounds(currentItem, assignment.unitType, chapters) : null;
-
-  return {
-    assignment,
-    currentItem,
-    currentItemIndex,
-    progress,
-    isCurrentItemComplete: currentItem ? progress.completedRangeValues.includes(currentItem.rangeValue) : false,
-    isLastPageOfCurrentItem: currentItemBounds ? pageNumber >= currentItemBounds.pageEnd : false,
-    isLastPageOfDay: assignmentBounds.pageEnd ? pageNumber >= assignmentBounds.pageEnd : false,
-    assignmentPageStart: assignmentBounds.pageStart,
-    assignmentPageEnd: assignmentBounds.pageEnd,
-    currentItemPageStart: currentItemBounds?.pageStart || null,
-    currentItemPageEnd: currentItemBounds?.pageEnd || null,
-  };
-}
-
 export function getPlannerOverview(plan, today = formatPlannerDate(new Date())) {
   if (!plan) {
     return null;
@@ -661,6 +602,7 @@ export function getPlannerOverview(plan, today = formatPlannerDate(new Date())) 
   const completedCount = plan.assignments.filter((assignment) => getAssignmentProgress(plan, assignment).isComplete).length;
   const remainingCount = Math.max(plan.durationDays - completedCount, 0);
   const firstIncomplete = plan.assignments.find((assignment) => !getAssignmentProgress(plan, assignment).isComplete);
+  const overdueDays = plan.assignments.filter((assignment) => assignment.date < today && !getAssignmentProgress(plan, assignment).isComplete).length;
 
   let totalPages = 0;
   let readPages = 0;
@@ -674,6 +616,7 @@ export function getPlannerOverview(plan, today = formatPlannerDate(new Date())) 
     completedCount,
     remainingCount,
     currentDayNumber,
+    overdueDays,
     isUpcoming: elapsedDays < 0,
     isFinishedWindow: elapsedDays >= plan.durationDays,
     completionRatio: totalPages ? readPages / totalPages : 0,
@@ -916,32 +859,25 @@ export function getPlannerAnalytics(planner) {
   if (!planner || !planner.assignments) {
     return { onTimeRate: 0, catchUpDaysCount: 0, avgUnitsPerDay: 0 };
   }
-  
-  const completedAssignments = planner.assignments.filter(a => planner.completedDays?.includes(a.dayNumber));
-  
-  // We don't track exact completion dates vs target dates yet, so we'll simulate 'catch up' 
-  // by checking if there's a big gap or just return 0 for now.
-  // We will assume all completed are on time for this basic version, unless we have completion timestamps.
-  const onTimeRate = completedAssignments.length ? 100 : 0; 
-  const catchUpDaysCount = 0;
-  
+
+  const metrics = getPlannerSuccessMetrics(planner);
+  const onTimeRate = metrics?.successRate ?? 0;
+  const catchUpDaysCount = metrics?.lateCount ?? 0;
+
   let totalReadPages = 0;
-  completedAssignments.forEach(a => {
-      let pages = 0;
-      a.items.forEach(item => {
-        if (item.pageStart && item.pageEnd) {
-           pages += (item.pageEnd - item.pageStart + 1);
-        }
-      });
-      totalReadPages += pages;
+  let activeDaysCount = 0;
+  planner.assignments.forEach(a => {
+    const readPages = getAssignmentProgress(planner, a)?.readPagesCount || 0;
+    if (readPages > 0) activeDaysCount += 1;
+    totalReadPages += readPages;
   });
-  
-  const avgUnitsPerDay = completedAssignments.length ? (totalReadPages / completedAssignments.length) : 0;
-  
+
+  const avgUnitsPerDay = activeDaysCount ? totalReadPages / activeDaysCount : 0;
+
   return {
-     onTimeRate,
-     catchUpDaysCount,
-     avgUnitsPerDay
+    onTimeRate,
+    catchUpDaysCount,
+    avgUnitsPerDay
   };
 }
 

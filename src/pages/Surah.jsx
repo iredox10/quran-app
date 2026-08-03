@@ -9,7 +9,7 @@ import { ArrowLeft, ArrowRight, Play, Pause, BookOpen, Bookmark, Info, X, Downlo
 import { motion, AnimatePresence } from 'framer-motion';
 import { Helmet } from 'react-helmet-async';
 import { useSwipeable } from 'react-swipeable';
-import { resolveAudioUrl, getVerseFileName } from '../utils/audioUrl';
+import { buildVersesPlaylist } from '../utils/audioUrl';
 import VerseRow from '../components/VerseRow';
 import AudioSetupModal from '../components/AudioSetupModal';
 import AutoScroller from '../components/AutoScroller';
@@ -403,14 +403,11 @@ export default function Surah() {
     const isCurrentSurahPlaying = audioPlaylist.length > 0 && String(audioPlaylist[0]?.surahId) === String(id);
     const activeAudioVerseKey = isPlayerVisible && isCurrentSurahPlaying && audioPlaylist[audioTrackIndex] ? audioPlaylist[audioTrackIndex].verseKey : null;
 
-    const buildPlaylist = useCallback((verses, id) => verses.map(v => {
-        let url = v.audio?.url ? resolveAudioUrl(v.audio.url) : null;
-        const fileName = getVerseFileName(v.verse_key);
-        let localUrl = null;
-        if (localAudioDirHandle) localUrl = `local-audio://${fileName}`;
-        else if (customAudioBaseUrl) url = `${customAudioBaseUrl.replace(/\/$/, '')}/${fileName}`;
-        return { surahId: id, verseKey: v.verse_key, verseNumber: v.verse_number, url, localUrl };
-    }).filter(v => v.url), [localAudioDirHandle, customAudioBaseUrl]);
+    const buildPlaylist = useCallback((verses, id) => buildVersesPlaylist(verses, {
+        localAudioDirHandle,
+        customAudioBaseUrl,
+        fallbackChapterId: id
+    }), [localAudioDirHandle, customAudioBaseUrl]);
 
     const handlePlayClick = () => {
         if (!verses || verses.length === 0) return;

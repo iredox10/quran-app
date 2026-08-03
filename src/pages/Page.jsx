@@ -11,7 +11,7 @@ import { JUZ_STARTS, getJuzByPage, getHizbByPage } from '../data/quranNavigation
 import { useAppStore } from '../store/useAppStore';
 import { getMushafById, isTajweedEnabledForMushaf } from '../config/mushaf';
 import { sanitizeTajweedHtml } from '../utils/quranText';
-import { resolveAudioUrl, getVerseFileName } from '../utils/audioUrl';
+import { buildVersesPlaylist } from '../utils/audioUrl';
 import { saukaService } from '../services/saukaService';
 
 import VerseRow from '../components/VerseRow';
@@ -187,26 +187,7 @@ export default function Page() {
             setIsPlayerVisible(true);
         } else {
             // Setup the playlist for this page's verses
-            const playlist = verses.map(v => {
-                let url = v.audio?.url ? resolveAudioUrl(v.audio.url) : null;
-                const fileName = getVerseFileName(v.verse_key);
-                let localUrl = null;
-
-                if (localAudioDirHandle) {
-                    localUrl = `local-audio://${fileName}`;
-                } else if (customAudioBaseUrl) {
-                    url = `${customAudioBaseUrl.replace(/\/$/, '')}/${fileName}`;
-                }
-
-                return {
-                    pageNumber: pageNumber,
-                    surahId: parseInt(surahNum),
-                    verseKey: v.verse_key,
-                    verseNumber: v.verse_number,
-                    url,
-                    localUrl
-                };
-            }).filter(v => v.url);
+            const playlist = buildVersesPlaylist(verses, { pageNumber, localAudioDirHandle, customAudioBaseUrl });
 
             if (playlist.length > 0) {
                 setPendingPlaylist(playlist);
