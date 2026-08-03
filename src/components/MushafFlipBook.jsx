@@ -15,7 +15,7 @@ const DECORATIVE_PAGES = new Set([1, 2]); // Al-Fatihah + first page of Al-Baqar
 const MUSHAF_ASPECT_RATIO = 0.75; // width / height — standard mushaf page
 
 // ─── Decorative Page Content (Pages 1 & 2) ──────────────────────────────────
-const DecorativePageContent = React.memo(({ pageNumber, mushaf, arabicFont, fontSize, contentWidth }) => {
+const DecorativePageContent = React.memo(({ pageNumber, mushaf, arabicFont, fontSize, mushafFontPx }) => {
     const { data: chapters } = useQuery({
         queryKey: ['chapters'],
         queryFn: getChapters,
@@ -45,7 +45,7 @@ const DecorativePageContent = React.memo(({ pageNumber, mushaf, arabicFont, font
 
     return (
         <div className="h-full w-full p-[2cqi] bg-[#fdfaf6] dark:bg-[#1a1814] @container flex">
-            <div className="flex-1 flex flex-col relative border-[0.8cqi] border-double border-[#b68d40]/70 dark:border-[#c6a87c]/40 rounded-[1.5cqi] outline outline-[0.15cqi] outline-offset-[-1cqi] outline-[#b68d40]/40 shadow-inner px-[3cqi] py-[3cqi] mx-auto @container" style={{ maxWidth: contentWidth, width: '100%' }}>
+            <div className="flex-1 flex flex-col relative border-[0.8cqi] border-double border-[#b68d40]/70 dark:border-[#c6a87c]/40 rounded-[1.5cqi] outline outline-[0.15cqi] outline-offset-[-1cqi] outline-[#b68d40]/40 shadow-inner px-[3cqi] py-[3cqi]">
 
                 {/* Surah Title Banner */}
                 <div className="flex justify-center items-center mb-[3cqi] shrink-0">
@@ -68,6 +68,7 @@ const DecorativePageContent = React.memo(({ pageNumber, mushaf, arabicFont, font
                         mushaf={mushaf}
                         arabicFont={arabicFont}
                         fontSize={fontSize}
+                        mushafFontPx={mushafFontPx}
                         isPlain={true}
                         isDecorative={true}
                     />
@@ -85,7 +86,7 @@ const DecorativePageContent = React.memo(({ pageNumber, mushaf, arabicFont, font
 });
 
 // ─── Standard Page Content (Pages 3–604) ─────────────────────────────────────
-const StandardPageContent = React.memo(({ pageNumber, mushaf, arabicFont, fontSize, contentWidth }) => {
+const StandardPageContent = React.memo(({ pageNumber, mushaf, arabicFont, fontSize, mushafFontPx }) => {
     const { data: chapters } = useQuery({
         queryKey: ['chapters'],
         queryFn: getChapters,
@@ -119,7 +120,7 @@ const StandardPageContent = React.memo(({ pageNumber, mushaf, arabicFont, fontSi
 
     return (
         <div className="h-full w-full p-[1.5cqi] bg-[#fdfaf6] dark:bg-[#1a1814] @container flex">
-            <div className={`flex-1 flex flex-col relative border-[0.8cqi] border-double border-[#b68d40]/70 dark:border-[#c6a87c]/40 rounded-[1.5cqi] outline outline-[0.15cqi] outline-offset-[-1cqi] outline-[#b68d40]/40 shadow-inner ${isRightPage ? 'pl-[4cqi] pr-[2cqi]' : 'pr-[4cqi] pl-[2cqi]'} py-[1.5cqi] mx-auto @container`} style={{ maxWidth: contentWidth, width: '100%' }}>
+            <div className={`flex-1 flex flex-col relative border-[0.8cqi] border-double border-[#b68d40]/70 dark:border-[#c6a87c]/40 rounded-[1.5cqi] outline outline-[0.15cqi] outline-offset-[-1cqi] outline-[#b68d40]/40 shadow-inner ${isRightPage ? 'pl-[4cqi] pr-[2cqi]' : 'pr-[4cqi] pl-[2cqi]'} py-[1.5cqi]`}>
 
                 {/* Header */}
                 <div className="flex justify-between items-center px-[2cqi] mb-[1cqi] shrink-0">
@@ -138,6 +139,7 @@ const StandardPageContent = React.memo(({ pageNumber, mushaf, arabicFont, fontSi
                         mushaf={mushaf}
                         arabicFont={arabicFont}
                         fontSize={fontSize}
+                        mushafFontPx={mushafFontPx}
                         isPlain={true}
                         isDecorative={false}
                     />
@@ -155,7 +157,7 @@ const StandardPageContent = React.memo(({ pageNumber, mushaf, arabicFont, fontSi
 });
 
 // ─── Page Wrapper (forwardRef required by react-pageflip) ────────────────────
-const PageWrapper = React.forwardRef(({ number, isActive, mushaf, arabicFont, fontSize, contentWidth }, ref) => {
+const PageWrapper = React.forwardRef(({ number, isActive, mushaf, arabicFont, fontSize, mushafFontPx }, ref) => {
     const isDecorative = DECORATIVE_PAGES.has(number);
 
     return (
@@ -170,7 +172,7 @@ const PageWrapper = React.forwardRef(({ number, isActive, mushaf, arabicFont, fo
                         mushaf={mushaf}
                         arabicFont={arabicFont}
                         fontSize={fontSize}
-                        contentWidth={contentWidth}
+                        mushafFontPx={mushafFontPx}
                     />
                 ) : (
                     <StandardPageContent
@@ -178,7 +180,7 @@ const PageWrapper = React.forwardRef(({ number, isActive, mushaf, arabicFont, fo
                         mushaf={mushaf}
                         arabicFont={arabicFont}
                         fontSize={fontSize}
-                        contentWidth={contentWidth}
+                        mushafFontPx={mushafFontPx}
                     />
                 )
             ) : (
@@ -204,14 +206,21 @@ export default function MushafFlipBook({ startingPage = 1 }) {
     });
 
     useEffect(() => {
+        let timer;
         const handleResize = () => {
-            setViewport({
-                width: window.innerWidth,
-                height: window.innerHeight,
-            });
+            clearTimeout(timer);
+            timer = setTimeout(() => {
+                setViewport({
+                    width: window.innerWidth,
+                    height: window.innerHeight,
+                });
+            }, 150);
         };
         window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
+        return () => {
+            clearTimeout(timer);
+            window.removeEventListener('resize', handleResize);
+        };
     }, []);
 
     const isMobile = viewport.width < viewport.height;
@@ -304,13 +313,17 @@ export default function MushafFlipBook({ startingPage = 1 }) {
         }
     }, [isMobile, viewport.width, viewport.height]);
 
-    // Natural mushaf content width for the current page height. The text and
-    // ornaments use cqi units tied to this width, so keeping it at the real
-    // mushaf proportion (width = height * 0.75) prevents the Quran from being
-    // clipped at the bottom when the page stretches to fill the viewport.
-    const contentWidth = useMemo(
-        () => Math.floor(bookDimensions.height * MUSHAF_ASPECT_RATIO),
-        [bookDimensions.height]
+    // ── Mushaf text pixel size ──
+    // The page now fills the whole viewport, but the Arabic text must keep
+    // its natural mushaf proportions (width = height * 0.75) so it fits on
+    // the page without being clipped. Using px (instead of cqi) anchors the
+    // text to the natural width regardless of how wide the page is.
+    const mushafFontPx = useMemo(
+        () => {
+            const naturalWidth = Math.min(bookDimensions.width, bookDimensions.height * MUSHAF_ASPECT_RATIO);
+            return (fontSize * 0.2 + 3.5) / 100 * naturalWidth;
+        },
+        [bookDimensions, fontSize]
     );
 
     return createPortal(
@@ -325,7 +338,7 @@ export default function MushafFlipBook({ startingPage = 1 }) {
             </button>
 
             <HTMLFlipBook
-                key={isMobile ? 'mobile' : 'desktop'}
+                key={`${isMobile}-${Math.round(viewport.width)}x${Math.round(viewport.height)}`}
                 width={bookDimensions.width}
                 height={bookDimensions.height}
                 size="stretch"
@@ -361,7 +374,7 @@ export default function MushafFlipBook({ startingPage = 1 }) {
                         mushaf={mushaf}
                         arabicFont={arabicFont}
                         fontSize={fontSize}
-                        contentWidth={contentWidth}
+                        mushafFontPx={mushafFontPx}
                     />
                 ))}
 

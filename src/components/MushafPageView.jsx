@@ -2,7 +2,7 @@ import { useMemo, memo } from 'react';
 import { getWordArabicText } from '../utils/quranText';
 import { State } from 'ts-fsrs';
 
-const MushafPageView = memo(({ verses, mushaf, arabicFont, fontSize, activeAudioVerseKey, isHeatmapMode, hifdhHistory, assignedVerseKeys, isPlain = false, isDecorative = false }) => {
+const MushafPageView = memo(({ verses, mushaf, arabicFont, fontSize, mushafFontPx, activeAudioVerseKey, isHeatmapMode, hifdhHistory, assignedVerseKeys, isPlain = false, isDecorative = false }) => {
   const lines = useMemo(() => {
     const lineMap = new Map();
 
@@ -69,7 +69,7 @@ const MushafPageView = memo(({ verses, mushaf, arabicFont, fontSize, activeAudio
                 key={word.key}
                 style={{
                   fontFamily: arabicFont,
-                  fontSize: isPlain ? `${fontSize * 0.2 + 3.5}cqi` : `${fontSize * 0.4 + 1.35}rem`,
+                  fontSize: isPlain ? (mushafFontPx ? `${mushafFontPx}px` : `${fontSize * 0.2 + 3.5}cqi`) : `${fontSize * 0.4 + 1.35}rem`,
                   lineHeight: isPlain ? 1.6 : 1.95,
                   whiteSpace: 'nowrap',
                   transition: 'all 0.3s ease',
