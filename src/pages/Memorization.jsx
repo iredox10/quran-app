@@ -453,13 +453,14 @@ export default function Memorization() {
 
     const activeAudioVerse = currentVerses[audioVerseIndex];
     let audioUrl = activeAudioVerse?.audio?.url ? (activeAudioVerse.audio.url.startsWith('http') ? activeAudioVerse.audio.url : `https://verses.quran.com/${activeAudioVerse.audio.url}`) : null;
+    let localAudioUrl = null;
 
     if (activeAudioVerse) {
         const [surahNum, ayahNum] = activeAudioVerse.verse_key.split(':');
         const fileName = `${String(surahNum).padStart(3, '0')}${String(ayahNum).padStart(3, '0')}.mp3`;
 
         if (localAudioDirHandle) {
-            audioUrl = `local-audio://${fileName}`;
+            localAudioUrl = `local-audio://${fileName}`;
         } else if (customAudioBaseUrl) {
             audioUrl = `${customAudioBaseUrl.replace(/\/$/, '')}/${fileName}`;
         }
@@ -471,15 +472,15 @@ export default function Memorization() {
             return;
         }
 
-        if (audioUrl.startsWith('local-audio://') && localAudioDirHandle) {
-            const fileName = audioUrl.replace('local-audio://', '');
+        if (localAudioUrl?.startsWith('local-audio://') && localAudioDirHandle) {
+            const fileName = localAudioUrl.replace('local-audio://', '');
             getLocalAudioUrl(localAudioDirHandle, fileName).then(url => {
                 setResolvedAudioUrl(url || audioUrl);
             });
         } else {
             setResolvedAudioUrl(audioUrl);
         }
-    }, [audioUrl, localAudioDirHandle]);
+    }, [audioUrl, localAudioUrl, localAudioDirHandle]);
 
 
     if (isVersesLoading || isChapterLoading) {

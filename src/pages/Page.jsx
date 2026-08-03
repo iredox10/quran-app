@@ -190,9 +190,10 @@ export default function Page() {
                 let url = v.audio?.url ? (v.audio.url.startsWith('http') ? v.audio.url : `https://verses.quran.com/${v.audio.url}`) : null;
                 const [surahNum, ayahNum] = v.verse_key.split(':');
                 const fileName = `${String(surahNum).padStart(3, '0')}${String(ayahNum).padStart(3, '0')}.mp3`;
+                let localUrl = null;
 
                 if (localAudioDirHandle) {
-                    url = `local-audio://${fileName}`;
+                    localUrl = `local-audio://${fileName}`;
                 } else if (customAudioBaseUrl) {
                     url = `${customAudioBaseUrl.replace(/\/$/, '')}/${fileName}`;
                 }
@@ -202,7 +203,8 @@ export default function Page() {
                     surahId: parseInt(surahNum),
                     verseKey: v.verse_key,
                     verseNumber: v.verse_number,
-                    url
+                    url,
+                    localUrl
                 };
             }).filter(v => v.url);
 

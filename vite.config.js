@@ -88,9 +88,10 @@ export default defineConfig({
           },
           {
             urlPattern: ({ url }) => url.hostname === 'download.quranicaudio.com',
-            handler: 'CacheFirst',
+            handler: 'NetworkFirst',
             options: {
-              cacheName: 'quran-audio-cache',
+              cacheName: 'quran-audio-cache-v2',
+              networkTimeoutSeconds: 10,
               expiration: {
                 maxEntries: 114,
                 maxAgeSeconds: 60 * 60 * 24 * 90,
@@ -103,15 +104,16 @@ export default defineConfig({
           },
           {
             urlPattern: ({ url }) => url.hostname === 'verses.quran.com',
-            handler: 'CacheFirst',
+            handler: 'NetworkFirst',
             options: {
-              cacheName: 'quran-verse-audio-cache',
+              cacheName: 'quran-verse-audio-cache-v2',
+              networkTimeoutSeconds: 10,
               expiration: {
                 maxEntries: 6500, // Roughly enough for the whole Quran
                 maxAgeSeconds: 60 * 60 * 24 * 90,
               },
               cacheableResponse: {
-                statuses: [0, 200, 206],
+                statuses: [0, 200],
               },
               rangeRequests: true,
             },

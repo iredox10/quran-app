@@ -38,7 +38,9 @@ export default function GlobalAudioPlayer() {
     const speedOptions = SPEED_OPTIONS.map(opt => ({ value: opt, label: `${opt}×` }));
 
     const hasAudio = !!(currentAudioUrl || audioPlaylist.length > 0);
-    const activeUrl = audioPlaylist.length > 0 ? audioPlaylist[audioTrackIndex]?.url : currentAudioUrl;
+    const activeUrl = audioPlaylist.length > 0
+        ? (audioPlaylist[audioTrackIndex]?.localUrl || audioPlaylist[audioTrackIndex]?.url)
+        : currentAudioUrl;
     const currentTitle = audioPlaylist.length > 0
         ? `Ayah ${audioPlaylist[audioTrackIndex]?.verseNumber || '...'}`
         : 'Recitation';
@@ -66,6 +68,8 @@ export default function GlobalAudioPlayer() {
     }, [isPlaying, hasAudio, setIsPlayerVisible]);
 
     const [resolvedAudioUrl, setResolvedAudioUrl] = useState(null);
+    const activeUrlRef = useRef(activeUrl);
+    useEffect(() => { activeUrlRef.current = activeUrl; });
 
     // Resolve local-audio:// to object URL if needed
     useEffect(() => {
@@ -76,15 +80,15 @@ export default function GlobalAudioPlayer() {
 
         if (typeof activeUrl === 'string' && activeUrl.startsWith('local-audio://') && localAudioDirHandle) {
             const fileName = activeUrl.replace('local-audio://', '');
+            const remoteUrl = audioPlaylist[audioTrackIndex]?.url || null;
             getLocalAudioUrl(localAudioDirHandle, fileName).then(url => {
-                setResolvedAudioUrl(url || activeUrl);
+                if (activeUrlRef.current !== activeUrl) return;
+                setResolvedAudioUrl(url || remoteUrl);
             });
         } else {
             setResolvedAudioUrl(activeUrl);
         }
-
-        return () => {};
-    }, [activeUrl, localAudioDirHandle]);
+    }, [activeUrl, localAudioDirHandle, audioPlaylist, audioTrackIndex]);
 
     // Sync with audio element
     useEffect(() => {
@@ -92,7 +96,10 @@ export default function GlobalAudioPlayer() {
         audioRef.current.playbackRate = audioSettings.playbackSpeed;
         if (isPlaying && resolvedAudioUrl) {
             if (delayTimeoutRef.current) clearTimeout(delayTimeoutRef.current);
-            audioRef.current.play().catch(e => { console.error('Audio failed', e); setIsPlaying(false); });
+            audioRef.current.play().catch(e => {
+                console.error('Audio failed', e);
+                if (e?.name !== 'AbortError') setIsPlaying(false);
+            });
         } else {
             audioRef.current.pause();
         }
@@ -113,7 +120,12 @@ export default function GlobalAudioPlayer() {
 
         if (audioSettings.repeatAya === -1 || currentAyaLoopCount + 1 < audioSettings.repeatAya) {
             setCurrentAyaLoopCount(p => p + 1);
-            if (audioRef.current) { audioRef.current.currentTime = 0; audioRef.current.play(); }
+            if (audioRef.current) {
+                audioRef.current.currentTime = 0;
+                audioRef.current.play().catch(e => {
+                    if (e?.name !== 'AbortError') setIsPlaying(false);
+                });
+            }
             return;
         }
 
@@ -159,16 +171,6 @@ export default function GlobalAudioPlayer() {
                         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                         className={`fixed left-0 right-0 mx-auto w-[calc(100%-1rem)] max-w-[480px] px-3 py-2 bg-[var(--glass-bg)] backdrop-blur-xl border-[var(--glass-border)] z-[900] flex items-center justify-between gap-2 rounded-full shadow-[var(--shadow-xl)] transition-all duration-300 ${isNavHidden ? 'bottom-8' : 'bottom-24'}`}
                     >
-                        {hasAudio && (
-                            <audio 
-                                ref={audioRef} 
-                                src={resolvedAudioUrl || activeUrl || ''} 
-                                onEnded={handleEnded}
-                                onPlay={() => setIsPlaying(true)}
-                                onPause={() => setIsPlaying(false)}
-                            />
-                        )}
-
                         {!hasAudio ? (
                             <>
                                 <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -366,7 +368,6 @@ export default function GlobalAudioPlayer() {
                     onError={(e) => {
                         console.error("Audio playback error", e);
                         setIsPlaying(false);
-                        handleEnded();
                     }}
                 />
             )}

@@ -67,7 +67,7 @@ if (!self.define) {
     });
   };
 }
-define(['./workbox-05449209'], (function (workbox) { 'use strict';
+define(['./workbox-e68d9251'], (function (workbox) { 'use strict';
 
   self.skipWaiting();
   workbox.clientsClaim();
@@ -78,7 +78,7 @@ define(['./workbox-05449209'], (function (workbox) { 'use strict';
    */
   workbox.precacheAndRoute([{
     "url": "/index.html",
-    "revision": "0.0hep8tcboo"
+    "revision": "0.0cm5hah5ga"
   }], {});
   workbox.cleanupOutdatedCaches();
   workbox.registerRoute(new workbox.NavigationRoute(workbox.createHandlerBoundToURL("/index.html"), {
@@ -119,8 +119,9 @@ define(['./workbox-05449209'], (function (workbox) { 'use strict';
   }), 'GET');
   workbox.registerRoute(({
     url
-  }) => url.hostname === "download.quranicaudio.com", new workbox.CacheFirst({
-    "cacheName": "quran-audio-cache",
+  }) => url.hostname === "download.quranicaudio.com", new workbox.NetworkFirst({
+    "cacheName": "quran-audio-cache-v2",
+    "networkTimeoutSeconds": 10,
     plugins: [new workbox.ExpirationPlugin({
       maxEntries: 114,
       maxAgeSeconds: 7776000
@@ -130,13 +131,14 @@ define(['./workbox-05449209'], (function (workbox) { 'use strict';
   }), 'GET');
   workbox.registerRoute(({
     url
-  }) => url.hostname === "verses.quran.com", new workbox.CacheFirst({
-    "cacheName": "quran-verse-audio-cache",
+  }) => url.hostname === "verses.quran.com", new workbox.NetworkFirst({
+    "cacheName": "quran-verse-audio-cache-v2",
+    "networkTimeoutSeconds": 10,
     plugins: [new workbox.ExpirationPlugin({
       maxEntries: 6500,
       maxAgeSeconds: 7776000
     }), new workbox.CacheableResponsePlugin({
-      statuses: [0, 200, 206]
+      statuses: [0, 200]
     }), new workbox.RangeRequestsPlugin()]
   }), 'GET');
 

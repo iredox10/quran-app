@@ -406,9 +406,10 @@ export default function Surah() {
         let url = v.audio?.url ? (v.audio.url.startsWith('http') ? v.audio.url : `https://verses.quran.com/${v.audio.url}`) : null;
         const [surahNum, ayahNum] = v.verse_key.split(':');
         const fileName = `${String(surahNum).padStart(3, '0')}${String(ayahNum).padStart(3, '0')}.mp3`;
-        if (localAudioDirHandle) url = `local-audio://${fileName}`;
+        let localUrl = null;
+        if (localAudioDirHandle) localUrl = `local-audio://${fileName}`;
         else if (customAudioBaseUrl) url = `${customAudioBaseUrl.replace(/\/$/, '')}/${fileName}`;
-        return { surahId: id, verseKey: v.verse_key, verseNumber: v.verse_number, url };
+        return { surahId: id, verseKey: v.verse_key, verseNumber: v.verse_number, url, localUrl };
     }).filter(v => v.url), [localAudioDirHandle, customAudioBaseUrl]);
 
     const handlePlayClick = () => {
