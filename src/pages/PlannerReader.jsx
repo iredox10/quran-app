@@ -590,7 +590,9 @@ export default function PlannerReader() {
     ) || assignment.items[0];
 
     const isCurrentItemComplete = progress.completedRangeValues.includes(currentItem.rangeValue);
-    const pct = Math.round((progress.completedCount / progress.totalCount) * 100);
+    const pct = planner.unitType === 'surah' && progress.totalPagesCount > 0
+        ? Math.round((progress.readPagesCount / progress.totalPagesCount) * 100)
+        : Math.round((progress.completedCount / progress.totalCount) * 100);
 
     return (
         <div {...swipeHandlers} className="surah-container container stretch-reading overflow-hidden font-body pb-24">
