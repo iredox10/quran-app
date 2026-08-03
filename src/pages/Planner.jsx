@@ -161,6 +161,7 @@ function IntentionView({ onBegin, onViewActive, chapters, hasExistingPlan, plann
     const [customTitle, setCustomTitle] = useState('');
     const [excludeDays, setExcludeDays] = useState([]);
     const [showArchives, setShowArchives] = useState(false);
+    const [previewPlan, setPreviewPlan] = useState(null);
     const { archivedPlanners } = useAppStore();
 
     const unitMeta = PLANNER_UNITS[unitType];
@@ -168,6 +169,7 @@ function IntentionView({ onBegin, onViewActive, chapters, hasExistingPlan, plann
     const safeEndPage = Math.min(Number(endPage) || maxUnit, maxUnit);
     const totalUnits = Math.max(safeEndPage - (Number(startPage) || 1) + 1, 1);
     const computedDuration = Math.ceil(totalUnits / Math.max(Number(pagesPerDay) || 1, 1));
+    const chaptersReady = !!chapters && chapters.length > 0;
 
     const handleBegin = () => {
         const pace = PACES.find(p => p.id === selected);
@@ -189,21 +191,22 @@ function IntentionView({ onBegin, onViewActive, chapters, hasExistingPlan, plann
     };
 
     const handleTemplateSelect = (tmpl) => {
-        const sUnit = tmpl.startUnit;
-        const eUnit = tmpl.endUnit;
-        const durationDays = tmpl.durationDays;
+        if (tmpl.unitType === 'surah' && !chaptersReady) {
+            alert('Surah data is still loading — please try again in a moment.');
+            return;
+        }
 
         try {
             const built = buildReadingPlanner({
                 unitType: tmpl.unitType,
-                durationDays,
+                durationDays: tmpl.durationDays,
                 startDate, // User's currently selected startDate (which defaults to today)
-                startUnit: sUnit,
-                endUnit: eUnit,
+                startUnit: tmpl.startUnit,
+                endUnit: tmpl.endUnit,
                 customTitle: tmpl.title,
                 excludeDays: []
             }, chapters || []);
-            onBegin(built);
+            setPreviewPlan(built);
         } catch (e) {
             console.error('Planner build failed from template:', e);
             alert(`Could not build template plan: ${e.message}`);
@@ -358,8 +361,12 @@ function IntentionView({ onBegin, onViewActive, chapters, hasExistingPlan, plann
                     <span className="font-mono text-[0.65rem] uppercase tracking-[0.1em] text-[var(--plr-ink-muted)]">Curated paths</span>
                 </div>
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {PLAN_TEMPLATES.map((tmpl) => (
-                        <div key={tmpl.id} className="group relative flex cursor-pointer flex-col overflow-hidden rounded-[16px] border-[1.5px] border-[var(--plr-bone-dark)] bg-[var(--plr-cream)] p-5 transition-all duration-200 hover:-translate-y-1 hover:border-[var(--plr-teal)] hover:shadow-[0_8px_24px_rgba(46,79,74,0.08)]"
+                    {PLAN_TEMPLATES.map((tmpl) => {
+                        const needsChapters = tmpl.unitType === 'surah' && !chaptersReady;
+                        const unitCount = Math.max((tmpl.endUnit - tmpl.startUnit) + 1, 1);
+                        const unitsPerDay = Math.max(Math.ceil(unitCount / tmpl.durationDays), 1);
+                        return (
+                        <div key={tmpl.id} className={`group relative flex cursor-pointer flex-col overflow-hidden rounded-[16px] border-[1.5px] border-[var(--plr-bone-dark)] bg-[var(--plr-cream)] p-5 transition-all duration-200 hover:-translate-y-1 hover:border-[var(--plr-teal)] hover:shadow-[0_8px_24px_rgba(46,79,74,0.08)] ${needsChapters ? 'pointer-events-none opacity-50' : ''}`}
                             onClick={() => handleTemplateSelect(tmpl)}>
                             <div className="absolute -right-4 -top-4 opacity-[0.03] transition-opacity duration-300 group-hover:opacity-[0.08]">
                                 <BookIcon size={80} />
@@ -371,13 +378,17 @@ function IntentionView({ onBegin, onViewActive, chapters, hasExistingPlan, plann
                                     {tmpl.tags && tmpl.tags.length > 0 && (
                                         <span className="rounded-md bg-[rgba(46,79,74,0.08)] px-2 py-1 font-mono text-[0.65rem] font-medium tracking-[0.05em] text-[var(--plr-teal)]">{tmpl.tags[0]}</span>
                                     )}
+                                    {needsChapters && (
+                                        <span className="font-mono text-[0.65rem] text-[var(--plr-ink-muted)]">Loading surahs…</span>
+                                    )}
                                 </div>
                                 <span className="font-mono text-[0.65rem] text-[var(--plr-ink-muted)]">
-                                    {tmpl.recommendedPace} {PLANNER_UNITS[tmpl.unitType]?.plural || 'units'}/day
+                                    {unitsPerDay} {PLANNER_UNITS[tmpl.unitType]?.plural || 'units'}/day
                                 </span>
                             </div>
                         </div>
-                    ))}
+                        );
+                    })}
                 </div>
             </div>
 
@@ -540,6 +551,59 @@ function IntentionView({ onBegin, onViewActive, chapters, hasExistingPlan, plann
                                         })}
                                     </div>
                                 )}
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            <AnimatePresence>
+                {previewPlan && (
+                    <motion.div className="fixed inset-0 z-[1000] flex items-center justify-center bg-[rgba(30,35,32,0.45)] p-4 backdrop-blur-sm"
+                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        onClick={e => { if (e.target === e.currentTarget) setPreviewPlan(null); }}
+                    >
+                        <motion.div className="flex max-h-[90vh] w-full max-w-[460px] flex-col overflow-hidden rounded-[20px] bg-[var(--plr-cream)] shadow-[0_24px_80px_rgba(0,0,0,0.18),0_0_0_1px_rgba(0,0,0,0.05)]"
+                            initial={{ opacity: 0, y: 40, scale: 0.96 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 30, scale: 0.96 }}
+                            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}>
+                            <div className="flex items-center justify-between border-b border-[var(--plr-bone-dark)] px-6 py-5">
+                                <h2 className="font-ui text-xl font-semibold text-[var(--plr-ink)]">Start "{previewPlan.title}"?</h2>
+                                <button className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border-none bg-[var(--plr-bone)] text-[var(--plr-ink-mid)] transition-all duration-150 hover:bg-[var(--plr-bone-dark)] hover:text-[var(--plr-ink)]" onClick={() => setPreviewPlan(null)} aria-label="Close">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                                        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                                    </svg>
+                                </button>
+                            </div>
+                            <div className="flex-1 overflow-y-auto px-6 py-5">
+                                <p className="font-body text-[0.85rem] leading-relaxed text-[var(--plr-ink-mid)]">{previewPlan.title}</p>
+                                <div className="mt-4 grid grid-cols-2 gap-3">
+                                    {(() => {
+                                        const planUnits = previewPlan.assignments.reduce((sum, a) => sum + a.items.length, 0);
+                                        const perDay = Math.max(Math.ceil(planUnits / previewPlan.durationDays), 1);
+                                        const endLabel = getPaceStats(previewPlan.durationDays, previewPlan.excludeDays || [], previewPlan.startDate, planUnits).endLabel;
+                                        return [
+                                            { label: 'Duration', value: `${previewPlan.durationDays} days` },
+                                            { label: 'Pace', value: `${perDay} ${PLANNER_UNITS[previewPlan.unitType]?.plural || 'units'}/day` },
+                                            { label: 'Starts', value: formatPlannerDateLabel(previewPlan.startDate) },
+                                            { label: 'Done by', value: endLabel },
+                                        ].map(stat => (
+                                            <div key={stat.label} className="flex flex-col gap-1 rounded-xl border-[1.5px] border-[var(--plr-bone-dark)] bg-white p-3.5 shadow-sm">
+                                                <span className="font-mono text-[0.6rem] uppercase tracking-[0.08em] text-[var(--plr-ink-muted)]">{stat.label}</span>
+                                                <span className="font-ui text-[1rem] font-semibold text-[var(--plr-ink)]">{stat.value}</span>
+                                            </div>
+                                        ));
+                                    })()}
+                                </div>
+                            </div>
+                            <div className="flex gap-3 border-t border-[var(--plr-bone-dark)] bg-[var(--plr-cream)] px-6 py-4 pb-5">
+                                <button className="flex-1 cursor-pointer rounded-[12px] border-[1.5px] border-[var(--plr-bone-dark)] bg-white px-4 py-3 font-mono text-[0.72rem] font-medium uppercase tracking-[0.1em] text-[var(--plr-ink-mid)] transition-all duration-200 hover:bg-[var(--plr-bone)] hover:text-[var(--plr-ink)]" onClick={() => setPreviewPlan(null)}>
+                                    Cancel
+                                </button>
+                                <button className="flex-1 cursor-pointer rounded-[12px] border-none bg-[var(--plr-teal)] px-4 py-3 font-mono text-[0.72rem] font-medium uppercase tracking-[0.1em] text-white shadow-[0_4px_16px_rgba(46,79,74,0.22)] transition-all duration-200 hover:bg-[var(--plr-teal-mid)]" onClick={() => { onBegin(previewPlan); setPreviewPlan(null); }}>
+                                    Create Plan
+                                </button>
                             </div>
                         </motion.div>
                     </motion.div>
