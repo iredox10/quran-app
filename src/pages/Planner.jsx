@@ -533,7 +533,7 @@ function IntentionView({ onBegin, onViewActive, chapters, hasExistingPlan, plann
                                         {archivedPlanners.map(p => {
                                             const isCompleted = p.completedDays?.length === p.durationDays;
                                             return (
-                                                <div key={p.id + p.archivedAt} className="rounded-xl border-[1.5px] border-[var(--plr-bone-dark)] bg-white p-4 shadow-sm">
+                                                <div key={p.id + p.archivedAt} className="rounded-xl border-[1.5px] border-[var(--plr-bone-dark)] bg-[var(--plr-bone)] p-4 shadow-sm">
                                                     <div className="flex items-center justify-between">
                                                         <h3 className="font-body text-[0.95rem] font-semibold text-[var(--plr-ink)]">{p.title || 'Plan'}</h3>
                                                         <span className={`rounded-full px-2 py-0.5 font-mono text-[0.6rem] font-medium tracking-[0.05em] uppercase ${isCompleted ? 'bg-[rgba(184,146,74,0.15)] text-[var(--plr-gold)]' : 'bg-[var(--plr-bone)] text-[var(--plr-ink-muted)]'}`}>
@@ -589,7 +589,7 @@ function IntentionView({ onBegin, onViewActive, chapters, hasExistingPlan, plann
                                             { label: 'Starts', value: formatPlannerDateLabel(previewPlan.startDate) },
                                             { label: 'Done by', value: endLabel },
                                         ].map(stat => (
-                                            <div key={stat.label} className="flex flex-col gap-1 rounded-xl border-[1.5px] border-[var(--plr-bone-dark)] bg-white p-3.5 shadow-sm">
+                                            <div key={stat.label} className="flex flex-col gap-1 rounded-xl border-[1.5px] border-[var(--plr-bone-dark)] bg-[var(--plr-bone)] p-3.5 shadow-sm">
                                                 <span className="font-mono text-[0.6rem] uppercase tracking-[0.08em] text-[var(--plr-ink-muted)]">{stat.label}</span>
                                                 <span className="font-ui text-[1rem] font-semibold text-[var(--plr-ink)]">{stat.value}</span>
                                             </div>
@@ -598,7 +598,7 @@ function IntentionView({ onBegin, onViewActive, chapters, hasExistingPlan, plann
                                 </div>
                             </div>
                             <div className="flex gap-3 border-t border-[var(--plr-bone-dark)] bg-[var(--plr-cream)] px-6 py-4 pb-5">
-                                <button className="flex-1 cursor-pointer rounded-[12px] border-[1.5px] border-[var(--plr-bone-dark)] bg-white px-4 py-3 font-mono text-[0.72rem] font-medium uppercase tracking-[0.1em] text-[var(--plr-ink-mid)] transition-all duration-200 hover:bg-[var(--plr-bone)] hover:text-[var(--plr-ink)]" onClick={() => setPreviewPlan(null)}>
+                                <button className="flex-1 cursor-pointer rounded-[12px] border-[1.5px] border-[var(--plr-bone-dark)] bg-[var(--plr-bone)] px-4 py-3 font-mono text-[0.72rem] font-medium uppercase tracking-[0.1em] text-[var(--plr-ink-mid)] transition-all duration-200 hover:bg-[var(--plr-bone-dark)] hover:text-[var(--plr-ink)]" onClick={() => setPreviewPlan(null)}>
                                     Cancel
                                 </button>
                                 <button className="flex-1 cursor-pointer rounded-[12px] border-none bg-[var(--plr-teal)] px-4 py-3 font-mono text-[0.72rem] font-medium uppercase tracking-[0.1em] text-white shadow-[0_4px_16px_rgba(46,79,74,0.22)] transition-all duration-200 hover:bg-[var(--plr-teal-mid)]" onClick={() => { onBegin(previewPlan); setPreviewPlan(null); }}>
