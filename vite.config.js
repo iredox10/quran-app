@@ -11,7 +11,7 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['logo-192.png', 'logo-512.png', 'favicon.ico', 'apple-touch-icon.png'],
       devOptions: {
-        enabled: true
+        enabled: false
       },
       manifest: {
         name: 'Quran Nur',
