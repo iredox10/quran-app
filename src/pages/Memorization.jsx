@@ -6,7 +6,7 @@ import { getVerses, getChapter, getTajweedVerses } from '../services/api/quranAp
 import { useAppStore } from '../store/useAppStore';
 import { Brain, EyeOff, Eye, Repeat, ArrowLeft, ArrowRight, X, Play, Pause, ShieldAlert, Award, Languages, Layers, RefreshCw, Clock, Bookmark, FolderPlus, Plus, Folder, Settings2, CheckCircle, ChevronLeft, ChevronRight, Type, MousePointer, Mic } from 'lucide-react';
 import { getMushafById, isTajweedEnabledForMushaf } from '../config/mushaf';
-import { getVerseArabicText, sanitizeTajweedHtml } from '../utils/quranText';
+import { getVerseArabicText, getWordArabicText, sanitizeTajweedHtml } from '../utils/quranText';
 import { getLocalAudioUrl } from '../utils/localAudio';
 import { saukaService } from '../services/saukaService';
 import confetti from 'canvas-confetti';
@@ -30,7 +30,7 @@ export default function Memorization() {
     const {
         setNavHeaderTitle, arabicFont, fontSize, translationFontSize, translationId, mushafId,
         bookmarks, toggleBookmark, collections, addCollection, addToCollection,
-        tajweedEnabled, logReadingSession,
+        tajweedEnabled, logReadingSession, wordTooltipBehavior,
         memorizedAyahs, memorizedSurahs, toggleMemorizedAyah, toggleMemorizedSurah,
         customAudioBaseUrl, localAudioDirHandle, completedTours
     } = useAppStore();
@@ -258,12 +258,13 @@ export default function Memorization() {
         const text = getVerseArabicText(verse, mushaf);
         const computedFontSize = `clamp(${0.9 + fontSize * 0.15}rem, ${fontSize * 1.2}vw, ${fontSize * 0.4 + 1.5}rem)`;
         const isTajweed = isTajweedActive && tajweedMap?.[verse.verse_key];
+        const getWordTranslation = (wi) => verse.words?.[wi]?.translation?.text || '';
 
         if (hideMode === 'word' || hideMode === 'firstletter') {
             const words = isTajweed ? (tajweedMap[verse.verse_key].match(/(?:<[^>]*>|[^<>\s])+/g) || []) : text.split(/\s+/);
             return (
                 <div
-                    className={`quran-text ${isTajweed ? 'tajweed-text' : ''} leading-[2.2] text-center [direction:rtl] transition-all duration-300 ${isPlayingAudio && audioVerseIndex === idx ? 'text-[var(--mem-teal)]' : ''}`}
+                    className={`quran-text ${isTajweed ? 'tajweed-text' : ''} ${wordTooltipBehavior === 'tajweed' && isTajweed ? 'tajweed-interactive' : ''} leading-[2.2] text-center [direction:rtl] transition-all duration-300 ${isPlayingAudio && audioVerseIndex === idx ? 'text-[var(--mem-teal)]' : ''}`}
                     style={{ fontSize: computedFontSize, fontFamily: arabicFont, display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '0.4em' }}
                     onClick={() => hideMode === 'blur' && setHideMode('visible')}
                 >
@@ -271,10 +272,13 @@ export default function Memorization() {
                         const key = `${verse.verse_key}-${wi}`;
                         const isRevealed = revealedWords[key];
                         const cleanWord = isTajweed ? word.replace(/<[^>]*>?/gm, '') : word;
+                        const wordTranslation = getWordTranslation(wi);
                         if (hideMode === 'word') {
                             return (
                                 <span
                                     key={wi}
+                                    data-word-translation={wordTranslation}
+                                    style={{ cursor: wordTooltipBehavior !== 'none' && wordTranslation ? 'pointer' : 'auto' }}
                                     className={`inline-block cursor-pointer select-none rounded-md px-1 py-0.5 transition-all duration-200 ${
                                         isRevealed
                                             ? 'text-inherit'
@@ -289,6 +293,8 @@ export default function Memorization() {
                         return (
                             <span
                                 key={wi}
+                                data-word-translation={wordTranslation}
+                                style={{ cursor: wordTooltipBehavior !== 'none' && wordTranslation ? 'pointer' : 'auto' }}
                                 className={`inline-block cursor-pointer select-none rounded-md px-1 py-0.5 transition-all duration-200 ${
                                     isRevealed
                                         ? 'text-inherit'
@@ -305,27 +311,55 @@ export default function Memorization() {
         }
 
         if (isTajweed) {
+            const tokens = tajweedMap[verse.verse_key].match(/(?:<[^>]*>|[^<>\s])+/g) || [];
             return (
                 <div
-                    className={`quran-text tajweed-text leading-[2.2] text-center [direction:rtl] transition-all duration-300 ${isPlayingAudio && audioVerseIndex === idx ? 'text-[var(--mem-teal)]' : ''} ${hideMode === 'blur' ? 'cursor-pointer blur-[8px]' : ''}`}
+                    className={`quran-text tajweed-text ${wordTooltipBehavior === 'tajweed' ? 'tajweed-interactive' : ''} leading-[2.2] text-center [direction:rtl] transition-all duration-300 ${isPlayingAudio && audioVerseIndex === idx ? 'text-[var(--mem-teal)]' : ''} ${hideMode === 'blur' ? 'cursor-pointer blur-[8px]' : ''}`}
                     style={{ fontSize: computedFontSize, fontFamily: arabicFont }}
                     onClick={() => hideMode === 'blur' && setHideMode('visible')}
                 >
-                    <span dangerouslySetInnerHTML={{ __html: tajweedMap[verse.verse_key] }} />
+                    {tokens.length > 0 ? tokens.map((token, wi) => {
+                        const wordTranslation = getWordTranslation(wi);
+                        return (
+                            <span
+                                key={wi}
+                                className="inline-block"
+                                data-word-translation={wordTranslation}
+                                style={{ cursor: wordTooltipBehavior !== 'none' && wordTranslation ? 'pointer' : 'auto', marginLeft: wi < tokens.length - 1 ? '0.3em' : '0' }}
+                                dangerouslySetInnerHTML={{ __html: token }}
+                            />
+                        );
+                    }) : (
+                        <span dangerouslySetInnerHTML={{ __html: tajweedMap[verse.verse_key] }} />
+                    )}
                 </div>
             );
         }
 
+        const verseWords = Array.isArray(verse.words) && verse.words.length > 0 ? verse.words : null;
         return (
             <div
                 className={`quran-text leading-[2.2] text-center [direction:rtl] transition-all duration-300 ${isPlayingAudio && audioVerseIndex === idx ? 'text-[var(--mem-teal)]' : ''} ${hideMode === 'blur' ? 'cursor-pointer blur-[8px]' : ''}`}
                 style={{ fontSize: computedFontSize, fontFamily: arabicFont }}
                 onClick={() => hideMode === 'blur' && setHideMode('visible')}
             >
-                {text}
+                {verseWords ? verseWords.map((word, wi) => {
+                    const isEndMark = word.char_type_name === 'end';
+                    const wordTranslation = word.translation?.text || '';
+                    return (
+                        <span
+                            key={word.id || wi}
+                            className={`word inline-block ${isEndMark ? 'end' : ''}`}
+                            data-word-translation={wordTranslation}
+                            style={{ cursor: wordTooltipBehavior !== 'none' && !isEndMark && wordTranslation ? 'pointer' : 'auto', marginLeft: wi < verseWords.length - 1 ? '0.3em' : '0' }}
+                        >
+                            {getWordArabicText(word, mushaf)}
+                        </span>
+                    );
+                }) : text}
             </div>
         );
-    }, [hideMode, revealedWords, fontSize, arabicFont, isTajweedActive, tajweedMap, isPlayingAudio, audioVerseIndex, mushaf]);
+    }, [hideMode, revealedWords, fontSize, arabicFont, isTajweedActive, tajweedMap, isPlayingAudio, audioVerseIndex, mushaf, wordTooltipBehavior]);
 
     const verses = versesResponse?.verses || [];
 
