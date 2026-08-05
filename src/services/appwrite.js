@@ -1,4 +1,5 @@
 import { Client, Account, Databases, Query, Storage } from 'appwrite';
+import { mergeStateInto } from '../utils/syncMerge';
 
 const endpoint = import.meta.env.VITE_APPWRITE_ENDPOINT || 'https://cloud.appwrite.io/v1';
 const projectId = import.meta.env.VITE_APPWRITE_PROJECT_ID;
@@ -49,20 +50,31 @@ export const syncService = {
                 Query.equal("userId", userId)
             ]);
 
-            const payload = {
-                userId,
-                stateData: JSON.stringify(stateData)
-            };
+            let mergedData = stateData;
+            let payload = { userId };
 
-            let updatedDoc;
             if (result.documents.length > 0) {
-                updatedDoc = await databases.updateDocument(databaseId, collectionId, result.documents[0].$id, payload);
+                const existingDoc = result.documents[0];
+                let existingData = {};
+                try {
+                    existingData = JSON.parse(existingDoc.stateData || '{}');
+                } catch (e) {
+                    console.error('Appwrite sync: failed to parse existing stateData, overwriting', e);
+                }
+                // Merge local into the existing cloud doc so both devices' data survives
+                mergedData = mergeStateInto(existingData, stateData);
+                payload.stateData = JSON.stringify(mergedData);
+                const updatedDoc = await databases.updateDocument(databaseId, collectionId, existingDoc.$id, payload);
+                return {
+                    updatedAt: new Date(updatedDoc.$updatedAt).getTime()
+                };
             } else {
-                updatedDoc = await databases.createDocument(databaseId, collectionId, 'unique()', payload);
+                payload.stateData = JSON.stringify(mergedData);
+                const createdDoc = await databases.createDocument(databaseId, collectionId, 'unique()', payload);
+                return {
+                    updatedAt: new Date(createdDoc.$updatedAt).getTime()
+                };
             }
-            return {
-                updatedAt: new Date(updatedDoc.$updatedAt).getTime()
-            };
         } catch (error) {
             console.error('Appwrite sync push error:', error);
             throw error;

@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { useAppStore } from '../store/useAppStore';
+import { useAppStore, getSyncableState } from '../store/useAppStore';
 import {
     User, Settings, Bookmark, Folder, Moon, Sun,
     ChevronRight, HardDrive, LogOut, CloudUpload, CloudDownload,
@@ -70,6 +70,7 @@ export default function Profile() {
         setIsLoading(true);
         const u = await authService.getCurrentUser();
         setUser(u);
+        useAppStore.getState().setCurrentUser(u);
         setIsLoading(false);
     };
 
@@ -91,7 +92,7 @@ export default function Profile() {
 
     const handleLogout = async () => {
         setIsLoading(true);
-        try { await authService.logout(); setUser(null); } catch (e) { console.error(e); }
+        try { await authService.logout(); setUser(null); useAppStore.getState().setCurrentUser(null); } catch (e) { console.error(e); }
         finally { setIsLoading(false); }
     };
 
@@ -99,19 +100,7 @@ export default function Profile() {
         if (!user) return; setSyncStatus('pushing');
         try {
             const s = useAppStore.getState();
-            await syncService.pushState(user.$id, {
-                theme: s.theme, translationId: s.translationId, reciterId: s.reciterId,
-                fontSize: s.fontSize, translationFontSize: s.translationFontSize,
-                readingMode: s.readingMode, mushafId: s.mushafId, arabicFontId: s.arabicFontId,
-                tajweedEnabled: s.tajweedEnabled, tafsirId: s.tafsirId,
-                bookmark: s.bookmark, bookmarks: s.bookmarks,
-                memorizedAyahs: s.memorizedAyahs, memorizedSurahs: s.memorizedSurahs,
-                collections: s.collections, recentlyRead: s.recentlyRead, readingSessions: s.readingSessions,
-                pomodoroProfiles: s.pomodoroProfiles, activePomodoroProfileId: s.activePomodoroProfileId,
-                pomodoroHistory: s.pomodoroHistory, pomodoroCompletedFocusCount: s.pomodoroCompletedFocusCount,
-                planners: s.planners, activePlannerId: s.activePlannerId, downloadedSurahs: s.downloadedSurahs,
-                dailyReadingGoal: s.dailyReadingGoal,
-            });
+            await syncService.pushState(user.$id, getSyncableState(s));
             setSyncStatus('success'); setTimeout(() => setSyncStatus(null), 3000);
         } catch (e) { console.error(e); setSyncStatus('error'); setTimeout(() => setSyncStatus(null), 3000); }
     };
@@ -120,7 +109,7 @@ export default function Profile() {
         if (!user) return; setSyncStatus('pulling');
         try {
             const r = await syncService.pullState(user.$id);
-            if (r) useAppStore.setState(r);
+            if (r?.state) useAppStore.setState({ ...r.state, lastSyncAt: r.updatedAt });
             setSyncStatus('success'); setTimeout(() => setSyncStatus(null), 3000);
         } catch (e) { console.error(e); setSyncStatus('error'); setTimeout(() => setSyncStatus(null), 3000); }
     };
