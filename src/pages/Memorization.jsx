@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getVerses, getChapter, getTajweedVerses } from '../services/api/quranApi';
 import { useAppStore } from '../store/useAppStore';
@@ -363,16 +363,19 @@ export default function Memorization() {
 
     const verses = versesResponse?.verses || [];
 
+    const [searchParams, setSearchParams] = useSearchParams();
+
     useEffect(() => {
-        const queryParams = new URLSearchParams(window.location.search);
-        const verseKey = queryParams.get('verse');
+        const verseKey = searchParams.get('verse');
         if (verseKey && verses.length > 0) {
             const index = verses.findIndex(v => v.verse_key === verseKey);
             if (index !== -1) {
                 setCurrentVerseIndex(index);
             }
+            searchParams.delete('verse');
+            setSearchParams(searchParams, { replace: true });
         }
-    }, [verses]);
+    }, [verses, searchParams, setSearchParams]);
 
     let currentVerses = [];
     if (verses.length > 0) {

@@ -66,6 +66,25 @@ export default function MemorizeIndex() {
         return counts;
     }, [memorizedAyahs]);
 
+    const getResumeVerseKey = (chapter) => {
+        if (!chapter || (memorizedSurahs || []).includes(chapter.id)) return null;
+        const memSet = new Set(
+            (memorizedAyahs || [])
+                .filter(k => k.startsWith(`${chapter.id}:`))
+                .map(k => Number(k.split(':')[1]))
+        );
+        for (let a = 1; a <= chapter.verses_count; a++) {
+            if (!memSet.has(a)) return `${chapter.id}:${a}`;
+        }
+        return null;
+    };
+
+    const getResumePath = (chapter) => {
+        if (!chapter) return null;
+        const resumeKey = getResumeVerseKey(chapter);
+        return resumeKey ? `/memorize/${chapter.id}?verse=${resumeKey}` : `/memorize/${chapter.id}`;
+    };
+
     const { sabaqCount, sabqiCount, manzilCount, dueSabaq, dueSabqi, dueManzil } = useMemo(() => {
         const now = new Date();
         const sabaq = [];
@@ -192,7 +211,7 @@ export default function MemorizeIndex() {
                     <h1 className="mb-6 font-ui text-[2rem] font-bold text-[var(--h-ink)]">Hifdh Tracker</h1>
 
                     {lastSessionChapter && (
-                        <Link to={`/memorize/${lastSessionChapter.id}`} className="group mx-auto flex max-w-[460px] items-center gap-4 rounded-[20px] bg-gradient-to-br from-[var(--h-teal)] to-[var(--h-teal-mid)] p-4 text-white no-underline transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_32px_rgba(46,79,74,0.25)] md:p-5 relative overflow-hidden">
+                        <Link to={getResumePath(lastSessionChapter)} className="group mx-auto flex max-w-[460px] items-center gap-4 rounded-[20px] bg-gradient-to-br from-[var(--h-teal)] to-[var(--h-teal-mid)] p-4 text-white no-underline transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_32px_rgba(46,79,74,0.25)] md:p-5 relative overflow-hidden">
                             <div className="absolute -right-6 -top-6 h-32 w-32 rounded-full bg-white/5 blur-2xl transition-transform duration-500 group-hover:scale-150" />
                             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/15 backdrop-blur-sm"><BookOpen size={24} /></div>
                             <div className="min-w-0 flex-1 text-left relative z-10">
@@ -293,7 +312,7 @@ export default function MemorizeIndex() {
                                 const pct = total > 0 ? Math.round((curMem / total) * 100) : 0;
                                 
                                 return (
-                                    <div key={goal.id} className="group relative flex items-center justify-between overflow-hidden rounded-[20px] border-[1.5px] border-[var(--h-bone-dark)] bg-[var(--h-cream)] p-5 transition-all duration-300 hover:border-[#b8924a] hover:shadow-[0_8px_24px_rgba(184,146,74,0.12)]">
+                                    <Link key={goal.id} to={getResumePath(ch) || `/memorize/${goal.targetId}`} className="group relative flex items-center justify-between overflow-hidden rounded-[20px] border-[1.5px] border-[var(--h-bone-dark)] bg-[var(--h-cream)] p-5 no-underline text-inherit transition-all duration-300 hover:border-[#b8924a] hover:shadow-[0_8px_24px_rgba(184,146,74,0.12)]">
                                         <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-[#b8924a]" />
                                         <div className="pl-2">
                                             <div className="flex items-center gap-2.5 font-ui text-[1.1rem] font-bold text-[var(--h-ink)] group-hover:text-[#b8924a] transition-colors">
@@ -302,6 +321,11 @@ export default function MemorizeIndex() {
                                             <div className="mt-1 flex items-center gap-2 text-[0.78rem] text-[var(--h-ink-muted)]">
                                                 <Calendar size={14} /> {daysLeft} days left
                                             </div>
+                                            {getResumeVerseKey(ch) && (
+                                                <div className="mt-1.5 flex items-center gap-1.5 text-[0.72rem] font-semibold text-[#b8924a]">
+                                                    <ArrowRight size={13} /> Continue from Ayah {getResumeVerseKey(ch).split(':')[1]}
+                                                </div>
+                                            )}
                                         </div>
                                         <div className="flex items-center gap-4">
                                             <div className="text-right hidden sm:block">
@@ -316,7 +340,7 @@ export default function MemorizeIndex() {
                                                 <span className="font-mono text-[0.6rem] font-bold text-[var(--h-ink)]">{pct}%</span>
                                             </div>
                                         </div>
-                                    </div>
+                                    </Link>
                                 );
                             })}
                         </div>
