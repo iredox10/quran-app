@@ -445,10 +445,10 @@ export default function Memorization() {
         const handleKeyDown = (e) => {
             if (e.key === 'ArrowLeft') {
                 e.preventDefault();
-                handlePrev();
+                handleNext();
             } else if (e.key === 'ArrowRight') {
                 e.preventDefault();
-                handleNext();
+                handlePrev();
             }
         };
 
@@ -613,7 +613,7 @@ export default function Memorization() {
 
             <div className={`fixed bottom-0 left-0 right-0 z-40 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] transition-all duration-[400ms] ${showUI ? '' : 'pointer-events-none translate-y-[10px] opacity-0'}`}>
                 <div className="mx-auto flex w-full max-w-[480px] overflow-x-auto no-scrollbar scroll-smooth items-center justify-start sm:justify-center gap-[0.35rem] rounded-[20px] border-[1.5px] border-[var(--mem-bone-dark)] bg-[var(--mem-white)] px-[0.85rem] py-[0.65rem] shadow-[0_-4px_30px_rgba(0,0,0,0.08),0_0_0_1px_rgba(0,0,0,0.03)]" style={{ position: 'relative' }}>
-                    <button className="flex h-[42px] w-[42px] shrink-0 cursor-pointer items-center justify-center rounded-xl border-none bg-transparent text-[var(--mem-ink-mid)] transition-all duration-150 hover:bg-[var(--mem-bone)] disabled:cursor-default disabled:opacity-25" onClick={handlePrev} disabled={currentVerseIndex === 0}><ChevronLeft size={20} /></button>
+                    <button className="flex h-[42px] w-[42px] shrink-0 cursor-pointer items-center justify-center rounded-xl border-none bg-transparent text-[var(--mem-ink-mid)] transition-all duration-150 hover:bg-[var(--mem-bone)] disabled:cursor-default disabled:opacity-25" onClick={handleNext} disabled={currentVerseIndex + currentVerses.length >= verses.length}><ChevronLeft size={20} /></button>
                     <button id="hide-text-btn" className={`flex h-[42px] w-[42px] shrink-0 cursor-pointer items-center justify-center rounded-xl border-none bg-transparent text-[var(--mem-ink-mid)] transition-all duration-150 hover:bg-[var(--mem-bone)] ${hideMode !== 'visible' ? 'bg-[var(--mem-teal-soft)] text-[var(--mem-teal)]' : ''}`} onClick={cycleHideMode}
                         title={hideMode === 'visible' ? 'Hide Text' : hideMode === 'blur' ? 'Word-by-Word' : hideMode === 'word' ? 'First Letter Hints' : 'Show All'}>
                         {hideMode === 'visible' ? <EyeOff size={18} /> : hideMode === 'blur' ? <MousePointer size={18} /> : hideMode === 'word' ? <Type size={18} /> : <Eye size={18} />}
@@ -726,7 +726,7 @@ export default function Memorization() {
                         </AnimatePresence>
                     </div>
 
-                    <button className="flex h-[42px] w-[42px] shrink-0 cursor-pointer items-center justify-center rounded-xl border-none bg-transparent text-[var(--mem-ink-mid)] transition-all duration-150 hover:bg-[var(--mem-bone)] disabled:cursor-default disabled:opacity-25" onClick={handleNext} disabled={currentVerseIndex + currentVerses.length >= verses.length}>
+                    <button className="flex h-[42px] w-[42px] shrink-0 cursor-pointer items-center justify-center rounded-xl border-none bg-transparent text-[var(--mem-ink-mid)] transition-all duration-150 hover:bg-[var(--mem-bone)] disabled:cursor-default disabled:opacity-25" onClick={handlePrev} disabled={currentVerseIndex === 0}>
                         <ChevronRight size={20} />
                     </button>
                 </div>
