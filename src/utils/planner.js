@@ -429,7 +429,6 @@ export function rebalancePlanner(planner, strategy, customDurationDays = null) {
         
         for (let i = 0; i < unreadPagePool.length; i += chunkSize) {
             const chunk = unreadPagePool.slice(i, i + chunkSize);
-            const groups = groupContiguousPages(chunk);
             const pStart = chunk[0];
             const pEnd = chunk[chunk.length - 1];
             
@@ -441,12 +440,12 @@ export function rebalancePlanner(planner, strategy, customDurationDays = null) {
                 endUnit: pEnd,
                 pageStart: pStart,
                 pageEnd: pEnd,
-                items: groups.map(grp => ({
-                    title: `Pages ${grp.pStart}-${grp.pEnd}`,
-                    subtitle: `${grp.pEnd - grp.pStart + 1} pages`,
-                    rangeValue: `${grp.pStart}-${grp.pEnd}`,
-                    pageStart: grp.pStart,
-                    pageEnd: grp.pEnd,
+                items: chunk.map(p => ({
+                    title: `Page ${p}`,
+                    subtitle: '1 page',
+                    rangeValue: p,
+                    pageStart: p,
+                    pageEnd: p,
                 })),
             });
         }
@@ -472,7 +471,6 @@ export function rebalancePlanner(planner, strategy, customDurationDays = null) {
             const chunk = unreadPagePool.slice(i * pagesPerDay, (i + 1) * pagesPerDay);
             if (!chunk.length) break;
             
-            const groups = groupContiguousPages(chunk);
             const pStart = chunk[0];
             const pEnd = chunk[chunk.length - 1];
             
@@ -484,12 +482,12 @@ export function rebalancePlanner(planner, strategy, customDurationDays = null) {
                 endUnit: pEnd,
                 pageStart: pStart,
                 pageEnd: pEnd,
-                items: groups.map(grp => ({
-                    title: `Pages ${grp.pStart}-${grp.pEnd}`,
-                    subtitle: `${grp.pEnd - grp.pStart + 1} pages`,
-                    rangeValue: `${grp.pStart}-${grp.pEnd}`,
-                    pageStart: grp.pStart,
-                    pageEnd: grp.pEnd,
+                items: chunk.map(p => ({
+                    title: `Page ${p}`,
+                    subtitle: '1 page',
+                    rangeValue: p,
+                    pageStart: p,
+                    pageEnd: p,
                 })),
             });
         }

@@ -22,6 +22,8 @@ const ShareVerseModal = ({ verse, chapter, mushaf = 1, onClose }) => {
     const generateImageBlob = async () => {
         if (!cardRef.current) return null;
         try {
+            // Wait for all fonts to be ready so Arabic text renders in the capture
+            await document.fonts?.ready;
             // Use a higher pixel ratio to ensure the resulting image is high quality
             const blob = await htmlToImage.toBlob(cardRef.current, {
                 pixelRatio: 3,
@@ -60,28 +62,40 @@ const ShareVerseModal = ({ verse, chapter, mushaf = 1, onClose }) => {
         setIsGenerating(true);
         const blob = await generateImageBlob();
         setIsGenerating(false);
-        
-        if (blob) {
-            const file = new File([blob], `Quran_${verse.verse_key}.png`, { type: 'image/png' });
-            
+
+        if (!blob) {
+            alert("Failed to generate image.");
+            return;
+        }
+
+        const file = new File([blob], `Quran_${verse.verse_key}.png`, { type: 'image/png' });
+        const shareText = `${arabicText}\n\n"${translationText}"\n— ${surahName} ${verseNumber}`;
+
+        try {
             // Check if Web Share API is available and supports files
-            if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                try {
-                    await navigator.share({
-                        title: `Quran ${verse.verse_key}`,
-                        files: [file]
-                    });
-                } catch (error) {
-                    if (error.name !== 'AbortError') {
-                        console.error('Share failed:', error);
-                        // Fallback to download
-                        handleDownload();
-                    }
-                }
+            if (typeof navigator.share === 'function' && navigator.canShare && navigator.canShare({ files: [file] })) {
+                await navigator.share({
+                    title: `Quran ${verse.verse_key}`,
+                    files: [file]
+                });
+            } else if (typeof navigator.share === 'function') {
+                // File sharing unsupported, share the verse as text instead
+                await navigator.share({
+                    title: `Quran ${verse.verse_key}`,
+                    text: shareText,
+                    url: window.location.href
+                });
             } else {
-                // Fallback to download if sharing files is not supported
+                // No Web Share API at all: save image + copy text
                 handleDownload();
+                try { await navigator.clipboard.writeText(shareText); } catch { /* clipboard may be unavailable, image is still saved */ }
+                alert('Sharing is not supported on this browser — the verse card was saved and the text copied to your clipboard.');
             }
+        } catch (error) {
+            if (error.name === 'AbortError') return;
+            console.error('Share failed:', error);
+            // Fallback to download
+            handleDownload();
         }
     };
 

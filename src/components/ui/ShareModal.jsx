@@ -14,8 +14,8 @@ export default function ShareModal({ isOpen, onClose, type, data }) {
         if (!cardRef.current) return;
         setIsGenerating(true);
         try {
-            // Wait a tick for fonts to be perfectly ready if needed, though they usually are
-            await new Promise(res => setTimeout(res, 100));
+            // Wait for all fonts to be ready so Arabic text renders in the capture
+            await document.fonts?.ready;
             const blob = await toBlob(cardRef.current, {
                 quality: 1,
                 pixelRatio: 2,
@@ -23,16 +23,30 @@ export default function ShareModal({ isOpen, onClose, type, data }) {
                 style: { margin: 0 } // Ensure no weird margins in the output
             });
 
-            if (actionType === 'share' && navigator.canShare) {
+            if (actionType === 'share') {
                 const file = new File([blob], `quran-app-${type}.png`, { type: 'image/png' });
-                if (navigator.canShare({ files: [file] })) {
+                const shareText = type === 'verse'
+                    ? `${data?.arabic}\n\n"${data?.translation}"\n— ${data?.ref}`
+                    : `My Quran Reading Progress: ${data?.streak} day streak, ${data?.todayMinutes} mins today, ${data?.totalHours} total hours!`;
+
+                if (typeof navigator.share === 'function' && navigator.canShare && navigator.canShare({ files: [file] })) {
                     await navigator.share({
                         files: [file],
                         title: 'Quran Nur',
-                        text: type === 'verse' ? 'Verse of the Day from Quran Nur' : "My Quran Reading Progress!"
+                        text: shareText
+                    });
+                } else if (typeof navigator.share === 'function') {
+                    // File sharing unsupported, share text instead
+                    await navigator.share({
+                        title: 'Quran Nur',
+                        text: shareText,
+                        url: window.location.href
                     });
                 } else {
+                    // No Web Share API at all: save image + copy text
                     downloadBlob(blob);
+                    try { await navigator.clipboard.writeText(shareText); } catch { /* clipboard may be unavailable, image is still saved */ }
+                    alert('Sharing is not supported on this browser — the image was saved and the text copied to your clipboard.');
                 }
             } else {
                 downloadBlob(blob);
@@ -40,6 +54,7 @@ export default function ShareModal({ isOpen, onClose, type, data }) {
                 setTimeout(() => setDownloaded(false), 2000);
             }
         } catch (error) {
+            if (error.name === 'AbortError') return;
             console.error('Failed to generate image', error);
             alert('Something went wrong while generating the image.');
         } finally {
@@ -169,16 +184,14 @@ export default function ShareModal({ isOpen, onClose, type, data }) {
                                 {downloaded ? 'Saved!' : 'Save Image'}
                             </button>
                             
-                            {navigator.canShare && (
-                                <button
-                                    onClick={() => handleAction('share')}
-                                    disabled={isGenerating}
-                                    className="flex flex-1 items-center justify-center gap-2 rounded-full bg-[#B8924A] text-white py-2.5 text-sm font-semibold transition-all hover:bg-[#a3803e] disabled:opacity-70"
-                                >
-                                    {isGenerating ? <Loader2 size={16} className="animate-spin" /> : <Share2 size={16} />}
-                                    Share
-                                </button>
-                            )}
+                            <button
+                                onClick={() => handleAction('share')}
+                                disabled={isGenerating}
+                                className="flex flex-1 items-center justify-center gap-2 rounded-full bg-[#B8924A] text-white py-2.5 text-sm font-semibold transition-all hover:bg-[#a3803e] disabled:opacity-70"
+                            >
+                                {isGenerating ? <Loader2 size={16} className="animate-spin" /> : <Share2 size={16} />}
+                                Share
+                            </button>
                         </div>
                     </div>
                 </motion.div>

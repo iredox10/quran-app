@@ -58,10 +58,9 @@ describe('rebalancePlanner', () => {
         expect(preservedDay.items[1].pageEnd).toBe(5);
         
         const newDay = rebalanced.assignments[1];
-        expect(newDay.items.length).toBe(2); 
-        expect(newDay.items[0].pageStart).toBe(3);
-        expect(newDay.items[0].pageEnd).toBe(4);
-        expect(newDay.items[1].pageStart).toBe(6);
-        expect(newDay.items[1].pageEnd).toBe(10);
+        expect(newDay.items.length).toBe(7);
+        expect(newDay.items.map(it => it.pageStart)).toEqual([3, 4, 6, 7, 8, 9, 10]);
+        expect(newDay.items.every(it => it.pageStart === it.pageEnd)).toBe(true);
+        expect(newDay.items[0].rangeValue).toBe(3);
     });
 });
