@@ -1,12 +1,56 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useLayoutEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Download, Share2, Loader2, Sparkles, Flame, Clock, BarChart3, BookOpen } from 'lucide-react';
 import { toBlob } from 'html-to-image';
 
 export default function ShareModal({ isOpen, onClose, type, data }) {
     const cardRef = useRef(null);
+    const verseArabicRef = useRef(null);
+    const verseTranslationRef = useRef(null);
     const [isGenerating, setIsGenerating] = useState(false);
     const [downloaded, setDownloaded] = useState(false);
+    const [verseArabicSize, setVerseArabicSize] = useState(28);
+    const [verseTranslationSize, setVerseTranslationSize] = useState(14);
+    const [growMode, setGrowMode] = useState(false);
+
+    // Auto-fit long ayahs so the whole verse fits inside the card
+    const runFitRef = useRef(null);
+    useLayoutEffect(() => {
+        if (type !== 'verse') return;
+        const fitEl = (el, min, max, setSize, leading, startMax) => {
+            if (!el) return true;
+            let size = startMax ? max : parseFloat(el.style.fontSize) || max;
+            el.style.fontSize = `${size}px`;
+            el.style.lineHeight = `${Math.round(size * leading)}px`;
+            // +4px slack so text decorations don't trigger a false shrink
+            const overflowing = () => el.scrollHeight > el.clientHeight + 4;
+            let guard = 0;
+            while (overflowing() && size > min && guard++ < 100) {
+                size -= 0.5;
+                el.style.fontSize = `${size}px`;
+                el.style.lineHeight = `${Math.round(size * leading)}px`;
+            }
+            setSize(size);
+            return !overflowing();
+        };
+
+        const run = () => {
+            if (!verseArabicRef.current) return;
+            fitEl(verseTranslationRef.current, 10, 14, setVerseTranslationSize, 1.65, true);
+            const fits = fitEl(verseArabicRef.current, 14, 28, setVerseArabicSize, 2.1, !growMode);
+            fitEl(verseTranslationRef.current, 10, 14, setVerseTranslationSize, 1.65, false);
+            // Pathologically long verses can't fit at minimum size — let the card grow instead of clipping
+            if (!fits) setGrowMode(true);
+        };
+        runFitRef.current = run;
+
+        run();
+        document.fonts?.ready.then(() => runFitRef.current?.()).catch(() => {});
+        const ro = new ResizeObserver(() => runFitRef.current?.());
+        if (verseArabicRef.current?.parentElement) ro.observe(verseArabicRef.current.parentElement);
+        if (verseTranslationRef.current?.parentElement) ro.observe(verseTranslationRef.current.parentElement);
+        return () => ro.disconnect();
+    }, [type, data?.arabic, data?.translation, growMode]);
 
     if (!isOpen) return null;
 
@@ -76,18 +120,22 @@ export default function ShareModal({ isOpen, onClose, type, data }) {
     const renderCardContent = () => {
         if (type === 'verse') {
             return (
-                <div className="flex flex-col h-full justify-center relative z-10 pt-2 pb-4">
-                    <div className="mb-6 flex flex-col items-center justify-center gap-2">
+                <div className={`flex flex-col justify-center relative z-10 pt-2 pb-4 ${growMode ? '' : 'h-full'}`}>
+                    <div className="mb-6 flex shrink-0 flex-col items-center justify-center gap-2">
                         <div className="w-8 h-[1.5px] bg-[#B8924A]/60" />
                         <span className="font-mono text-[0.6rem] uppercase tracking-[0.25em] text-[#B8924A]">Verse of the Day</span>
                     </div>
-                    <div className="font-arabic text-center text-[clamp(1.4rem,6vw,1.8rem)] leading-[2.1] text-white mb-6" dir="rtl">
-                        {data?.arabic}
+                    <div className={`flex w-full items-center justify-center ${growMode ? '' : 'min-h-0 flex-1 overflow-hidden'}`}>
+                        <div ref={verseArabicRef} dir="rtl" className="font-arabic text-center text-white" style={{ fontSize: `${verseArabicSize}px`, lineHeight: `${Math.round(verseArabicSize * 2.1)}px`, maxHeight: growMode ? 'none' : '100%', overflow: 'hidden' }}>
+                            {data?.arabic}
+                        </div>
                     </div>
-                    <div className="text-center text-[0.9rem] italic leading-[1.65] text-white/90 mb-6 font-body px-1">
-                        "{data?.translation}"
+                    <div className="mt-3 flex w-full shrink-0 items-center justify-center overflow-hidden" style={{ maxHeight: growMode ? 'none' : '30%' }}>
+                        <div ref={verseTranslationRef} className="text-center italic leading-[1.65] text-white/90 font-body px-1" style={{ fontSize: `${verseTranslationSize}px`, lineHeight: `${Math.round(verseTranslationSize * 1.65)}px`, maxHeight: growMode ? 'none' : '100%', overflow: 'hidden' }}>
+                            "{data?.translation}"
+                        </div>
                     </div>
-                    <div className="text-center font-mono text-[0.65rem] text-[#B8924A] tracking-widest mt-auto">
+                    <div className="mt-4 text-center font-mono text-[0.65rem] text-[#B8924A] tracking-widest shrink-0">
                         — {data?.ref} —
                     </div>
                 </div>
@@ -146,6 +194,7 @@ export default function ShareModal({ isOpen, onClose, type, data }) {
                     <div 
                         ref={cardRef}
                         className="w-full min-h-[420px] bg-gradient-to-br from-[#004d40] to-[#002620] rounded-[24px] relative shadow-[0_16px_40px_rgba(0,0,0,0.4)] p-6 md:p-8 flex flex-col border border-[#B8924A]/20"
+                        style={{ height: growMode ? 'auto' : 'min(540px, calc(100vh - 170px))', alignSelf: growMode ? 'flex-start' : 'auto' }}
                     >
                         {/* Decorative Background Elements */}
                         <img src="/logo-192.png" className="absolute -top-10 -right-10 w-56 h-56 opacity-[0.03] pointer-events-none" alt="" />

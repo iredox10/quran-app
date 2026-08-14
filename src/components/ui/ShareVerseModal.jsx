@@ -1,11 +1,16 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useLayoutEffect } from 'react';
 import { X, Download, Share2, Loader2 } from 'lucide-react';
 import * as htmlToImage from 'html-to-image';
 import { getVerseArabicText } from '../../utils/quranText';
 
 const ShareVerseModal = ({ verse, chapter, mushaf = 1, onClose }) => {
     const cardRef = useRef(null);
+    const arabicRef = useRef(null);
+    const translationRef = useRef(null);
     const [isGenerating, setIsGenerating] = useState(false);
+    const [arabicFontSize, setArabicFontSize] = useState(30);
+    const [translationFontSize, setTranslationFontSize] = useState(15);
+    const [growMode, setGrowMode] = useState(false);
 
     // Strip HTML from translation (if any)
     const stripHtml = (html) => {
@@ -18,6 +23,44 @@ const ShareVerseModal = ({ verse, chapter, mushaf = 1, onClose }) => {
     const translationText = stripHtml(verse.translations?.[0]?.text);
     const verseNumber = verse.verse_key.split(':')[1];
     const surahName = chapter?.name_simple || `Surah ${verse.verse_key.split(':')[0]}`;
+
+    // Auto-fit long ayahs so the whole verse fits inside the card
+    const runFitRef = useRef(null);
+    useLayoutEffect(() => {
+        const fitEl = (el, min, max, setSize, leading, startMax) => {
+            if (!el) return true;
+            let size = startMax ? max : parseFloat(el.style.fontSize) || max;
+            el.style.fontSize = `${size}px`;
+            el.style.lineHeight = `${Math.round(size * leading)}px`;
+            // +4px slack: some styles (text-shadow) inflate scrollHeight slightly
+            const overflowing = () => el.scrollHeight > el.clientHeight + 4;
+            let guard = 0;
+            while (overflowing() && size > min && guard++ < 100) {
+                size -= 0.5;
+                el.style.fontSize = `${size}px`;
+                el.style.lineHeight = `${Math.round(size * leading)}px`;
+            }
+            setSize(size);
+            return !overflowing();
+        };
+
+        const run = () => {
+            if (!arabicRef.current) return;
+            fitEl(translationRef.current, 10, 15, setTranslationFontSize, 1.6, true);
+            const fits = fitEl(arabicRef.current, 13, 30, setArabicFontSize, 1.8, !growMode);
+            fitEl(translationRef.current, 10, 15, setTranslationFontSize, 1.6, false);
+            // Pathologically long verses (e.g. 2:282) can't fit at minimum size — let the card grow instead of clipping
+            if (!fits) setGrowMode(true);
+        };
+        runFitRef.current = run;
+
+        run();
+        document.fonts?.ready.then(() => runFitRef.current?.()).catch(() => {});
+        const ro = new ResizeObserver(() => runFitRef.current?.());
+        if (arabicRef.current?.parentElement) ro.observe(arabicRef.current.parentElement);
+        if (translationRef.current?.parentElement) ro.observe(translationRef.current.parentElement);
+        return () => ro.disconnect();
+    }, [arabicText, translationText, growMode]);
 
     const generateImageBlob = async () => {
         if (!cardRef.current) return null;
@@ -115,42 +158,66 @@ const ShareVerseModal = ({ verse, chapter, mushaf = 1, onClose }) => {
                 <div className="p-6 overflow-y-auto flex-1 bg-[var(--bg-secondary)] flex justify-center">
                     
                     {/* The Card to be converted to image */}
-                    <div 
+                    <div
                         ref={cardRef}
                         className="relative w-full max-w-[400px] overflow-hidden rounded-[24px] bg-[#141716] p-8 shadow-2xl"
                         style={{
                             background: 'linear-gradient(145deg, #181d1c 0%, #0f1211 100%)',
+                            height: growMode ? 'auto' : 'min(540px, calc(100vh - 170px))',
+                            alignSelf: growMode ? 'flex-start' : 'auto',
+                            minHeight: '380px',
                         }}
                     >
                         {/* Decorative Background Elements */}
                         <div className="absolute -top-20 -right-20 h-64 w-64 rounded-full bg-[#1e7e72] opacity-10 blur-3xl mix-blend-screen"></div>
                         <div className="absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-[#c6a87c] opacity-10 blur-3xl mix-blend-screen"></div>
                         
-                        <div className="relative z-10 flex h-full flex-col items-center text-center">
+                        <div className={`relative z-10 flex min-h-0 flex-col items-center text-center ${growMode ? '' : 'h-full'}`}>
                             
                             {/* Logo / App Name */}
-                            <div className="mb-6 flex flex-col items-center gap-3 text-[#c6a87c]/80">
-                                <img src="/logo-192.png" alt="Quran Nur Logo" className="h-16 w-16 object-contain drop-shadow-[0_0_15px_rgba(198,168,124,0.2)]" />
+                            <div className="mb-5 flex shrink-0 flex-col items-center gap-2.5 text-[#c6a87c]/80">
+                                <img src="/logo-192.png" alt="Quran Nur Logo" className="h-14 w-14 object-contain drop-shadow-[0_0_15px_rgba(198,168,124,0.2)]" />
                                 <span className="font-['Outfit',sans-serif] text-[0.7rem] font-bold tracking-[0.25em] uppercase opacity-80">Quran Nur</span>
                             </div>
 
-                            {/* Arabic Verse */}
-                            <p 
-                                className="mb-8 w-full font-arabic text-3xl leading-[1.8] text-white/95 text-center break-words"
-                                style={{ direction: 'rtl', textShadow: '0 2px 10px rgba(0,0,0,0.5)' }}
-                            >
-                                {arabicText}
-                            </p>
-
-                            {/* Translation */}
-                            {translationText && (
-                                <p className="mb-8 w-full text-[0.95rem] italic leading-relaxed text-white/70">
-                                    "{translationText}"
+                            {/* Arabic Verse — auto-fits */}
+                            <div className={`flex w-full items-center justify-center ${growMode ? '' : 'min-h-0 flex-1 overflow-hidden'}`}>
+                                <p
+                                    ref={arabicRef}
+                                    dir="rtl"
+                                    className="w-full break-words text-center font-arabic text-white/95"
+                                    style={{
+                                        fontSize: `${arabicFontSize}px`,
+                                        lineHeight: `${Math.round(arabicFontSize * 1.8)}px`,
+                                        maxHeight: growMode ? 'none' : '100%',
+                                        overflow: 'hidden',
+                                        textShadow: '0 2px 10px rgba(0,0,0,0.5)',
+                                    }}
+                                >
+                                    {arabicText}
                                 </p>
+                            </div>
+
+                            {/* Translation — auto-fits */}
+                            {translationText && (
+                                <div className="mt-3 flex w-full shrink-0 items-center justify-center overflow-hidden" style={{ maxHeight: growMode ? 'none' : '34%' }}>
+                                    <p
+                                        ref={translationRef}
+                                        className="w-full text-center italic text-white/70"
+                                        style={{
+                                            fontSize: `${translationFontSize}px`,
+                                            lineHeight: `${Math.round(translationFontSize * 1.6)}px`,
+                                            maxHeight: growMode ? 'none' : '100%',
+                                            overflow: 'hidden',
+                                        }}
+                                    >
+                                        "{translationText}"
+                                    </p>
+                                </div>
                             )}
 
                             {/* Reference */}
-                            <div className="mt-auto pt-4 border-t border-white/10 w-full flex justify-center">
+                            <div className="mt-auto w-full shrink-0 border-t border-white/10 pt-4">
                                 <p className="font-['Outfit',sans-serif] text-sm font-semibold text-[#c6a87c]">
                                     {surahName} — {verseNumber}
                                 </p>
