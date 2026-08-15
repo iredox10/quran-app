@@ -102,7 +102,7 @@ function formatDate() {
 }
 
 export default function Home() {
-    const { recentlyRead, bookmark, readingSessions, incrementPageVisit } = useAppStore();
+    const { recentlyRead, bookmark, readingSessions, incrementPageVisit, arabicFont } = useAppStore();
     
     useEffect(() => {
         incrementPageVisit('home');
@@ -313,6 +313,7 @@ export default function Home() {
                 onClose={() => setIsShareModalOpen(false)} 
                 type={shareModalType} 
                 data={shareModalType === 'verse' ? verse : { streak, todayMinutes, totalHours }} 
+                arabicFont={arabicFont}
             />
 
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
@@ -462,7 +463,7 @@ export default function Home() {
                 <div className="relative mb-7 overflow-hidden rounded-[18px] border-[1.5px] border-[var(--h-bone-dark)] bg-[var(--h-cream)] p-6">
                     <span className="pointer-events-none absolute -right-2.5 -top-4 select-none text-[6rem] opacity-[0.03] text-[var(--h-gold)]" aria-hidden="true">﷽</span>
                     <div className="mb-4 flex items-center gap-1.5 font-mono text-[0.62rem] uppercase tracking-[0.12em] text-[var(--h-gold)]"><Sparkles size={14} /> Verse of the Day</div>
-                    <div className="quran-text mb-4 text-center text-[1.6rem] leading-[2.2] text-[var(--h-ink)]">
+                    <div className="quran-text mb-4 text-center text-[1.6rem] leading-[2.2] text-[var(--h-ink)]" style={{ fontFamily: arabicFont }}>
                         {verse.arabic}
                     </div>
                     <div className="mb-4 text-center text-[0.9rem] italic leading-[1.6] text-[var(--h-ink-mid)]">{verse.translation}</div>

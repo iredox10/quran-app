@@ -2,8 +2,11 @@ import React, { useRef, useState, useLayoutEffect } from 'react';
 import { X, Download, Share2, Loader2 } from 'lucide-react';
 import * as htmlToImage from 'html-to-image';
 import { getVerseArabicText } from '../../utils/quranText';
+import { useAppStore } from '../../store/useAppStore';
 
-const ShareVerseModal = ({ verse, chapter, mushaf = 1, onClose }) => {
+const ShareVerseModal = ({ verse, chapter, mushaf = 1, arabicFont: propArabicFont, onClose }) => {
+    const storeArabicFont = useAppStore((state) => state.arabicFont);
+    const arabicFont = propArabicFont || storeArabicFont;
     const cardRef = useRef(null);
     const arabicRef = useRef(null);
     const translationRef = useRef(null);
@@ -65,15 +68,15 @@ const ShareVerseModal = ({ verse, chapter, mushaf = 1, onClose }) => {
     const generateImageBlob = async () => {
         if (!cardRef.current) return null;
         try {
-            // Wait for all fonts to be ready so Arabic text renders in the capture
+            // Wait for all fonts to be ready so Arabic text renders accurately in the capture
             await document.fonts?.ready;
-            // Use a higher pixel ratio to ensure the resulting image is high quality
+            // Use high pixel ratio and skipFonts: true to prevent cross-origin stylesheet errors
             const blob = await htmlToImage.toBlob(cardRef.current, {
                 pixelRatio: 3,
-                cacheBust: true,
+                skipFonts: true,
                 style: {
                     margin: '0',
-                    borderRadius: '0', // Optional: remove border radius for the actual exported image if desired, but rounded is nice.
+                    borderRadius: '0',
                 }
             });
             return blob;
@@ -185,8 +188,9 @@ const ShareVerseModal = ({ verse, chapter, mushaf = 1, onClose }) => {
                                 <p
                                     ref={arabicRef}
                                     dir="rtl"
-                                    className="w-full break-words text-center font-arabic text-white/95"
+                                    className="w-full break-words text-center text-white/95"
                                     style={{
+                                        fontFamily: arabicFont,
                                         fontSize: `${arabicFontSize}px`,
                                         lineHeight: `${Math.round(arabicFontSize * 1.8)}px`,
                                         maxHeight: growMode ? 'none' : '100%',

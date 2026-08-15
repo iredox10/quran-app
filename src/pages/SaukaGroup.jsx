@@ -779,7 +779,7 @@ export default function SaukaGroup() {
                                             <div className="space-y-2.5">
                                                 {(selectedJuz.claimedAt && (new Date().getTime() - new Date(selectedJuz.claimedAt).getTime()) > 3 * 24 * 60 * 60 * 1000) && (
                                                     <div className="flex items-center justify-center gap-1.5 text-red-500 text-[0.7rem] font-bold py-1.5 px-3 bg-red-50 rounded-lg border border-red-100 mb-1">
-                                                        <Clock size={12} /> Claimed > 3 days ago
+                                                        <Clock size={12} /> Claimed &gt; 3 days ago
                                                     </div>
                                                 )}
                                                 {selectedJuz.claimedBy === userId && (

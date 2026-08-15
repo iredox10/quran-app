@@ -2,8 +2,11 @@ import React, { useRef, useState, useLayoutEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Download, Share2, Loader2, Sparkles, Flame, Clock, BarChart3, BookOpen } from 'lucide-react';
 import { toBlob } from 'html-to-image';
+import { useAppStore } from '../../store/useAppStore';
 
-export default function ShareModal({ isOpen, onClose, type, data }) {
+export default function ShareModal({ isOpen, onClose, type, data, arabicFont: propArabicFont }) {
+    const storeArabicFont = useAppStore((state) => state.arabicFont);
+    const arabicFont = propArabicFont || storeArabicFont;
     const cardRef = useRef(null);
     const verseArabicRef = useRef(null);
     const verseTranslationRef = useRef(null);
@@ -58,12 +61,13 @@ export default function ShareModal({ isOpen, onClose, type, data }) {
         if (!cardRef.current) return;
         setIsGenerating(true);
         try {
-            // Wait for all fonts to be ready so Arabic text renders in the capture
+            // Wait for all fonts to be ready so Arabic text renders accurately in the capture
             await document.fonts?.ready;
             const blob = await toBlob(cardRef.current, {
                 quality: 1,
                 pixelRatio: 2,
                 backgroundColor: '#004d40', // Match our dark teal gradient top color
+                skipFonts: true,
                 style: { margin: 0 } // Ensure no weird margins in the output
             });
 
@@ -126,7 +130,7 @@ export default function ShareModal({ isOpen, onClose, type, data }) {
                         <span className="font-mono text-[0.6rem] uppercase tracking-[0.25em] text-[#B8924A]">Verse of the Day</span>
                     </div>
                     <div className={`flex w-full items-center justify-center ${growMode ? '' : 'min-h-0 flex-1 overflow-hidden'}`}>
-                        <div ref={verseArabicRef} dir="rtl" className="font-arabic text-center text-white" style={{ fontSize: `${verseArabicSize}px`, lineHeight: `${Math.round(verseArabicSize * 2.1)}px`, maxHeight: growMode ? 'none' : '100%', overflow: 'hidden' }}>
+                        <div ref={verseArabicRef} dir="rtl" className="text-center text-white" style={{ fontFamily: arabicFont, fontSize: `${verseArabicSize}px`, lineHeight: `${Math.round(verseArabicSize * 2.1)}px`, maxHeight: growMode ? 'none' : '100%', overflow: 'hidden' }}>
                             {data?.arabic}
                         </div>
                     </div>

@@ -73,12 +73,22 @@ export default defineConfig({
             },
           },
           {
-            urlPattern: ({ url }) => url.origin === 'https://fonts.googleapis.com' || url.origin === 'https://fonts.gstatic.com',
+            urlPattern: ({ url }) => url.origin === 'https://fonts.googleapis.com',
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'google-fonts-stylesheets',
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+            },
+          },
+          {
+            urlPattern: ({ url }) => url.origin === 'https://fonts.gstatic.com',
             handler: 'CacheFirst',
             options: {
-              cacheName: 'google-fonts-cache',
+              cacheName: 'google-fonts-webfonts',
               expiration: {
-                maxEntries: 20,
+                maxEntries: 50,
                 maxAgeSeconds: 60 * 60 * 24 * 365,
               },
               cacheableResponse: {
