@@ -337,9 +337,15 @@ export const useAppStore = create(
 
             addRecentlyRead: (chapterId, chapterName, verseKey = null) => set((state) => {
                 const filtered = (state.recentlyRead || []).filter(r => r.chapterId !== chapterId);
-                const newList = [{ chapterId, chapterName, verseKey, timestamp: Date.now() }, ...filtered].slice(0, 5);
+                const newList = [{ chapterId, chapterName, verseKey, timestamp: Date.now() }, ...filtered].slice(0, 20);
                 return { recentlyRead: newList };
             }),
+
+            removeRecentlyRead: (chapterId) => set((state) => ({
+                recentlyRead: (state.recentlyRead || []).filter(r => r.chapterId !== chapterId)
+            })),
+
+            clearRecentlyRead: () => set({ recentlyRead: [] }),
 
             logReadingSession: (duration, type = 'reading', chapterId = null) => set((state) => {
                 const today = new Date().toISOString().split('T')[0];
