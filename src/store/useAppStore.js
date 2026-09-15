@@ -834,6 +834,7 @@ export const useAppStore = create(
 
                 return {
                     ...merged,
+                    translationId: merged.translationId === 131 ? 85 : (merged.translationId || 85),
                     planners,
                     activePlannerId: planner?.id || null,
                     planner,

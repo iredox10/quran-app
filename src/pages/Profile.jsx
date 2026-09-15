@@ -14,7 +14,7 @@ import { APP_CONFIG } from '../config/constants';
 
 const TRANSLATIONS = [
     { id: 85, name: 'English - M.A.S. Abdel Haleem' },
-    { id: 131, name: 'English - Dr. Mustafa Khattab' },
+    { id: 149, name: 'English - Fadel Soliman, Bridges' },
     { id: 20, name: 'English - Saheeh International' },
     { id: 22, name: 'English - A. Yusuf Ali' },
     { id: 84, name: 'English - Mufti Taqi Usmani' },
