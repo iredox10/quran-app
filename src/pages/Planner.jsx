@@ -1428,6 +1428,23 @@ function ActiveView({ planner, planners, activePlannerId, onSwitchPlan, onDelete
                                             }`} />
                                         </button>
                                     </div>
+                                    {/* Prayer times location (wire orphaned requestLocation) */}
+                                    <div className="flex items-center justify-between border-t-[1.5px] border-[var(--h-bone-dark)] pt-5 mt-2">
+                                        <div className="flex flex-col gap-1">
+                                            <h3 className="font-mono text-[0.75rem] font-bold uppercase tracking-[0.15em] text-[var(--accent-primary)]">Prayer Times Location</h3>
+                                            <p className="font-body text-[0.85rem] text-[var(--text-secondary)]">{location ? `${location.lat.toFixed(2)}°, ${location.lng.toFixed(2)}°` : 'Not set — using defaults'}</p>
+                                        </div>
+                                        <button className="cursor-pointer rounded-full border-[1.5px] border-[var(--h-bone-dark)] bg-[var(--h-white)] px-4 py-2 font-mono text-[0.72rem] font-medium uppercase tracking-[0.08em] text-[var(--accent-primary)] transition-all hover:border-[var(--h-teal)] hover:bg-[var(--h-teal)] hover:text-white" onClick={requestLocation}>
+                                            {location ? 'Update' : 'Enable'}
+                                        </button>
+                                    </div>
+                                    {/* Export to Calendar (wire orphaned handleExportCalendar) */}
+                                    <div className="border-t-[1.5px] border-[var(--h-bone-dark)] pt-5 mt-2">
+                                        <button className="w-full cursor-pointer rounded-[16px] border-[1.5px] border-[var(--h-bone-dark)] bg-[var(--h-white)] p-3.5 font-ui text-[0.9rem] font-semibold text-[var(--text-primary)] transition-all hover:bg-[var(--h-bone)] hover:border-[var(--h-teal)] flex items-center justify-center gap-2" onClick={handleExportCalendar}>
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                            Export to Calendar (.ics)
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <button className="w-full cursor-pointer rounded-[16px] border-[1.5px] border-[var(--h-bone-dark)] bg-[var(--h-white)] p-4 font-ui text-[1rem] font-bold text-[var(--text-primary)] transition-all hover:bg-[var(--h-bone)] hover:border-[var(--h-teal)] hover:-translate-y-0.5" onClick={() => setShowSettings(false)}>Done</button>
