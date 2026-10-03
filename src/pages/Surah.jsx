@@ -635,6 +635,7 @@ export default function Surah() {
                                         fontSize={fontSize}
                                         translationFontSize={translationFontSize}
                                         arabicFont={arabicFont}
+                                        mushaf={mushaf}
                                         tajweedEnabled={isTajweedActive}
                                         tajweedMap={tajweedMap}
                                         activeTafsir={activeTafsir}
