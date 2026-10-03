@@ -203,6 +203,33 @@ describe('active days + perfect week', () => {
     });
 });
 
+describe('robustness', () => {
+    it('tolerates null / missing inputs', () => {
+        const stats = computeAchievementStats(null, undefined, NOW);
+        expect(stats.sessionCount).toBe(0);
+        expect(stats.uniqueSurahs).toBe(0);
+        expect(stats.currentStreak).toBe(0);
+        expect(evaluateAchievements(stats).every((b) => b.unlocked === false)).toBe(true);
+    });
+
+    it('accepts a Set of active dates in currentStreak', () => {
+        expect(currentStreak(new Set([TODAY, day(1)]), NOW)).toBe(2);
+        expect(currentStreak(new Set(), NOW)).toBe(0);
+    });
+
+    it('ignores sessions without a valid duration for minutes', () => {
+        const stats = computeAchievementStats([
+            { date: TODAY, duration: null, type: 'reading', chapterId: 1 },
+            { date: TODAY, duration: 'not-a-number', type: 'listening' },
+            { date: TODAY, duration: 60, type: 'pomodoro' },
+        ], [], NOW);
+        expect(stats.totalMinutes).toBe(1);
+        expect(stats.focusMinutes).toBe(1);
+        expect(stats.activeDays).toBe(1);
+        expect(stats.uniqueSurahs).toBe(1);
+    });
+});
+
 describe('orderBadges', () => {
     it('puts unlocked first (highest milestone first) and locked by progress', () => {
         const sessions = [session(TODAY), session(day(1)), session(day(2))];
