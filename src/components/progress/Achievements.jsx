@@ -1,55 +1,77 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { Award } from 'lucide-react';
+import confetti from 'canvas-confetti';
+import { computeAchievementStats, evaluateAchievements, orderBadges } from '../../utils/achievements';
 
-const TOTAL_SURAHS = 114;
+const SEEN_KEY = 'quran-nur-achv-seen';
+const COLLAPSED_COUNT = 4;
+
+function readSeen() {
+    try {
+        const parsed = JSON.parse(localStorage.getItem(SEEN_KEY) || '[]');
+        return Array.isArray(parsed) ? parsed : [];
+    } catch {
+        // localStorage unavailable (private mode) — pretend nothing was seen yet
+        return [];
+    }
+}
+
+function writeSeen(ids) {
+    try {
+        localStorage.setItem(SEEN_KEY, JSON.stringify([...new Set(ids)]));
+    } catch {
+        // celebrations are best-effort; never break the card over storage
+    }
+}
+
+function celebrateBadge() {
+    confetti({
+        particleCount: 90,
+        spread: 65,
+        startVelocity: 38,
+        ticks: 220,
+        origin: { y: 0.65 },
+        colors: ['#2E4F4A', '#B8924A', '#10b981', '#3b82f6'],
+        disableForReducedMotion: true,
+    });
+}
+
+const formatCount = (n) => (n >= 1000 ? n.toLocaleString('en-US') : String(n));
 
 export default function Achievements() {
     const { readingSessions, recentlyRead } = useAppStore();
     const sessions = readingSessions || [];
 
-    const uniqueSurahsRead = useMemo(() => {
-        const surahIds = new Set();
-        (recentlyRead || []).forEach(r => surahIds.add(r.chapterId));
-        sessions.forEach(s => { if (s.chapterId) surahIds.add(s.chapterId); });
-        return surahIds.size;
-    }, [sessions, recentlyRead]);
+    const [expanded, setExpanded] = useState(false);
+    const celebratedRef = useRef(false);
 
-    const streak = useMemo(() => {
-        if (sessions.length === 0) return 0;
-        const uniqueDates = [...new Set(sessions.map(s => s.date))].sort().reverse();
-        let count = 0;
-        const checkDate = new Date();
-        for (let i = 0; i < 365; i++) {
-            const dateStr = checkDate.toISOString().split('T')[0];
-            if (uniqueDates.includes(dateStr)) {
-                count++;
-            } else if (i > 0) {
-                break;
-            }
-            checkDate.setDate(checkDate.getDate() - 1);
-        }
-        return count;
-    }, [sessions]);
+    const stats = useMemo(
+        () => computeAchievementStats(sessions, recentlyRead || []),
+        [sessions, recentlyRead],
+    );
+    const badges = useMemo(() => evaluateAchievements(stats), [stats]);
+    const ordered = useMemo(() => orderBadges(badges), [badges]);
 
-    const allTimeTotal = useMemo(() => sessions.reduce((sum, s) => sum + (s.duration || 0), 0), [sessions]);
+    const unlockedCount = useMemo(() => badges.filter((b) => b.unlocked).length, [badges]);
+    const hasSessions = stats.sessionCount > 0;
+    const visible = expanded ? ordered : ordered.slice(0, COLLAPSED_COUNT);
 
-    const achievements = useMemo(() => {
-        const badges = [];
-        if (streak >= 3) badges.push({ icon: '🔥', title: '3-Day Streak', desc: 'Consistency is key.' });
-        if (streak >= 7) badges.push({ icon: '🔥', title: '7-Day Streak', desc: 'A whole week!' });
-        if (streak >= 30) badges.push({ icon: '🔥', title: '30-Day Streak', desc: 'Unstoppable!' });
+    // One celebration per mount, for a badge the user just unlocked today.
+    useEffect(() => {
+        if (celebratedRef.current) return;
+        celebratedRef.current = true;
+        if (stats.sessionCount === 0) return;
 
-        const allTimeMins = Math.round(allTimeTotal / 60);
-        if (allTimeMins >= 100) badges.push({ icon: '⏱️', title: '100 Minutes', desc: 'First big milestone.' });
-        if (allTimeMins >= 500) badges.push({ icon: '⏱️', title: '500 Minutes', desc: 'Dedicated reader.' });
+        const seen = readSeen();
+        const seenSet = new Set(seen);
+        const fresh = ordered.some((b) => b.unlocked && !seenSet.has(b.id));
+        const unlockedIds = badges.filter((b) => b.unlocked).map((b) => b.id);
+        // Fold every unlock into the seen list so old badges never re-celebrate.
+        writeSeen([...seen, ...unlockedIds]);
 
-        if (uniqueSurahsRead >= 5) badges.push({ icon: '🗺️', title: 'Explorer', desc: 'Read 5 Surahs.' });
-        if (uniqueSurahsRead >= 30) badges.push({ icon: '🗺️', title: 'Traveler', desc: 'Read 30 Surahs.' });
-        if (uniqueSurahsRead === TOTAL_SURAHS) badges.push({ icon: '👑', title: 'Khatm', desc: 'Read all 114 Surahs!' });
-
-        return badges.reverse().slice(0, 3);
-    }, [streak, allTimeTotal, uniqueSurahsRead]);
+        if (fresh && stats.todaySessions > 1) celebrateBadge();
+    }, [badges, ordered, stats]);
 
     return (
         <div className="rounded-[24px] border-[1.5px] border-[var(--h-bone-dark)] bg-[var(--h-cream)] p-6">
@@ -57,23 +79,58 @@ export default function Achievements() {
                 <div className="flex items-center gap-2 font-ui text-[1.15rem] font-bold text-[var(--text-primary)]">
                     <Award size={18} className="text-[var(--accent-primary)]" /> Achievements
                 </div>
+                <span className="px-3 py-1 rounded-full bg-[var(--bg-surface)] font-mono text-[0.6rem] uppercase tracking-widest text-[var(--text-secondary)]">
+                    {unlockedCount} / {badges.length}
+                </span>
             </div>
-            {achievements.length > 0 ? (
-                <div className="grid gap-3">
-                    {achievements.map((badge, i) => (
-                        <div key={i} className="flex items-center gap-4 p-3 rounded-[16px] bg-[var(--h-white)] border-[1.5px] border-[var(--h-bone-dark)] transition-all hover:bg-[var(--h-bone)] hover:border-[var(--accent-hover)]">
-                            <div className="w-12 h-12 flex items-center justify-center bg-[var(--h-white)] rounded-xl text-[1.5rem] shadow-sm">
-                                {badge.icon}
-                            </div>
-                            <div>
-                                <div className="font-ui text-[1rem] font-bold text-[var(--text-primary)] mb-0.5">{badge.title}</div>
-                                <div className="text-[0.8rem] text-[var(--text-secondary)]">{badge.desc}</div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            ) : (
+            {!hasSessions ? (
                 <div className="py-8 text-center text-[0.85rem] text-[var(--text-secondary)]">Read consistently to unlock badges!</div>
+            ) : (
+                <>
+                    <div className="grid gap-3">
+                        {visible.map((badge) => (badge.unlocked ? (
+                            <div key={badge.id} className="flex items-center gap-4 p-3 rounded-[16px] bg-[var(--h-white)] border-[1.5px] border-[var(--h-bone-dark)] transition-all hover:bg-[var(--h-bone)] hover:border-[var(--accent-hover)]">
+                                <div className="w-12 h-12 flex items-center justify-center bg-[var(--h-white)] rounded-xl text-[1.5rem] shadow-sm">
+                                    {badge.icon}
+                                </div>
+                                <div>
+                                    <div className="font-ui text-[1rem] font-bold text-[var(--text-primary)] mb-0.5">{badge.title}</div>
+                                    <div className="text-[0.8rem] text-[var(--text-secondary)]">{badge.desc}</div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div key={badge.id} className="flex items-center gap-4 p-3 rounded-[16px] bg-[var(--h-white)] border-[1.5px] border-[var(--h-bone-dark)] opacity-70">
+                                <div className="w-12 h-12 flex items-center justify-center bg-[var(--h-white)] rounded-xl text-[1.5rem] shadow-sm saturate-0 opacity-60">
+                                    {badge.icon}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-baseline justify-between gap-2">
+                                        <div className="font-ui text-[1rem] font-bold text-[var(--text-primary)] mb-0.5">{badge.title}</div>
+                                        <div className="font-mono text-[0.6rem] text-[var(--text-secondary)] whitespace-nowrap">
+                                            {formatCount(Math.round(badge.current))} / {formatCount(badge.target)}
+                                        </div>
+                                    </div>
+                                    <div className="text-[0.8rem] text-[var(--text-secondary)] mb-1.5">{badge.desc}</div>
+                                    <div className="h-1.5 rounded-full bg-[var(--bg-surface)] overflow-hidden">
+                                        <div
+                                            className="h-full rounded-full bg-[var(--accent-primary)] transition-all duration-500"
+                                            style={{ width: `${Math.round(badge.progress * 100)}%` }}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        )))}
+                    </div>
+                    {ordered.length > COLLAPSED_COUNT && (
+                        <button
+                            type="button"
+                            onClick={() => setExpanded((v) => !v)}
+                            className="mt-4 w-full py-2 rounded-full border-[1.5px] border-[var(--h-bone-dark)] bg-[var(--h-white)] font-mono text-[0.6rem] uppercase tracking-widest text-[var(--text-secondary)] transition-colors hover:text-[var(--text-primary)] hover:border-[var(--accent-hover)]"
+                        >
+                            {expanded ? 'Show less' : 'Show all'}
+                        </button>
+                    )}
+                </>
             )}
         </div>
     );
