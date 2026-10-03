@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import BottomNav from './components/BottomNav';
 import Home from './pages/Home';
@@ -9,6 +9,10 @@ import Page from './pages/Page';
 import MemorizeIndex from './pages/MemorizeIndex';
 import Memorization from './pages/Memorization';
 import Library from './pages/Library';
+import Bookmarks from './pages/Bookmarks';
+import Collections from './pages/Collections';
+import CollectionDetail from './pages/CollectionDetail';
+import RecentSurahs from './pages/RecentSurahs';
 import Progress from './pages/Progress';
 import ActivityHistory from './pages/ActivityHistory';
 import Planner from './pages/Planner';
@@ -81,6 +85,10 @@ function App() {
           <Route path="/memorize" element={<MemorizeIndex />} />
           <Route path="/memorize/:id" element={<Memorization />} />
           <Route path="/library" element={<Library />} />
+          <Route path="/bookmarks" element={<Bookmarks />} />
+          <Route path="/collections" element={<Collections />} />
+          <Route path="/collections/:id" element={<CollectionDetail />} />
+          <Route path="/recent" element={<RecentSurahs />} />
           <Route path="/planner" element={<Planner />} />
           <Route path="/planner/read/:dayNumber" element={<PlannerReader />} />
           <Route path="/offline-library" element={<OfflineLibrary />} />
@@ -91,6 +99,7 @@ function App() {
           <Route path="/sauka/:groupId" element={<SaukaGroup />} />
           <Route path="/surah/:id" element={<Surah />} />
           <Route path="/page/:id" element={<Page />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
       <BottomNav />
