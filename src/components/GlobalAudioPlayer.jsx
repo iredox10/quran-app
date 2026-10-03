@@ -18,7 +18,8 @@ export default function GlobalAudioPlayer() {
         setAudioPlaylist, setAudioTrackIndex, updateAudioSettings, setIsPlaying, stopAudio,
         isPlayerVisible, setIsPlayerVisible,
         localAudioDirHandle, customAudioBaseUrl,
-        reciterId, setReciter
+        reciterId, setReciter,
+        logReadingSession
     } = useAppStore();
 
     const audioRef = useRef(null);
@@ -117,6 +118,36 @@ export default function GlobalAudioPlayer() {
             audioRef.current.pause();
         }
     }, [isPlaying, resolvedAudioUrl, audioSettings.playbackSpeed]);
+
+    const listenStartRef = useRef(null);
+    const listenChapterRef = useRef(null);
+    const flushListeningRef = useRef(() => {});
+
+    const flushListening = () => {
+        const startedAt = listenStartRef.current;
+        if (!startedAt) return;
+        listenStartRef.current = null;
+        const seconds = Math.round((Date.now() - startedAt) / 1000);
+        if (seconds < 10) return;
+        logReadingSession(seconds, 'listening', listenChapterRef.current);
+    };
+
+    // Dep-less on purpose: runs after every render so play/pause transitions from
+    // any source (pill, earbuds, media session, track end, errors) are captured.
+    useEffect(() => {
+        flushListeningRef.current = flushListening;
+        if (isPlaying && resolvedAudioUrl) {
+            if (listenStartRef.current === null) {
+                listenStartRef.current = Date.now();
+                const surahId = audioPlaylist[audioTrackIndex]?.surahId;
+                listenChapterRef.current = surahId ? Number(surahId) : null;
+            }
+        } else {
+            flushListening();
+        }
+    });
+
+    useEffect(() => () => flushListeningRef.current(), []);
 
     const handleStop = () => { stopAudio(); setIsPlayerVisible(false); setIsSettingsOpen(false); };
 
