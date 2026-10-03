@@ -1,39 +1,63 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
 import { Layers } from 'lucide-react';
 import ChartTooltip from './ChartTooltip';
+import PeriodTabs from './PeriodTabs';
+import {
+    ACTIVITY_TYPES,
+    TYPE_META,
+    filterByRange,
+    summarize,
+    formatDuration,
+    rangeTitle,
+} from '../../utils/activity';
+
+const MIX_TABS = [
+    { id: 'today', label: 'Today' },
+    { id: 'week', label: 'Week' },
+    { id: 'month', label: 'Month' },
+    { id: 'all', label: 'All Time' },
+];
 
 export default function ActivityMix() {
     const { readingSessions } = useAppStore();
     const sessions = readingSessions || [];
+    const [range, setRange] = useState('week');
 
-    const activityByType = useMemo(() => {
-        const typeMap = { reading: 0, memorizing: 0, listening: 0, pomodoro: 0 };
-        sessions.forEach(s => {
-            if (typeMap[s.type] !== undefined) {
-                typeMap[s.type] += s.duration || 0;
-            }
-        });
-        return [
-            { name: 'Reading', value: Math.round(typeMap.reading / 60), color: '#10b981' },
-            { name: 'Memorizing', value: Math.round(typeMap.memorizing / 60), color: '#3b82f6' },
-            { name: 'Focus', value: Math.round(typeMap.pomodoro / 60), color: '#8b5cf6' },
-        ].filter(item => item.value > 0);
-    }, [sessions]);
+    const rangeSessions = useMemo(() => filterByRange(sessions, range), [sessions, range]);
+    const totals = useMemo(() => summarize(rangeSessions), [rangeSessions]);
 
-    const allTimeTotal = useMemo(() => sessions.reduce((sum, s) => sum + (s.duration || 0), 0), [sessions]);
+    const activityByType = useMemo(() => (
+        ACTIVITY_TYPES
+            .map((type) => {
+                const seconds = totals.byType[type] || 0;
+                const share = totals.seconds > 0 ? Math.round((seconds / totals.seconds) * 100) : 0;
+                return {
+                    type,
+                    name: TYPE_META[type].label,
+                    color: TYPE_META[type].color,
+                    seconds,
+                    value: Math.round(seconds / 60),
+                    share,
+                };
+            })
+            .filter((entry) => entry.seconds > 0)
+    ), [totals]);
+
+    const hasData = activityByType.length > 0;
 
     return (
         <div className="rounded-[24px] border-[1.5px] border-[var(--h-bone-dark)] bg-[var(--h-cream)] p-6 flex flex-col">
-            <div className="mb-2 flex items-center justify-between">
+            <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2 font-ui text-[1.15rem] font-bold text-[var(--text-primary)]">
                     <Layers size={18} className="text-[var(--accent-primary)]" /> Activity Mix
                 </div>
-                <span className="px-3 py-1 rounded-full bg-[var(--bg-surface)] font-mono text-[0.6rem] uppercase tracking-widest text-[var(--text-secondary)]">All Time</span>
+                <PeriodTabs tabs={MIX_TABS} value={range} onChange={setRange} ariaLabel="Activity mix period" />
             </div>
+            <div className="mb-2 font-mono text-[0.6rem] uppercase tracking-widest text-[var(--text-secondary)]">{rangeTitle(range)}</div>
             <div className="flex-1 flex items-center justify-center relative">
-                {activityByType.length > 0 ? (
+                {hasData ? (
                     <ResponsiveContainer width="100%" height={200}>
                         <PieChart>
                             <Pie
@@ -45,30 +69,33 @@ export default function ActivityMix() {
                                 stroke="none"
                                 cornerRadius={8}
                             >
-                                {activityByType.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={entry.color} />
+                                {activityByType.map((entry) => (
+                                    <Cell key={entry.type} fill={entry.color} />
                                 ))}
                             </Pie>
                             <Tooltip content={<ChartTooltip />} />
                         </PieChart>
                     </ResponsiveContainer>
                 ) : (
-                    <div className="text-[0.85rem] text-[var(--text-secondary)]">No activity data yet.</div>
+                    <div className="py-8 text-[0.85rem] text-[var(--text-secondary)]">No activity in this period yet.</div>
                 )}
-                {activityByType.length > 0 && (
+                {hasData && (
                     <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                        <div className="font-ui text-[1.4rem] font-bold text-[var(--text-primary)]">{Math.round(allTimeTotal / 60)}</div>
-                        <div className="font-mono text-[0.55rem] uppercase tracking-widest text-[var(--text-secondary)]">Mins Total</div>
+                        <div className="font-ui text-[1.4rem] font-bold text-[var(--text-primary)]">{formatDuration(totals.seconds)}</div>
+                        <div className="font-mono text-[0.55rem] uppercase tracking-widest text-[var(--text-secondary)]">
+                            {totals.count} Session{totals.count === 1 ? '' : 's'}
+                        </div>
                     </div>
                 )}
             </div>
-            {activityByType.length > 0 && (
-                <div className="flex flex-wrap justify-center gap-3 mt-4">
-                    {activityByType.map((item, i) => (
-                        <div key={i} className="flex items-center gap-1.5">
-                            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }} />
-                            <span className="font-ui text-[0.8rem] text-[var(--text-secondary)]">{item.name}</span>
+            {hasData && (
+                <div className="grid gap-2 mt-4">
+                    {activityByType.map((item) => (
+                        <div key={item.type} className="flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                            <span className="flex-1 font-ui text-[0.8rem] text-[var(--text-secondary)]">{item.name}</span>
                             <span className="font-ui text-[0.8rem] font-bold text-[var(--text-primary)]">{item.value}m</span>
+                            <span className="w-10 text-right font-mono text-[0.6rem] text-[var(--text-secondary)]">{item.share}%</span>
                         </div>
                     ))}
                 </div>
