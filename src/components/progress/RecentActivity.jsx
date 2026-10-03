@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { useQuery } from '@tanstack/react-query';
 import { getChapters } from '../../services/api/quranApi';
-import { History, BookOpen, Layers, Target, ChevronRight } from 'lucide-react';
+import { History, BookOpen, Layers, Target, Headphones, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { formatDuration } from '../../utils/activity';
 
@@ -26,6 +26,14 @@ export default function RecentActivity({ limit = 5 }) {
                 <div className="flex items-center gap-2 font-ui text-[1.15rem] font-bold text-[var(--text-primary)]">
                     <History size={18} className="text-[var(--accent-primary)]" /> Recent Activity
                 </div>
+                <Link
+                    to="/progress/activity"
+                    aria-label="See all activity"
+                    className="group inline-flex items-center gap-1 rounded-full border-[1.5px] border-[var(--h-bone-dark)] bg-[var(--h-white)] px-3 py-1.5 font-mono text-[0.6rem] uppercase tracking-widest text-[var(--text-secondary)] transition-colors hover:border-[var(--accent-primary)] hover:text-[var(--accent-primary)]"
+                >
+                    See all
+                    <ChevronRight size={13} className="transition-transform group-hover:translate-x-0.5" />
+                </Link>
             </div>
             {recentActivity.length > 0 ? (
                 <div className="flex flex-col relative before:absolute before:inset-y-2 before:left-[19px] before:w-0.5 before:bg-[var(--h-bone-dark)]">
@@ -49,6 +57,11 @@ export default function RecentActivity({ limit = 5 }) {
                             color = "text-[#3b82f6]";
                             bg = "bg-[#3b82f6]/10";
                             title = "Memorization";
+                        } else if (session.type === 'listening') {
+                            icon = <Headphones size={14} />;
+                            color = "text-[#f59e0b]";
+                            bg = "bg-[#f59e0b]/10";
+                            title = "Listening";
                         }
 
                         if (session.chapterId) {
