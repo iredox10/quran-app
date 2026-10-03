@@ -2,21 +2,36 @@ import React, { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../../store/useAppStore';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { Activity } from 'lucide-react';
+import { Activity, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import ChartTooltip from './ChartTooltip';
 import PeriodTabs from './PeriodTabs';
 import {
     RANGE_TABS,
     rangeKeys,
+    previousRangeKeys,
+    filterByRange,
     bucketByDay,
     bucketByHour,
+    summarize,
+    deltaPercent,
+    formatDuration,
+    rangeTitle,
     lastNDayKeys,
     dateKey,
+    ACTIVITY_TYPES,
+    TYPE_META,
 } from '../../utils/activity';
 
 const MotionDiv = motion.div;
 
 const EMPTY_LABEL = { today: 'today', week: 'this week', month: 'this month' };
+const PREV_LABEL = { today: 'yesterday', week: 'last week', month: 'last month' };
+
+function filterByKeys(list, keys) {
+    if (!keys) return list;
+    const set = new Set(keys);
+    return list.filter((s) => set.has(s.date));
+}
 
 function getHeatmapLevel(active, duration) {
     if (!active) return 'level-0';
@@ -24,6 +39,43 @@ function getHeatmapLevel(active, duration) {
     if (mins < 10) return 'level-1';
     if (mins < 30) return 'level-2';
     return 'level-3';
+}
+
+function DeltaBadge({ delta, hasData, compareLabel }) {
+    let className = 'bg-[var(--bg-surface)] text-[var(--text-secondary)]';
+    let icon = <Minus size={11} />;
+    let text = '0%';
+    if (!hasData) {
+        text = 'No data';
+    } else if (delta === null) {
+        text = 'No baseline';
+    } else if (delta > 0) {
+        className = 'bg-[#10b981]/10 text-[#10b981]';
+        icon = <TrendingUp size={11} />;
+        text = `+${delta}%`;
+    } else if (delta < 0) {
+        className = 'bg-[#e75344]/10 text-[#e75344]';
+        icon = <TrendingDown size={11} />;
+        text = `${delta}%`;
+    }
+    return (
+        <span
+            title={`Compared with ${compareLabel}`}
+            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-mono text-[0.6rem] uppercase tracking-widest ${className}`}
+        >
+            {icon}
+            {text}
+        </span>
+    );
+}
+
+function StatCell({ label, value }) {
+    return (
+        <div className="rounded-[16px] bg-[var(--bg-surface)] px-3 py-2">
+            <div className="font-mono text-[0.55rem] uppercase tracking-widest text-[var(--text-secondary)]">{label}</div>
+            <div className="mt-0.5 font-ui text-[1.05rem] font-bold leading-tight text-[var(--text-primary)]">{value}</div>
+        </div>
+    );
 }
 
 export default function ActivityFlow() {
@@ -35,6 +87,13 @@ export default function ActivityFlow() {
 
     const now = useMemo(() => new Date(), []);
     const keys = useMemo(() => rangeKeys(range, now), [range, now]);
+    const prevKeys = useMemo(() => previousRangeKeys(range, now), [range, now]);
+    const rangeSessions = useMemo(() => filterByRange(sessions, range, now), [sessions, range, now]);
+    const prevSessions = useMemo(() => filterByKeys(sessions, prevKeys), [sessions, prevKeys]);
+    const summary = useMemo(() => summarize(rangeSessions), [rangeSessions]);
+    const prevSummary = useMemo(() => summarize(prevSessions), [prevSessions]);
+    const delta = deltaPercent(summary.seconds, prevSummary.seconds);
+    const hasData = summary.seconds > 0 || prevSummary.seconds > 0;
 
     const chartData = useMemo(() => {
         if (range === 'today') return bucketByHour(sessions, keys[0]);
@@ -87,6 +146,21 @@ export default function ActivityFlow() {
                 </div>
             </div>
 
+            <div className="mb-4">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                    <span className="font-mono text-[0.6rem] uppercase tracking-widest text-[var(--text-secondary)]">
+                        {rangeTitle(range, now)}
+                    </span>
+                    <DeltaBadge delta={delta} hasData={hasData} compareLabel={PREV_LABEL[range]} />
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <StatCell label="Total time" value={formatDuration(summary.seconds)} />
+                    <StatCell label="Sessions" value={summary.count} />
+                    <StatCell label="Active days" value={`${summary.activeDays}/${keys.length}`} />
+                    <StatCell label="Avg / day" value={`${summary.avgPerActiveDay}m`} />
+                </div>
+            </div>
+
             <div className="h-[240px] w-full flex items-center justify-center">
                 <AnimatePresence mode="wait">
                     {view === 'heatmap' ? (
@@ -124,7 +198,7 @@ export default function ActivityFlow() {
                                 <span className="font-mono text-[0.55rem] uppercase tracking-widest text-[var(--text-secondary)] ml-1">More</span>
                             </div>
                         </MotionDiv>
-                    ) : !chartData.some((b) => b.count > 0) ? (
+                    ) : summary.count === 0 ? (
                         <MotionDiv
                             key={`empty-${range}`}
                             initial={{ opacity: 0, scale: 0.95 }}
