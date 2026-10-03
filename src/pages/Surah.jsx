@@ -745,7 +745,7 @@ export default function Surah() {
                 <ShareVerseModal
                     verse={sharingVerse}
                     chapter={chapter}
-                    mushaf={mushafId}
+                    mushaf={mushaf}
                     arabicFont={arabicFont}
                     onClose={() => setSharingVerse(null)}
                 />
