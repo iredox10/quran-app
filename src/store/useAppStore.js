@@ -230,7 +230,7 @@ export const useAppStore = create(
                 if (exists) {
                     return { bookmarks: state.bookmarks.filter(b => b.verseKey !== verseKey) };
                 } else {
-                    return { bookmarks: [...(state.bookmarks || []), { verseKey, surahName, chapterId }] };
+                    return { bookmarks: [...(state.bookmarks || []), { verseKey, surahName, chapterId, createdAt: Date.now() }] };
                 }
             }),
 
@@ -308,6 +308,12 @@ export const useAppStore = create(
 
             addCollection: (name, id = null) => set((state) => ({
                 collections: [...(state.collections || []), { id: id || Date.now(), name, items: [] }]
+            })),
+
+            renameCollection: (id, name) => set((state) => ({
+                collections: (state.collections || []).map(c =>
+                    c.id === id ? { ...c, name: String(name).trim() } : c
+                )
             })),
 
             deleteCollection: (id) => set((state) => ({
