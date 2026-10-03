@@ -1,8 +1,10 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../../store/useAppStore';
+import { useQuery } from '@tanstack/react-query';
+import { getChapters } from '../../services/api/quranApi';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { Activity, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Activity, Plus, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import ChartTooltip from './ChartTooltip';
 import PeriodTabs from './PeriodTabs';
 import {
@@ -21,6 +23,7 @@ import {
     ACTIVITY_TYPES,
     TYPE_META,
 } from '../../utils/activity';
+import { buildSessionLog, MINUTES_CHIPS, MAX_LOG_MINUTES } from '../../utils/activityRecord';
 
 const MotionDiv = motion.div;
 
@@ -79,11 +82,20 @@ function StatCell({ label, value }) {
 }
 
 export default function ActivityFlow() {
-    const { readingSessions } = useAppStore();
+    const { readingSessions, logReadingSession } = useAppStore();
     const sessions = useMemo(() => readingSessions || [], [readingSessions]);
 
     const [range, setRange] = useState('today');
     const [view, setView] = useState('chart');
+    const [logOpen, setLogOpen] = useState(false);
+    const [logType, setLogType] = useState('reading');
+    const [logMinutes, setLogMinutes] = useState('');
+    const [logChapterId, setLogChapterId] = useState('');
+    const [logError, setLogError] = useState(null);
+    const [logConfirm, setLogConfirm] = useState(null);
+    const confirmTimerRef = useRef(null);
+
+    const { data: chapters = [] } = useQuery({ queryKey: ['chapters'], queryFn: getChapters, staleTime: Infinity });
 
     const now = useMemo(() => new Date(), []);
     const keys = useMemo(() => rangeKeys(range, now), [range, now]);
@@ -107,6 +119,43 @@ export default function ActivityFlow() {
         [sessions, now]
     );
 
+    useEffect(() => () => {
+        if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
+    }, []);
+
+    const closeLogForm = () => {
+        setLogOpen(false);
+        setLogType('reading');
+        setLogMinutes('');
+        setLogChapterId('');
+        setLogError(null);
+        setLogConfirm(null);
+        if (confirmTimerRef.current) {
+            clearTimeout(confirmTimerRef.current);
+            confirmTimerRef.current = null;
+        }
+    };
+
+    const handleLogSubmit = (event) => {
+        event.preventDefault();
+        const payload = buildSessionLog({ type: logType, minutes: logMinutes, chapterId: logChapterId });
+        if (!payload.ok) {
+            setLogConfirm(null);
+            setLogError(payload.error);
+            return;
+        }
+        logReadingSession(payload.duration, payload.type, payload.chapterId);
+        setLogError(null);
+        const minutes = Math.round(payload.duration / 60);
+        setLogConfirm(
+            `Logged ${minutes} min of ${TYPE_META[payload.type].label}${payload.capped ? ` (capped at ${MAX_LOG_MINUTES} min)` : ''}.`
+        );
+        setLogMinutes('');
+        setLogChapterId('');
+        if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
+        confirmTimerRef.current = setTimeout(() => setLogConfirm(null), 3500);
+    };
+
     return (
         <div className="rounded-[24px] border-[1.5px] border-[var(--h-bone-dark)] bg-[var(--h-cream)] p-6 flex flex-col">
             <svg width="0" height="0" aria-hidden="true" focusable="false">
@@ -122,6 +171,18 @@ export default function ActivityFlow() {
                 <div className="flex items-center gap-2 font-ui text-[1.15rem] font-bold text-[var(--text-primary)]">
                     <Activity size={18} className="text-[var(--accent-primary)]" /> Activity Flow
                 </div>
+                <button
+                    type="button"
+                    onClick={() => (logOpen ? closeLogForm() : setLogOpen(true))}
+                    aria-expanded={logOpen}
+                    className={`flex items-center gap-1.5 rounded-full border-[1.5px] border-[var(--h-bone-dark)] px-3 py-1 font-mono text-[0.6rem] uppercase tracking-widest transition-colors ${
+                        logOpen
+                            ? 'bg-[var(--accent-light)] text-[var(--accent-primary)]'
+                            : 'bg-[var(--h-white)] text-[var(--text-primary)] hover:bg-[var(--accent-light)] hover:text-[var(--accent-primary)]'
+                    }`}
+                >
+                    <Plus size={12} /> Log activity
+                </button>
             </div>
 
             <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
@@ -145,6 +206,139 @@ export default function ActivityFlow() {
                     </button>
                 </div>
             </div>
+
+            <AnimatePresence initial={false}>
+                {logOpen && (
+                    <MotionDiv
+                        key="log-form"
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="overflow-hidden"
+                    >
+                        <form
+                            onSubmit={handleLogSubmit}
+                            noValidate
+                            className="mb-4 rounded-[16px] border-[1.5px] border-[var(--h-bone-dark)] bg-[var(--h-white)] p-4"
+                        >
+                            <div role="radiogroup" aria-label="Activity type" className="mb-3 flex flex-wrap gap-1.5">
+                                {ACTIVITY_TYPES.map((type) => {
+                                    const active = logType === type;
+                                    return (
+                                        <button
+                                            key={type}
+                                            type="button"
+                                            role="radio"
+                                            aria-checked={active}
+                                            onClick={() => {
+                                                setLogType(type);
+                                                setLogError(null);
+                                            }}
+                                            className={`flex items-center gap-1.5 rounded-full border-[1.5px] px-2.5 py-1 font-mono text-[0.55rem] uppercase tracking-widest transition-colors ${
+                                                active
+                                                    ? 'border-[var(--h-bone-dark)] bg-[var(--h-cream)] text-[var(--text-primary)] shadow-sm'
+                                                    : 'border-transparent bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                                            }`}
+                                        >
+                                            <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: TYPE_META[type].color }} />
+                                            {TYPE_META[type].label}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+
+                            <div className="flex flex-wrap items-end gap-x-3 gap-y-3">
+                                <div>
+                                    <label htmlFor="activity-flow-minutes" className="mb-1 block font-mono text-[0.55rem] uppercase tracking-widest text-[var(--text-secondary)]">
+                                        Minutes
+                                    </label>
+                                    <input
+                                        id="activity-flow-minutes"
+                                        type="number"
+                                        inputMode="numeric"
+                                        min={1}
+                                        max={MAX_LOG_MINUTES}
+                                        step={1}
+                                        placeholder="15"
+                                        value={logMinutes}
+                                        onChange={(e) => {
+                                            setLogMinutes(e.target.value);
+                                            setLogError(null);
+                                        }}
+                                        aria-invalid={Boolean(logError)}
+                                        className="w-[4.5rem] rounded-[10px] border-[1.5px] border-[var(--h-bone-dark)] bg-[var(--bg-surface)] px-2.5 py-1.5 font-ui text-[0.85rem] font-bold text-[var(--text-primary)] outline-none focus:border-[var(--accent-primary)]"
+                                    />
+                                </div>
+
+                                <div className="flex gap-1.5 pb-0.5">
+                                    {MINUTES_CHIPS.map((m) => (
+                                        <button
+                                            key={m}
+                                            type="button"
+                                            aria-label={`Set ${m} minutes`}
+                                            onClick={() => {
+                                                setLogMinutes(String(m));
+                                                setLogError(null);
+                                            }}
+                                            className={`rounded-full border-[1.5px] px-2.5 py-1 font-mono text-[0.55rem] uppercase tracking-widest transition-colors ${
+                                                String(m) === logMinutes
+                                                    ? 'border-[var(--h-bone-dark)] bg-[var(--h-cream)] text-[var(--text-primary)] shadow-sm'
+                                                    : 'border-transparent bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                                            }`}
+                                        >
+                                            {m}
+                                        </button>
+                                    ))}
+                                </div>
+
+                                {chapters.length > 0 && (
+                                    <div className="min-w-[9.5rem] flex-1">
+                                        <label htmlFor="activity-flow-surah" className="mb-1 block font-mono text-[0.55rem] uppercase tracking-widest text-[var(--text-secondary)]">
+                                            Surah (optional)
+                                        </label>
+                                        <select
+                                            id="activity-flow-surah"
+                                            value={logChapterId}
+                                            onChange={(e) => setLogChapterId(e.target.value)}
+                                            className="w-full rounded-[10px] border-[1.5px] border-[var(--h-bone-dark)] bg-[var(--bg-surface)] px-2.5 py-1.5 font-ui text-[0.85rem] text-[var(--text-primary)] outline-none focus:border-[var(--accent-primary)]"
+                                        >
+                                            <option value="">None</option>
+                                            {chapters.map((c) => (
+                                                <option key={c.id} value={c.id}>
+                                                    {c.id}. {c.name_simple}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                                <p aria-live="polite" className="min-h-[1.1rem] text-[0.75rem] font-medium">
+                                    {logError && <span className="text-[#e75344]">{logError}</span>}
+                                    {!logError && logConfirm && <span className="text-[#10b981]">{logConfirm}</span>}
+                                </p>
+                                <div className="flex gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={closeLogForm}
+                                        className="rounded-full border-[1.5px] border-[var(--h-bone-dark)] bg-[var(--bg-surface)] px-3 py-1.5 font-mono text-[0.6rem] uppercase tracking-widest text-[var(--text-secondary)] transition-colors hover:text-[var(--text-primary)]"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="rounded-full bg-[var(--accent-primary)] px-4 py-1.5 font-mono text-[0.6rem] uppercase tracking-widest text-white shadow-md transition-transform hover:scale-105 active:scale-95"
+                                    >
+                                        Log session
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </MotionDiv>
+                )}
+            </AnimatePresence>
 
             <div className="mb-4">
                 <div className="mb-2 flex items-center justify-between gap-2">
@@ -212,7 +406,7 @@ export default function ActivityFlow() {
                                 Nothing logged {EMPTY_LABEL[range]} yet
                             </p>
                             <p className="max-w-[320px] text-[0.85rem] leading-[1.5] text-[var(--text-secondary)]">
-                                Every session you record adds to your flow. Open a Surah and your reading time will track itself.
+                                Every session you record adds to your flow. Log one above, or open a Surah and let the time track itself.
                             </p>
                         </MotionDiv>
                     ) : (
