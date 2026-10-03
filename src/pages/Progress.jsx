@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useAppStore } from '../store/useAppStore';
-import { BookMarked, BookOpen, Layers, Clock, Flame, ChevronRight, Target, Lightbulb } from 'lucide-react';
+import { BookMarked, BookOpen, Layers, Clock, Flame, ChevronRight, Target, Lightbulb, History } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import ActivityFlow from '../components/progress/ActivityFlow';
 import ActivityMix from '../components/progress/ActivityMix';
@@ -216,9 +216,9 @@ export default function Progress() {
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
                     {[
-                        { icon: BookMarked, label: 'Bookmarks', value: (bookmarks || []).length, route: '/bookmarks' },
-                        { icon: Layers, label: 'Collections', value: (collections || []).length, route: '/collections' },
-                        { icon: BookOpen, label: 'Recent Surahs', value: (recentlyRead || []).length, route: '/' },
+                        { icon: BookMarked, label: 'Bookmarks', hint: 'Saved ayahs', value: (bookmarks || []).length, route: '/bookmarks' },
+                        { icon: Layers, label: 'Collections', hint: 'Verse groups', value: (collections || []).length, route: '/collections' },
+                        { icon: History, label: 'Recent Surahs', hint: 'Resume reading', value: (recentlyRead || []).length, route: '/recent' },
                     ].map((item, i) => (
                         <Link to={item.route} key={i} className="group rounded-[24px] border-[1.5px] border-[var(--h-bone-dark)] bg-[var(--h-cream)] p-5 md:p-6 flex items-center justify-between transition-all hover:border-[var(--accent-hover)] hover:-translate-y-1 hover:shadow-[0_4px_20px_rgba(198,168,124,0.15)]">
                             <div className="flex items-center gap-4">
@@ -228,6 +228,7 @@ export default function Progress() {
                                 <div>
                                     <div className="font-ui text-[1.4rem] font-bold leading-none text-[var(--text-primary)] mb-1">{item.value}</div>
                                     <div className="font-mono text-[0.6rem] uppercase tracking-[0.1em] text-[var(--text-secondary)]">{item.label}</div>
+                                    <div className="mt-0.5 text-[0.7rem] text-[var(--text-secondary)]/70">{item.hint}</div>
                                 </div>
                             </div>
                             <ChevronRight size={18} className="text-[var(--text-secondary)] opacity-50 group-hover:opacity-100 group-hover:text-[var(--accent-primary)] transition-all transform group-hover:translate-x-1" />
