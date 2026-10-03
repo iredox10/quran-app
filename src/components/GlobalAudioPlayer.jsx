@@ -121,15 +121,24 @@ export default function GlobalAudioPlayer() {
 
     const listenStartRef = useRef(null);
     const listenChapterRef = useRef(null);
+    const listenTrackRef = useRef(null);
     const flushListeningRef = useRef(() => {});
 
     const flushListening = () => {
         const startedAt = listenStartRef.current;
         if (!startedAt) return;
         listenStartRef.current = null;
+        listenTrackRef.current = null;
         const seconds = Math.round((Date.now() - startedAt) / 1000);
         if (seconds < 10) return;
         logReadingSession(seconds, 'listening', listenChapterRef.current);
+    };
+
+    const startListeningSegment = () => {
+        const surahId = audioPlaylist[audioTrackIndex]?.surahId;
+        listenStartRef.current = Date.now();
+        listenTrackRef.current = audioTrackIndex;
+        listenChapterRef.current = surahId ? Number(surahId) : null;
     };
 
     // Dep-less on purpose: runs after every render so play/pause transitions from
@@ -138,9 +147,12 @@ export default function GlobalAudioPlayer() {
         flushListeningRef.current = flushListening;
         if (isPlaying && resolvedAudioUrl) {
             if (listenStartRef.current === null) {
-                listenStartRef.current = Date.now();
-                const surahId = audioPlaylist[audioTrackIndex]?.surahId;
-                listenChapterRef.current = surahId ? Number(surahId) : null;
+                startListeningSegment();
+            } else if (listenTrackRef.current !== audioTrackIndex) {
+                // Track changed mid-play: close the previous surah's segment so
+                // time is attributed to the surah it was actually spent on.
+                flushListening();
+                startListeningSegment();
             }
         } else {
             flushListening();
