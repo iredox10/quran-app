@@ -20,6 +20,7 @@ import {
     rangeTitle,
     lastNDayKeys,
     dateKey,
+    keyToDate,
     ACTIVITY_TYPES,
     TYPE_META,
 } from '../../utils/activity';
@@ -97,7 +98,8 @@ export default function ActivityFlow() {
 
     const { data: chapters = [] } = useQuery({ queryKey: ['chapters'], queryFn: getChapters, staleTime: Infinity });
 
-    const now = useMemo(() => new Date(), []);
+    const todayKey = dateKey();
+    const now = useMemo(() => keyToDate(todayKey), [todayKey]);
     const keys = useMemo(() => rangeKeys(range, now), [range, now]);
     const prevKeys = useMemo(() => previousRangeKeys(range, now), [range, now]);
     const rangeSessions = useMemo(() => filterByRange(sessions, range, now), [sessions, range, now]);
