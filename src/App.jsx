@@ -10,6 +10,7 @@ import MemorizeIndex from './pages/MemorizeIndex';
 import Memorization from './pages/Memorization';
 import Library from './pages/Library';
 import Progress from './pages/Progress';
+import ActivityHistory from './pages/ActivityHistory';
 import Planner from './pages/Planner';
 import PlannerReader from './pages/PlannerReader';
 import OfflineLibrary from './pages/OfflineLibrary';
@@ -84,6 +85,7 @@ function App() {
           <Route path="/planner/read/:dayNumber" element={<PlannerReader />} />
           <Route path="/offline-library" element={<OfflineLibrary />} />
           <Route path="/progress" element={<Progress />} />
+          <Route path="/progress/activity" element={<ActivityHistory />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/sauka" element={<SaukaIndex />} />
           <Route path="/sauka/:groupId" element={<SaukaGroup />} />
