@@ -1,19 +1,22 @@
 import React, { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../../store/useAppStore';
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { Activity } from 'lucide-react';
 import ChartTooltip from './ChartTooltip';
+import PeriodTabs from './PeriodTabs';
+import {
+    RANGE_TABS,
+    rangeKeys,
+    bucketByDay,
+    bucketByHour,
+    lastNDayKeys,
+    dateKey,
+} from '../../utils/activity';
 
-function getLastNDays(n) {
-    const days = [];
-    for (let i = n - 1; i >= 0; i--) {
-        const d = new Date();
-        d.setDate(d.getDate() - i);
-        days.push(d.toISOString().split('T')[0]);
-    }
-    return days;
-}
+const MotionDiv = motion.div;
+
+const EMPTY_LABEL = { today: 'today', week: 'this week', month: 'this month' };
 
 function getHeatmapLevel(active, duration) {
     if (!active) return 'level-0';
@@ -25,44 +28,59 @@ function getHeatmapLevel(active, duration) {
 
 export default function ActivityFlow() {
     const { readingSessions } = useAppStore();
-    const [chartMode, setChartMode] = useState('flow');
-    const sessions = readingSessions || [];
+    const sessions = useMemo(() => readingSessions || [], [readingSessions]);
 
-    const last7Days = useMemo(() => getLastNDays(7), []);
-    const dailyActivity = useMemo(() => {
-        return last7Days.map(date => {
-            const daySessions = sessions.filter(s => s.date === date);
-            const totalSeconds = daySessions.reduce((sum, s) => sum + (s.duration || 0), 0);
-            const dayLabel = new Date(date + 'T00:00:00').toLocaleDateString('en', { weekday: 'short' });
-            return { name: dayLabel, minutes: Math.round(totalSeconds / 60), date };
-        });
-    }, [sessions, last7Days]);
+    const [range, setRange] = useState('today');
+    const [view, setView] = useState('chart');
 
-    const last35Days = useMemo(() => getLastNDays(35), []);
-    const heatmapData = useMemo(() => {
-        return last35Days.map(date => {
-            const daySessions = sessions.filter(s => s.date === date);
-            const totalSeconds = daySessions.reduce((sum, s) => sum + (s.duration || 0), 0);
-            return { date, active: daySessions.length > 0, duration: totalSeconds };
-        });
-    }, [sessions, last35Days]);
+    const now = useMemo(() => new Date(), []);
+    const keys = useMemo(() => rangeKeys(range, now), [range, now]);
+
+    const chartData = useMemo(() => {
+        if (range === 'today') return bucketByHour(sessions, keys[0]);
+        const days = bucketByDay(sessions, keys);
+        if (range === 'month') return days.map((d) => ({ ...d, name: String(Number(d.key.slice(8))) }));
+        return days;
+    }, [range, sessions, keys]);
+
+    const heatmapData = useMemo(
+        () => bucketByDay(sessions, lastNDayKeys(35, dateKey(now))),
+        [sessions, now]
+    );
 
     return (
         <div className="rounded-[24px] border-[1.5px] border-[var(--h-bone-dark)] bg-[var(--h-cream)] p-6 flex flex-col">
-            <div className="mb-6 flex items-center justify-between">
+            <svg width="0" height="0" aria-hidden="true" focusable="false">
+                <defs>
+                    <linearGradient id="activityFlowBar" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="var(--accent-primary)" />
+                        <stop offset="100%" stopColor="var(--accent-light)" />
+                    </linearGradient>
+                </defs>
+            </svg>
+
+            <div className="mb-4 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2 font-ui text-[1.15rem] font-bold text-[var(--text-primary)]">
                     <Activity size={18} className="text-[var(--accent-primary)]" /> Activity Flow
                 </div>
+            </div>
+
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+                <PeriodTabs tabs={RANGE_TABS} value={range} onChange={setRange} ariaLabel="Activity range" />
                 <div className="flex bg-[var(--bg-surface)] rounded-full p-1">
                     <button
-                        className={`px-3 py-1 rounded-full font-mono text-[0.6rem] uppercase tracking-widest transition-colors ${chartMode === 'flow' ? 'bg-[var(--h-white)] border-[1.5px] border-[var(--h-bone-dark)] text-[var(--text-primary)] shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
-                        onClick={() => setChartMode('flow')}
+                        type="button"
+                        aria-pressed={view === 'chart'}
+                        className={`px-3 py-1 rounded-full font-mono text-[0.6rem] uppercase tracking-widest transition-colors ${view === 'chart' ? 'bg-[var(--h-white)] border-[1.5px] border-[var(--h-bone-dark)] text-[var(--text-primary)] shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+                        onClick={() => setView('chart')}
                     >
-                        7 Days
+                        Chart
                     </button>
                     <button
-                        className={`px-3 py-1 rounded-full font-mono text-[0.6rem] uppercase tracking-widest transition-colors ${chartMode === 'heatmap' ? 'bg-[var(--h-white)] border-[1.5px] border-[var(--h-bone-dark)] text-[var(--text-primary)] shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
-                        onClick={() => setChartMode('heatmap')}
+                        type="button"
+                        aria-pressed={view === 'heatmap'}
+                        className={`px-3 py-1 rounded-full font-mono text-[0.6rem] uppercase tracking-widest transition-colors ${view === 'heatmap' ? 'bg-[var(--h-white)] border-[1.5px] border-[var(--h-bone-dark)] text-[var(--text-primary)] shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+                        onClick={() => setView('heatmap')}
                     >
                         Heatmap
                     </button>
@@ -71,33 +89,15 @@ export default function ActivityFlow() {
 
             <div className="h-[240px] w-full flex items-center justify-center">
                 <AnimatePresence mode="wait">
-                    {chartMode === 'flow' ? (
-                        <motion.div key="flow" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.2 }} className="w-full h-full">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <LineChart data={dailyActivity} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                                    <XAxis dataKey="name" stroke="var(--text-secondary)" fontSize={11} tickLine={false} axisLine={false} dy={10} />
-                                    <YAxis stroke="var(--text-secondary)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(val) => `${val}m`} />
-                                    <Tooltip content={<ChartTooltip />} cursor={{ stroke: 'var(--accent-light)', strokeWidth: 2, strokeDasharray: '4 4' }} />
-                                    <Line
-                                        type="monotone"
-                                        dataKey="minutes"
-                                        stroke="url(#colorBar)"
-                                        strokeWidth={3}
-                                        dot={{ fill: 'var(--h-cream)', stroke: 'var(--accent-primary)', strokeWidth: 2, r: 4 }}
-                                        activeDot={{ r: 6, fill: 'var(--accent-primary)', stroke: 'var(--h-cream)', strokeWidth: 3 }}
-                                    />
-                                </LineChart>
-                            </ResponsiveContainer>
-                        </motion.div>
-                    ) : (
-                        <motion.div key="heatmap" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.2 }} className="w-full flex flex-col justify-center">
+                    {view === 'heatmap' ? (
+                        <MotionDiv key="heatmap" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.2 }} className="w-full flex flex-col justify-center">
                             <div className="flex items-end justify-center py-4 overflow-x-auto no-scrollbar">
                                 <div className="flex gap-2">
                                     {Array.from({ length: 5 }).map((_, colIndex) => (
                                         <div key={colIndex} className="flex flex-col gap-2">
                                             {heatmapData.slice(colIndex * 7, (colIndex + 1) * 7).map((day, i) => {
-                                                const d = new Date(day.date + 'T00:00:00');
-                                                const level = getHeatmapLevel(day.active, day.duration);
+                                                const d = new Date(day.key + 'T00:00:00');
+                                                const level = getHeatmapLevel(day.count > 0, day.seconds);
                                                 return (
                                                     <div
                                                         key={i}
@@ -107,7 +107,7 @@ export default function ActivityFlow() {
                                                             level === 'level-2' ? 'bg-[var(--accent-primary)] opacity-80' :
                                                             'bg-[#10b981] shadow-[0_0_10px_rgba(16,185,129,0.3)]'
                                                         }`}
-                                                        title={`${d.toDateString()} — ${day.active ? `${Math.round(day.duration / 60)}m` : 'No activity'}`}
+                                                        title={`${d.toDateString()} — ${day.count > 0 ? `${Math.round(day.seconds / 60)}m` : 'No activity'}`}
                                                     />
                                                 );
                                             })}
@@ -123,7 +123,58 @@ export default function ActivityFlow() {
                                 <div className="w-3 h-3 rounded-[3px] bg-[#10b981]" />
                                 <span className="font-mono text-[0.55rem] uppercase tracking-widest text-[var(--text-secondary)] ml-1">More</span>
                             </div>
-                        </motion.div>
+                        </MotionDiv>
+                    ) : !chartData.some((b) => b.count > 0) ? (
+                        <MotionDiv
+                            key={`empty-${range}`}
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            transition={{ duration: 0.2 }}
+                            className="flex h-full w-full flex-col items-center justify-center px-6 text-center"
+                        >
+                            <Activity size={34} className="mb-3 text-[var(--accent-primary)]/50" />
+                            <p className="mb-1 font-ui text-[1rem] font-bold text-[var(--text-primary)]">
+                                Nothing logged {EMPTY_LABEL[range]} yet
+                            </p>
+                            <p className="max-w-[320px] text-[0.85rem] leading-[1.5] text-[var(--text-secondary)]">
+                                Every session you record adds to your flow. Open a Surah and your reading time will track itself.
+                            </p>
+                        </MotionDiv>
+                    ) : (
+                        <MotionDiv key={`chart-${range}`} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.2 }} className="w-full h-full">
+                            {range === 'month' ? (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <LineChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                        <XAxis dataKey="name" interval={4} stroke="var(--text-secondary)" fontSize={11} tickLine={false} axisLine={false} dy={10} />
+                                        <YAxis stroke="var(--text-secondary)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(val) => `${val}m`} />
+                                        <Tooltip content={<ChartTooltip />} cursor={{ stroke: 'var(--accent-light)', strokeWidth: 2, strokeDasharray: '4 4' }} />
+                                        <Line
+                                            type="monotone"
+                                            dataKey="minutes"
+                                            stroke="var(--accent-primary)"
+                                            strokeWidth={2.5}
+                                            dot={{ r: 2, fill: 'var(--accent-primary)', strokeWidth: 0 }}
+                                            activeDot={{ r: 5, fill: 'var(--accent-primary)', stroke: 'var(--h-cream)', strokeWidth: 2 }}
+                                        />
+                                    </LineChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                        <XAxis dataKey="name" interval={range === 'today' ? 3 : 0} stroke="var(--text-secondary)" fontSize={11} tickLine={false} axisLine={false} dy={10} />
+                                        <YAxis stroke="var(--text-secondary)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(val) => `${val}m`} />
+                                        <Tooltip content={<ChartTooltip />} cursor={{ fill: 'var(--accent-light)', fillOpacity: 0.3 }} />
+                                        <Bar
+                                            dataKey="minutes"
+                                            fill="url(#activityFlowBar)"
+                                            radius={[6, 6, 0, 0]}
+                                            maxBarSize={range === 'today' ? 18 : 36}
+                                        />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            )}
+                        </MotionDiv>
                     )}
                 </AnimatePresence>
             </div>
