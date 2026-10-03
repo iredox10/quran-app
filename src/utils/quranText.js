@@ -1,8 +1,9 @@
 // Characters that often cause rendering issues (dotted circles) in web fonts:
+// \u06df: Arabic Small High Rounded Zero (waqf/saktah)
 // \u06ea: Arabic Empty Centre Low Stop (Imalah)
 // \u06eb: Arabic Empty Centre High Stop (Ishmam)
 // \u06ec: Arabic Rounded High Stop With Filled Centre
-const PROBLEM_CHARS = /[\u06ea\u06eb\u06ec]/g;
+const PROBLEM_CHARS = /[\u06df\u06ea\u06eb\u06ec]/g;
 
 export function cleanArabicText(text) {
   if (!text) return text;
@@ -21,7 +22,6 @@ export function getWordArabicText(word, mushaf) {
 
 const TAJWEED_HTML_REPLACEMENTS = [
   [/\u0672/g, '\u0670'],
-  [/\u06df/g, ''],
   [PROBLEM_CHARS, ''],
 ];
 
