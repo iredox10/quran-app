@@ -4,14 +4,12 @@ import { getChapters } from '../services/api/quranApi';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../store/useAppStore';
-import { BookOpen, Search, Bookmark, DownloadCloud, X, Hash, Layers3, LibraryBig, Rows3, ArrowRight, Flame, Clock, BarChart3, Sparkles, Share2, Copy, Check, CalendarDays, Brain, Target, Users } from 'lucide-react';
+import { BookOpen, Search, Bookmark, DownloadCloud, X, Hash, Layers3, LibraryBig, Rows3, ArrowRight, BarChart3, Sparkles, Share2, CalendarDays, Brain } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
 import { HIZB_STARTS, JUZ_STARTS, PAGE_GROUPS } from '../data/quranNavigation';
 import { APP_CONFIG } from '../config/constants';
 import PageTourModal from '../components/ui/PageTourModal';
-import Coachmark from '../components/ui/Coachmark';
 import OnboardingProgress from '../components/ui/OnboardingProgress';
-import ShareModal from '../components/ui/ShareModal';
 
 const homeTourSteps = [
     { title: "Welcome to Quran Nur", description: "This is your personal companion for reading, memorizing, and studying the Quran.", icon: Sparkles },
@@ -24,22 +22,6 @@ const homeTourSteps = [
 const homeAdvancedTourSteps = [
     { title: "Swipe Between Surahs", description: "While reading, try swiping left or right to quickly jump between Surahs.", icon: ArrowRight },
     { title: "Create a Habit", description: "Consistency is key. Use the Planner to build a daily reading habit.", icon: CalendarDays, link: '/planner' }
-];
-
-// ─── Curated Verses of the Day ───
-const DAILY_VERSES = [
-    { arabic: 'بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ', translation: '"In the name of Allah, the Most Gracious, the Most Merciful."', ref: 'Al-Fatiha 1:1' },
-    { arabic: 'ٱهْدِنَا ٱلصِّرَٰطَ ٱلْمُسْتَقِيمَ', translation: '"Guide us to the straight path."', ref: 'Al-Fatiha 1:6' },
-    { arabic: 'إِنَّ مَعَ ٱلْعُسْرِ يُسْرًا', translation: '"Indeed, with hardship comes ease."', ref: 'Ash-Sharh 94:6' },
-    { arabic: 'وَلَسَوْفَ يُعْطِيكَ رَبُّكَ فَتَرْضَىٰ', translation: '"And your Lord is going to give you, and you will be satisfied."', ref: 'Ad-Duha 93:5' },
-    { arabic: 'فَٱذْكُرُونِىٓ أَذْكُرْكُمْ', translation: '"So remember Me; I will remember you."', ref: 'Al-Baqarah 2:152' },
-    { arabic: 'وَمَن يَتَوَكَّلْ عَلَى ٱللَّهِ فَهُوَ حَسْبُهُۥ', translation: '"Whoever puts their trust in Allah, He is sufficient for them."', ref: 'At-Talaq 65:3' },
-    { arabic: 'رَبِّ ٱشْرَحْ لِى صَدْرِى', translation: '"My Lord, expand for me my chest."', ref: 'Ta-Ha 20:25' },
-    { arabic: 'وَقُل رَّبِّ زِدْنِى عِلْمًا', translation: '"And say: My Lord, increase me in knowledge."', ref: 'Ta-Ha 20:114' },
-    { arabic: 'إِنَّ ٱللَّهَ مَعَ ٱلصَّـٰبِرِينَ', translation: '"Indeed, Allah is with the patient."', ref: 'Al-Baqarah 2:153' },
-    { arabic: 'وَنَحْنُ أَقْرَبُ إِلَيْهِ مِنْ حَبْلِ ٱلْوَرِيدِ', translation: '"And We are closer to him than his jugular vein."', ref: 'Qaf 50:16' },
-    { arabic: 'فَإِنَّ ذِكْرَىٰ تَنفَعُ ٱلْمُؤْمِنِينَ', translation: '"And remind, for indeed, the reminder benefits the believers."', ref: 'Adh-Dhariyat 51:55' },
-    { arabic: 'لَا يُكَلِّفُ ٱللَّهُ نَفْسًا إِلَّا وُسْعَهَا', translation: '"Allah does not burden a soul beyond that it can bear."', ref: 'Al-Baqarah 2:286' },
 ];
 
 const BROWSE_MODES = [
@@ -88,18 +70,12 @@ function getGreeting() {
     return { salam: 'Assalamu Alaikum', sub: 'May your night be filled with barakah' };
 }
 
-function getDailyVerse() {
-    const today = new Date();
-    const dayOfYear = Math.floor((today - new Date(today.getFullYear(), 0, 0)) / 86400000);
-    return DAILY_VERSES[dayOfYear % DAILY_VERSES.length];
-}
-
 function formatDate() {
     return new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
 }
 
 export default function Home() {
-    const { recentlyRead, bookmark, readingSessions, incrementPageVisit, arabicFont } = useAppStore();
+    const { recentlyRead, bookmark, readingSessions, incrementPageVisit } = useAppStore();
     
     useEffect(() => {
         incrementPageVisit('home');
@@ -110,9 +86,6 @@ export default function Home() {
     const [searchQuery, setSearchQuery] = useState('');
     const [isOnline, setIsOnline] = useState(navigator.onLine);
     const [browseMode, setBrowseMode] = useState('surah');
-    const [copied, setCopied] = useState(false);
-    const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-    const [shareModalType, setShareModalType] = useState('verse');
 
     useEffect(() => {
         if (!location.state?.scrollToTop) return;
@@ -163,36 +136,7 @@ export default function Home() {
     }, [browseItems, searchQuery]);
 
     // Computed stats
-    const today = new Date().toISOString().split('T')[0];
     const sessions = readingSessions || [];
-
-    const todayMinutes = useMemo(() => {
-        return Math.round(sessions.filter(s => s.date === today).reduce((sum, s) => sum + (s.duration || 0), 0) / 60);
-    }, [sessions, today]);
-
-    const totalHours = useMemo(() => {
-        return (sessions.reduce((sum, s) => sum + (s.duration || 0), 0) / 3600).toFixed(1);
-    }, [sessions]);
-
-    const streak = useMemo(() => {
-        const uniqueDays = [...new Set(sessions.map(s => s.date))].sort().reverse();
-        if (uniqueDays.length === 0) return 0;
-        let count = 0;
-        const d = new Date();
-        const todayStr = d.toISOString().split('T')[0];
-        if (uniqueDays[0] !== todayStr) {
-            d.setDate(d.getDate() - 1);
-            if (uniqueDays[0] !== d.toISOString().split('T')[0]) return 0;
-        }
-        for (let i = 0; i < 365; i++) {
-            const checkDate = new Date();
-            checkDate.setDate(checkDate.getDate() - i);
-            const ds = checkDate.toISOString().split('T')[0];
-            if (uniqueDays.includes(ds)) count++;
-            else if (i > 0) break;
-        }
-        return count;
-    }, [sessions]);
 
     // Weekly heatmap
     const weekData = useMemo(() => {
@@ -209,9 +153,8 @@ export default function Home() {
 
     const weekMax = useMemo(() => Math.max(...weekData.map(d => d.mins), 1), [weekData]);
 
-    // Greeting & verse
+    // Greeting
     const greeting = useMemo(() => getGreeting(), []);
-    const verse = useMemo(() => getDailyVerse(), []);
 
     // Continue reading
     const lastRead = recentlyRead?.[0];
@@ -225,25 +168,6 @@ export default function Home() {
         const hrs = Math.floor(mins / 60);
         if (hrs < 24) return `${hrs}h ago`;
         return `${Math.floor(hrs / 24)}d ago`;
-    }, []);
-
-    // Copy verse
-    const copyVerse = useCallback(() => {
-        navigator.clipboard.writeText(`${verse.arabic}\n\n${verse.translation}\n— ${verse.ref}`);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-    }, [verse]);
-
-    // Share verse
-    const shareVerse = useCallback(() => {
-        setShareModalType('verse');
-        setIsShareModalOpen(true);
-    }, []);
-
-    // Share progress
-    const shareProgress = useCallback(() => {
-        setShareModalType('progress');
-        setIsShareModalOpen(true);
     }, []);
 
     // Invite friend
@@ -282,14 +206,6 @@ export default function Home() {
 
             <PageTourModal tourId="home-tour" pageId="home" steps={homeTourSteps} />
             <PageTourModal tourId="home-tour-advanced" pageId="home" visitThreshold={3} steps={homeAdvancedTourSteps} />
-
-            <ShareModal 
-                isOpen={isShareModalOpen} 
-                onClose={() => setIsShareModalOpen(false)} 
-                type={shareModalType} 
-                data={shareModalType === 'verse' ? verse : { streak, todayMinutes, totalHours }} 
-                arabicFont={arabicFont}
-            />
 
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
 
