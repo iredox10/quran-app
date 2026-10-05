@@ -4,10 +4,9 @@ import { getChapters } from '../services/api/quranApi';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../store/useAppStore';
-import { BookOpen, Search, Bookmark, DownloadCloud, X, Hash, Layers3, LibraryBig, Rows3, ArrowRight, BarChart3, Sparkles, Share2, CalendarDays, Brain } from 'lucide-react';
+import { BookOpen, Search, Bookmark, DownloadCloud, X, Hash, Layers3, LibraryBig, Rows3, ArrowRight, BarChart3, Sparkles, CalendarDays, Brain } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
 import { HIZB_STARTS, JUZ_STARTS, PAGE_GROUPS } from '../data/quranNavigation';
-import { APP_CONFIG } from '../config/constants';
 import PageTourModal from '../components/ui/PageTourModal';
 import OnboardingProgress from '../components/ui/OnboardingProgress';
 
@@ -168,20 +167,6 @@ export default function Home() {
         const hrs = Math.floor(mins / 60);
         if (hrs < 24) return `${hrs}h ago`;
         return `${Math.floor(hrs / 24)}d ago`;
-    }, []);
-
-    // Invite friend
-    const inviteFriend = useCallback(async () => {
-        if (navigator.share) {
-            await navigator.share({
-                title: APP_CONFIG.SHARE_TITLE,
-                text: APP_CONFIG.SHARE_DESCRIPTION,
-                url: APP_CONFIG.APP_URL
-            });
-        } else {
-            navigator.clipboard.writeText(`${APP_CONFIG.SHARE_DESCRIPTION} ${APP_CONFIG.APP_URL}`);
-            alert('Invite link copied to clipboard!');
-        }
     }, []);
 
     if (isLoading) return (
