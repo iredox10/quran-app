@@ -313,29 +313,6 @@ export default function Home() {
                     </div>
                 </div>
 
-                {/* ─── Invite Friends ─── */}
-                <div className="mb-7 rounded-2xl bg-gradient-to-r from-[var(--h-teal)] to-[var(--h-teal-mid)] p-6 text-white shadow-lg relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-5 rounded-full -mr-10 -mt-10 blur-xl"></div>
-                    <div className="absolute bottom-0 left-0 w-24 h-24 bg-[var(--h-gold)] opacity-10 rounded-full -ml-8 -mb-8 blur-lg"></div>
-                    
-                    <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div>
-                            <h3 className="font-ui text-xl font-bold mb-1 flex items-center gap-2">
-                                <Sparkles size={18} className="text-[var(--h-gold)]" /> Invite Friends
-                            </h3>
-                            <p className="text-sm opacity-90 max-w-sm font-body leading-relaxed">
-                                Inspire others to build a daily Quran habit. Share the app and grow together!
-                            </p>
-                        </div>
-                        <button 
-                            onClick={inviteFriend}
-                            className="flex shrink-0 w-full md:w-auto cursor-pointer items-center justify-center gap-2 rounded-xl bg-white text-[var(--h-teal)] px-5 py-2.5 text-sm font-semibold transition-all duration-200 hover:bg-[var(--h-cream)] shadow-md"
-                        >
-                            <Share2 size={16} /> Send Invite
-                        </button>
-                    </div>
-                </div>
-
                 {/* ─── Bookmark ─── */}
                 {bookmark && (
                     <Link to={`/surah/${bookmark.chapterId || bookmark.verseKey.split(':')[0]}?verse=${bookmark.verseKey}`}
