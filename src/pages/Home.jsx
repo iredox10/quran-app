@@ -15,8 +15,6 @@ import ShareModal from '../components/ui/ShareModal';
 
 const homeTourSteps = [
     { title: "Welcome to Quran Nur", description: "This is your personal companion for reading, memorizing, and studying the Quran.", icon: Sparkles },
-    { title: "Daily Progress", target: "#daily-progress", description: "Track your reading streak, daily minutes, and total hours right from the dashboard.", icon: Flame },
-    { title: "Verse of the Day", target: "#verse-of-the-day", description: "Start your day with a selected Ayah. You can copy or share it easily.", icon: BookOpen },
     { title: "Resume Reading", target: "#resume-reading", description: "Pick up exactly where you left off last time.", icon: ArrowRight },
     { title: "Browse the Quran", target: "#browse-quran", description: "Navigate quickly to any Surah, Juz, or Page.", icon: Search },
     { title: "Set a Reading Goal 📅", description: "Head to the Planner tab to create a personalized Khatm plan with daily assignments.", icon: CalendarDays, link: '/planner' },
@@ -364,67 +362,8 @@ export default function Home() {
                     )}
                 </div>
 
-                <div className="mb-10 grid grid-cols-2 gap-2 sm:gap-3">
-                    <Link to="/sauka" className="flex flex-col items-center justify-center gap-2 rounded-[18px] border border-[var(--h-bone-dark)] bg-[var(--h-white)] p-4 text-center transition-all duration-200 hover:-translate-y-1 hover:border-[var(--h-teal)] hover:shadow-sm">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--h-teal)]/10 text-[var(--h-teal)]"><Users size={20} /></div>
-                        <span className="font-ui text-[0.85rem] font-bold text-[var(--h-ink)]">Sauka Groups</span>
-                    </Link>
-                    <Link to="/library" className="flex flex-col items-center justify-center gap-2 rounded-[18px] border border-[var(--h-bone-dark)] bg-[var(--h-white)] p-4 text-center transition-all duration-200 hover:-translate-y-1 hover:border-[var(--h-ink)] hover:shadow-sm">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--h-ink)]/5 text-[var(--h-ink)]"><Bookmark size={20} /></div>
-                        <span className="font-ui text-[0.85rem] font-bold text-[var(--h-ink)]">Bookmarks</span>
-                    </Link>
-                </div>
-
                 {/* ─── Onboarding Progress ─── */}
                 <OnboardingProgress />
-
-                {/* ─── Stats Row ─── */}
-                <section id="daily-progress" className="mb-10">
-                    <div className="mb-7 flex gap-2">
-                        <div className="flex-1 rounded-[14px] border-[1.5px] border-[var(--h-bone-dark)] bg-[var(--h-cream)] px-3 py-[0.85rem] text-center transition-colors duration-200">
-                            <div className="mb-1"><Flame size={18} color={streak > 0 ? '#ef4444' : 'var(--h-ink-muted)'} /></div>
-                            <div className="font-ui text-2xl font-bold leading-[1.2] text-[var(--h-ink)]">{streak}<small className="text-[0.7rem] font-normal text-[var(--h-ink-muted)]"> days</small></div>
-                            <div className="mt-0.5 font-mono text-[0.58rem] uppercase tracking-[0.1em] text-[var(--h-ink-muted)]">Streak</div>
-                        </div>
-                        <div className="flex-1 rounded-[14px] border-[1.5px] border-[var(--h-bone-dark)] bg-[var(--h-cream)] px-3 py-[0.85rem] text-center transition-colors duration-200">
-                            <div className="mb-1"><Clock size={18} color="var(--h-teal)" /></div>
-                            <div className="font-ui text-2xl font-bold leading-[1.2] text-[var(--h-ink)]">{todayMinutes}<small className="text-[0.7rem] font-normal text-[var(--h-ink-muted)]"> min</small></div>
-                            <div className="mt-0.5 font-mono text-[0.58rem] uppercase tracking-[0.1em] text-[var(--h-ink-muted)]">Today</div>
-                        </div>
-                        <div className="flex-1 rounded-[14px] border-[1.5px] border-[var(--h-bone-dark)] bg-[var(--h-cream)] px-3 py-[0.85rem] text-center transition-colors duration-200">
-                            <div className="mb-1"><BarChart3 size={18} color="var(--h-gold)" /></div>
-                            <div className="font-ui text-2xl font-bold leading-[1.2] text-[var(--h-ink)]">{totalHours}<small className="text-[0.7rem] font-normal text-[var(--h-ink-muted)]"> hrs</small></div>
-                            <div className="mt-0.5 font-mono text-[0.58rem] uppercase tracking-[0.1em] text-[var(--h-ink-muted)]">Total</div>
-                        </div>
-                    </div>
-                    <div className="flex justify-center mt-3">
-                        <button 
-                            onClick={shareProgress}
-                            className="flex cursor-pointer items-center gap-1.5 rounded-[20px] bg-[var(--h-teal)] px-4 py-2 text-xs font-semibold text-white transition-all duration-150 hover:bg-[var(--h-teal-mid)] hover:shadow-[0_4px_12px_rgba(46,79,74,0.2)]"
-                        >
-                            <Share2 size={14} /> Share Progress
-                        </button>
-                    </div>
-                </section>
-
-                {/* ─── Verse of the Day ─── */}
-                <div className="relative mb-7 overflow-hidden rounded-[18px] border-[1.5px] border-[var(--h-bone-dark)] bg-[var(--h-cream)] p-6">
-                    <span className="pointer-events-none absolute -right-2.5 -top-4 select-none text-[6rem] opacity-[0.03] text-[var(--h-gold)]" aria-hidden="true">﷽</span>
-                    <div className="mb-4 flex items-center gap-1.5 font-mono text-[0.62rem] uppercase tracking-[0.12em] text-[var(--h-gold)]"><Sparkles size={14} /> Verse of the Day</div>
-                    <div className="quran-text mb-4 text-center text-[1.6rem] leading-[2.2] text-[var(--h-ink)]" style={{ fontFamily: arabicFont }}>
-                        {verse.arabic}
-                    </div>
-                    <div className="mb-4 text-center text-[0.9rem] italic leading-[1.6] text-[var(--h-ink-mid)]">{verse.translation}</div>
-                    <div className="mb-4 text-center font-mono text-[0.7rem] text-[var(--h-ink-muted)]">— {verse.ref}</div>
-                    <div className="flex justify-center gap-2">
-                        <Coachmark id="home-copy-verse" label="Share the Ayah">
-                            <button className={`flex cursor-pointer items-center gap-1.5 rounded-[20px] border-[1.5px] border-[var(--h-bone-dark)] bg-transparent px-3 py-1.5 text-xs font-semibold text-[var(--h-ink-mid)] transition-all duration-150 hover:border-[var(--h-teal)] hover:bg-[var(--h-teal-soft)] hover:text-[var(--h-teal)] ${copied ? 'border-[var(--h-green)] bg-[var(--h-green-soft)] text-[var(--h-green)]' : ''}`} onClick={copyVerse}>
-                                {copied ? <Check size={14} /> : <Copy size={14} />} {copied ? 'Copied' : 'Copy'}
-                            </button>
-                        </Coachmark>
-                        <button className="flex cursor-pointer items-center gap-1.5 rounded-[20px] border-[1.5px] border-[var(--h-bone-dark)] bg-transparent px-3 py-1.5 text-xs font-semibold text-[var(--h-ink-mid)] transition-all duration-150 hover:border-[var(--h-teal)] hover:bg-[var(--h-teal-soft)] hover:text-[var(--h-teal)]" onClick={shareVerse}><Share2 size={14} /> Share</button>
-                    </div>
-                </div>
 
                 {/* ─── Weekly Heatmap ─── */}
                 <div className="mb-7 rounded-2xl border-[1.5px] border-[var(--h-bone-dark)] bg-[var(--h-cream)] p-5">
