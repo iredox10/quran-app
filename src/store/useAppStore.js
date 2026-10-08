@@ -790,6 +790,10 @@ export const useAppStore = create(
             lastSyncAt: 0,
             setLastSyncAt: (timestamp) => set({ lastSyncAt: timestamp }),
 
+            syncStatus: 'idle',
+            syncError: null,
+            setSyncStatus: (status, error = null) => set({ syncStatus: status, syncError: error }),
+
             prayerTimes: null,
             setPrayerTimes: (times) => set({ prayerTimes: times }),
             location: null,
@@ -911,4 +915,10 @@ export function getSyncableState(state) {
         dismissedGestureTips: state.dismissedGestureTips || [],
         pageVisitCounts: state.pageVisitCounts || {}
     };
+}
+
+export function getSyncPayload(state) {
+    const payload = { ...getSyncableState(state) };
+    delete payload.lastSyncAt;
+    return payload;
 }
