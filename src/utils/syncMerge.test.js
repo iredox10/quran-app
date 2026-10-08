@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { mergeStateInto } from './syncMerge';
+import { mergeStateInto, slimStatePayload } from './syncMerge';
 
 describe('mergeStateInto', () => {
     it('unions bookmarks by verseKey without duplicates', () => {
@@ -68,12 +68,20 @@ describe('mergeStateInto', () => {
         expect(merged.plannerReflections.plan2[1].text).toBe('c');
     });
 
-    it('sums pageVisitCounts from both devices', () => {
+    it('takes the per-key max of pageVisitCounts from both devices', () => {
         const merged = mergeStateInto(
             { pageVisitCounts: { home: 5, library: 2 } },
             { pageVisitCounts: { home: 3, planner: 1 } }
         );
-        expect(merged.pageVisitCounts).toEqual({ home: 8, library: 2, planner: 1 });
+        expect(merged.pageVisitCounts).toEqual({ home: 5, library: 2, planner: 1 });
+    });
+
+    it('treats non-finite and negative pageVisitCounts as 0', () => {
+        const merged = mergeStateInto(
+            { pageVisitCounts: { home: -4, library: NaN, onlyBase: 6 } },
+            { pageVisitCounts: { home: 3, library: 2 } }
+        );
+        expect(merged.pageVisitCounts).toEqual({ home: 3, library: 2, onlyBase: 6 });
     });
 
     it('unions collection items by verseKey', () => {
@@ -106,5 +114,195 @@ describe('mergeStateInto', () => {
         const merged = mergeStateInto({}, { bookmarks: [{ verseKey: '1:1' }], theme: 'dark' });
         expect(merged.bookmarks).toHaveLength(1);
         expect(merged.theme).toBe('dark');
+    });
+
+    it('merges top-level planner assignments by dayNumber, newest updatedAt wins', () => {
+        const base = {
+            planner: {
+                id: 'p1',
+                assignments: [
+                    { dayNumber: 1, updatedAt: 100, text: 'base-newer' },
+                    { dayNumber: 1, updatedAt: 50, text: 'base-dup' },
+                    { dayNumber: 2, updatedAt: 10, text: 'base-older' },
+                    { dayNumber: 4, updatedAt: 77, text: 'base-tie' },
+                ],
+            },
+        };
+        const incoming = {
+            planner: {
+                id: 'p1',
+                assignments: [
+                    { dayNumber: 1, updatedAt: 50, text: 'incoming-older' },
+                    { dayNumber: 2, updatedAt: 999, text: 'incoming-newer' },
+                    { dayNumber: 3, updatedAt: 5, text: 'incoming-only' },
+                    { dayNumber: 4, updatedAt: 77, text: 'incoming-tie' },
+                ],
+            },
+        };
+        const merged = mergeStateInto(base, incoming);
+        const assignments = merged.planner.assignments;
+        expect(assignments).toHaveLength(4);
+        const byDay = Object.fromEntries(assignments.map(a => [a.dayNumber, a]));
+        expect(byDay[1].text).toBe('base-newer');
+        expect(byDay[2].text).toBe('incoming-newer');
+        expect(byDay[3].text).toBe('incoming-only');
+        expect(byDay[4].text).toBe('incoming-tie');
+    });
+
+    it('merges assignments inside planners[] by dayNumber', () => {
+        const base = {
+            planners: [{ id: 'p1', assignments: [
+                { dayNumber: 1, updatedAt: 100, text: 'base' },
+                { dayNumber: 2, updatedAt: 5, text: 'day2' },
+            ] }],
+        };
+        const incoming = {
+            planners: [{ id: 'p1', assignments: [
+                { dayNumber: 1, updatedAt: 200, text: 'incoming' },
+                { dayNumber: 1, updatedAt: 1, text: 'incoming-dup' },
+                { dayNumber: 3, updatedAt: 1, text: 'day3' },
+            ] }],
+        };
+        const merged = mergeStateInto(base, incoming);
+        expect(merged.planners).toHaveLength(1);
+        const assignments = merged.planners[0].assignments;
+        expect(assignments).toHaveLength(3);
+        const byDay = Object.fromEntries(assignments.map(a => [a.dayNumber, a]));
+        expect(byDay[1].updatedAt).toBe(200);
+        expect(byDay[1].text).toBe('incoming');
+        expect(byDay[2].updatedAt).toBe(5);
+        expect(byDay[3].text).toBe('day3');
+    });
+
+    it('keeps JSON-identity behavior for arrays without dayNumber items', () => {
+        const base = { planner: { id: 'p1', tags: [{ label: 'a' }, { label: 'b' }] } };
+        const incoming = { planner: { id: 'p1', tags: [{ label: 'b' }, { label: 'c' }] } };
+        const merged = mergeStateInto(base, incoming);
+        expect(merged.planner.tags).toHaveLength(3);
+    });
+
+    it('derives planner from base planners matching activePlannerId', () => {
+        const base = {
+            planners: [{ id: 'p1', title: 'First' }, { id: 'p2', title: 'Second' }],
+            activePlannerId: 'p2',
+            planner: { id: 'p1', title: 'First' },
+        };
+        const merged = mergeStateInto(base, { theme: 'dark' });
+        expect(merged.planner).toEqual({ id: 'p2', title: 'Second' });
+        expect(merged.theme).toBe('dark');
+    });
+
+    it('derives planner from incoming planners with a different activePlannerId', () => {
+        const base = {
+            planners: [{ id: 'p1', title: 'First' }, { id: 'p2', title: 'Second' }],
+            activePlannerId: 'p1',
+            planner: { id: 'p1', title: 'First' },
+        };
+        const incoming = {
+            planners: [{ id: 'p2', title: 'Second' }, { id: 'p3', title: 'Third' }],
+            activePlannerId: 'p3',
+        };
+        const merged = mergeStateInto(base, incoming);
+        expect(merged.activePlannerId).toBe('p3');
+        expect(merged.planner).toEqual({ id: 'p3', title: 'Third' });
+    });
+
+    it('falls back to the planner entry matching the current planner id', () => {
+        const base = {
+            planners: [{ id: 'p1', title: 'First' }, { id: 'p2', title: 'Second' }],
+            planner: { id: 'p2', title: 'Second' },
+        };
+        const merged = mergeStateInto(base, { activePlannerId: 'gone' });
+        expect(merged.planner).toEqual({ id: 'p2', title: 'Second' });
+    });
+});
+
+describe('slimStatePayload', () => {
+    it('strips the top-level planner and keeps other fields', () => {
+        const state = {
+            theme: 'dark',
+            planner: { id: 'p1', assignments: [{ dayNumber: 1, updatedAt: 1 }] },
+            planners: [{ id: 'p1', assignments: [{ dayNumber: 1, updatedAt: 1 }] }],
+            activePlannerId: 'p1',
+        };
+        const slimmed = slimStatePayload(state);
+        expect(slimmed).not.toHaveProperty('planner');
+        expect(slimmed).not.toBe(state);
+        expect(slimmed.theme).toBe('dark');
+        expect(slimmed.activePlannerId).toBe('p1');
+        expect(slimmed.planners).toEqual([{ id: 'p1', assignments: [{ dayNumber: 1, updatedAt: 1 }] }]);
+        expect(state).toHaveProperty('planner');
+    });
+
+    it('clamps pageVisitCounts into [0, 10000] and drops non-numeric keys', () => {
+        const state = { pageVisitCounts: { home: 3.4e42, bad: 'nope', neg: -5, ok: 42 } };
+        const slimmed = slimStatePayload(state);
+        expect(slimmed.pageVisitCounts).toEqual({ home: 10000, neg: 0, ok: 42 });
+        expect(state.pageVisitCounts).toEqual({ home: 3.4e42, bad: 'nope', neg: -5, ok: 42 });
+    });
+
+    it('dedupes assignments by dayNumber in planners and archivedPlanners', () => {
+        const state = {
+            planners: [{ id: 'p1', assignments: [
+                { dayNumber: 1, updatedAt: 100, tag: 'newer' },
+                { dayNumber: 1, updatedAt: 50, tag: 'older' },
+                { dayNumber: 2, updatedAt: 10, tag: 'first-tie' },
+                { dayNumber: 2, updatedAt: 10, tag: 'second-tie' },
+            ] }],
+            archivedPlanners: [{ id: 'old', assignments: [
+                { dayNumber: 1, updatedAt: 5, tag: 'a' },
+                { dayNumber: 1, updatedAt: 9, tag: 'b' },
+            ] }],
+        };
+        const slimmed = slimStatePayload(state);
+        expect(slimmed.planners[0].assignments).toEqual([
+            { dayNumber: 1, updatedAt: 100, tag: 'newer' },
+            { dayNumber: 2, updatedAt: 10, tag: 'first-tie' },
+        ]);
+        expect(slimmed.archivedPlanners[0].assignments).toEqual([
+            { dayNumber: 1, updatedAt: 9, tag: 'b' },
+        ]);
+        expect(state.planners[0].assignments).toHaveLength(4);
+        expect(state.archivedPlanners[0].assignments).toHaveLength(2);
+    });
+
+    it('does not mutate the input state', () => {
+        const state = {
+            theme: 'light',
+            planner: { id: 'p1', assignments: [{ dayNumber: 1, updatedAt: 5 }] },
+            pageVisitCounts: { home: 3.4e42 },
+            planners: [{ id: 'p1', assignments: [{ dayNumber: 1, updatedAt: 5 }, { dayNumber: 1, updatedAt: 9 }] }],
+            bookmarks: [{ verseKey: '2:1' }],
+        };
+        const snapshot = JSON.parse(JSON.stringify(state));
+        const slimmed = slimStatePayload(state);
+        expect(state).toEqual(snapshot);
+        expect(slimmed).not.toBe(state);
+        expect(slimmed.planners).not.toBe(state.planners);
+    });
+
+    it('trims readingSessions and pomodoroHistory to the last 100 when oversized', () => {
+        const filler = 'x'.repeat(600);
+        const state = {
+            readingSessions: Array.from({ length: 2000 }, (_, i) => ({ timestamp: i, note: filler })),
+            pomodoroHistory: Array.from({ length: 2000 }, (_, i) => ({ completedAt: i, note: filler })),
+            note: 'a'.repeat(10000),
+        };
+        const slimmed = slimStatePayload(state);
+        expect(slimmed.readingSessions).toHaveLength(100);
+        expect(slimmed.pomodoroHistory).toHaveLength(100);
+        expect(slimmed.readingSessions[0].timestamp).toBe(1900);
+        expect(slimmed.pomodoroHistory[99].completedAt).toBe(1999);
+        expect(slimmed.note).toBe('a'.repeat(10000));
+    });
+
+    it('throws when the payload is still too large after trimming', () => {
+        const filler = 'x'.repeat(600);
+        const state = {
+            readingSessions: Array.from({ length: 2000 }, (_, i) => ({ timestamp: i, note: filler })),
+            pomodoroHistory: Array.from({ length: 2000 }, (_, i) => ({ completedAt: i, note: filler })),
+            hugeNote: 'y'.repeat(960000),
+        };
+        expect(() => slimStatePayload(state)).toThrow('sync payload too large');
     });
 });

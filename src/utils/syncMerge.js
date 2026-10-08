@@ -100,18 +100,47 @@ function mergeValue(base, incoming) {
     return incoming;
 }
 
+function hasDayNumber(item) {
+    return isPlainObject(item) && item.dayNumber !== undefined;
+}
+
+function isDayNumberArray(v) {
+    return Array.isArray(v) && v.length > 0 && v.every(hasDayNumber);
+}
+
+function updatedAtOf(item) {
+    const t = Number(item?.updatedAt);
+    return Number.isFinite(t) ? t : 0;
+}
+
 function mergeValueArrays(base, incoming) {
+    if (isDayNumberArray(base) && isDayNumberArray(incoming)) {
+        const map = new Map();
+        [...base, ...incoming].forEach(item => {
+            const existing = map.get(item.dayNumber);
+            if (!existing || updatedAtOf(item) >= updatedAtOf(existing)) {
+                map.set(item.dayNumber, item);
+            }
+        });
+        return Array.from(map.values());
+    }
     const map = new Map();
     base.forEach(item => map.set(JSON.stringify(item), item));
     incoming.forEach(item => map.set(JSON.stringify(item), item));
     return Array.from(map.values());
 }
 
+function visitCount(value) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return 0;
+    return n > 0 ? n : 0;
+}
+
 /**
  * Merge `incoming` state into `base` state.
  * - Lists with identity keys: union (dedupe, latest wins per key)
  * - Keyed maps: recursive deep merge
- * - pageVisitCounts: summed
+ * - pageVisitCounts: per-key max
  * - Scalars / settings / positions: incoming wins
  */
 export function mergeStateInto(base, incoming) {
@@ -130,8 +159,9 @@ export function mergeStateInto(base, incoming) {
             out[field] = mergePlanners(out[field], inc);
         } else if (field === 'pageVisitCounts') {
             const counts = { ...(out[field] || {}) };
-            Object.keys(inc).forEach(k => {
-                counts[k] = (counts[k] || 0) + (inc[k] || 0);
+            const keys = new Set([...Object.keys(counts), ...Object.keys(inc || {})]);
+            keys.forEach(k => {
+                counts[k] = Math.max(visitCount(counts[k]), visitCount(inc[k]));
             });
             out[field] = counts;
         } else if (Object.prototype.hasOwnProperty.call(ARRAY_KEY, field)) {
@@ -149,5 +179,83 @@ export function mergeStateInto(base, incoming) {
             out[field] = inc; // scalar / position: incoming wins
         }
     }
+    if (Array.isArray(out.planners)) {
+        out.planner = out.planners.find(p => p?.id === out.activePlannerId)
+            || out.planners.find(p => out.planner && p?.id === out.planner.id)
+            || (out.planner ?? null);
+    }
     return out;
+}
+
+function dedupeAssignments(items) {
+    const map = new Map();
+    items.forEach(item => {
+        const existing = map.get(item.dayNumber);
+        if (!existing || updatedAtOf(item) > updatedAtOf(existing)) {
+            map.set(item.dayNumber, item);
+        }
+    });
+    return Array.from(map.values());
+}
+
+function slimDeep(value) {
+    if (Array.isArray(value)) {
+        let changed = false;
+        const out = value.map(item => {
+            const next = slimDeep(item);
+            if (next !== item) changed = true;
+            return next;
+        });
+        return changed ? out : value;
+    }
+    if (!isPlainObject(value)) return value;
+    let out = value;
+    for (const key of Object.keys(value)) {
+        const current = value[key];
+        const next = (key === 'assignments' && isDayNumberArray(current))
+            ? dedupeAssignments(current)
+            : slimDeep(current);
+        if (next !== current) {
+            if (out === value) out = { ...value };
+            out[key] = next;
+        }
+    }
+    return out;
+}
+
+function clampCount(value) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return null;
+    return Math.min(10000, Math.max(0, Math.trunc(n)));
+}
+
+export function slimStatePayload(state) {
+    const result = { ...state };
+    delete result.planner;
+
+    if (isPlainObject(result.pageVisitCounts)) {
+        const counts = {};
+        Object.keys(result.pageVisitCounts).forEach(k => {
+            const n = clampCount(result.pageVisitCounts[k]);
+            if (n !== null) counts[k] = n;
+        });
+        result.pageVisitCounts = counts;
+    }
+
+    const slimmed = slimDeep(result);
+
+    let size = JSON.stringify(slimmed).length;
+    if (size > 950000) {
+        if (Array.isArray(slimmed.readingSessions) && slimmed.readingSessions.length > 100) {
+            slimmed.readingSessions = slimmed.readingSessions.slice(-100);
+        }
+        if (Array.isArray(slimmed.pomodoroHistory) && slimmed.pomodoroHistory.length > 100) {
+            slimmed.pomodoroHistory = slimmed.pomodoroHistory.slice(-100);
+        }
+        size = JSON.stringify(slimmed).length;
+        if (size > 950000) {
+            throw new Error('sync payload too large: ' + size + ' chars');
+        }
+    }
+    return slimmed;
 }
