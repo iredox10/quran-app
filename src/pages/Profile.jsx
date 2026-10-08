@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { useAppStore, getSyncableState } from '../store/useAppStore';
+import { useAppStore, getSyncPayload } from '../store/useAppStore';
 import {
     User, Settings, Bookmark, Folder, Moon, Sun,
     ChevronRight, HardDrive, LogOut, CloudUpload, CloudDownload,
@@ -11,6 +11,7 @@ import {
 import { authService, syncService } from '../services/appwrite';
 import { RECITERS } from '../config/reciters';
 import { APP_CONFIG } from '../config/constants';
+import { mergeStateInto, slimStatePayload } from '../utils/syncMerge';
 
 const TRANSLATIONS = [
     { id: 85, name: 'English - M.A.S. Abdel Haleem' },
@@ -45,7 +46,7 @@ export default function Profile() {
         setNavHeaderTitle, setIsSettingsOpen, bookmarks, collections,
         theme, toggleTheme, readingSessions, lastSyncAt,
         reciterId, translationId, dailyReadingGoal, setDailyReadingGoal,
-        completedTours, resetAllTours
+        completedTours, resetAllTours, syncStatus: storeSyncStatus, syncError: storeSyncError
     } = store;
 
     const [user, setUser] = useState(null);
@@ -99,19 +100,26 @@ export default function Profile() {
     const handlePushSync = async () => {
         if (!user) return; setSyncStatus('pushing');
         try {
-            const s = useAppStore.getState();
-            await syncService.pushState(user.$id, getSyncableState(s));
+            const payload = slimStatePayload(getSyncPayload(useAppStore.getState()));
+            await syncService.pushState(user.$id, payload);
             setSyncStatus('success'); setTimeout(() => setSyncStatus(null), 3000);
-        } catch (e) { console.error(e); setSyncStatus('error'); setTimeout(() => setSyncStatus(null), 3000); }
+        } catch (e) { console.error(e); useAppStore.getState().setSyncStatus('error', e.message); setSyncStatus('error'); setTimeout(() => setSyncStatus(null), 3000); }
     };
 
     const handlePullSync = async () => {
         if (!user) return; setSyncStatus('pulling');
         try {
-            const r = await syncService.pullState(user.$id);
-            if (r?.state) useAppStore.setState({ ...r.state, lastSyncAt: r.updatedAt });
+            const remote = await syncService.pullState(user.$id);
+            if (remote?.state) {
+                const merged = mergeStateInto(useAppStore.getState(), remote.state);
+                useAppStore.setState({ ...merged, lastSyncAt: remote.updatedAt });
+                try {
+                    const payload = slimStatePayload(getSyncPayload(useAppStore.getState()));
+                    await syncService.pushState(user.$id, payload);
+                } catch (e) { console.error(e); useAppStore.getState().setSyncStatus('error', e.message); }
+            }
             setSyncStatus('success'); setTimeout(() => setSyncStatus(null), 3000);
-        } catch (e) { console.error(e); setSyncStatus('error'); setTimeout(() => setSyncStatus(null), 3000); }
+        } catch (e) { console.error(e); useAppStore.getState().setSyncStatus('error', e.message); setSyncStatus('error'); setTimeout(() => setSyncStatus(null), 3000); }
     };
 
     // ─── Computed ───
@@ -405,10 +413,10 @@ export default function Profile() {
                             </div>
                             
                             <AnimatePresence mode="wait">
-                                {syncStatus === 'pushing' && <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mb-4 flex items-center gap-2 text-[0.8rem] font-bold text-[var(--accent-primary)]"><Loader2 size={16} className="animate-spin" /> Saving data...</motion.div>}
-                                {syncStatus === 'pulling' && <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mb-4 flex items-center gap-2 text-[0.8rem] font-bold text-[var(--accent-primary)]"><Loader2 size={16} className="animate-spin" /> Restoring data...</motion.div>}
+                                {(syncStatus === 'pushing' || storeSyncStatus === 'pushing') && <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mb-4 flex items-center gap-2 text-[0.8rem] font-bold text-[var(--accent-primary)]"><Loader2 size={16} className="animate-spin" /> Saving data...</motion.div>}
+                                {(syncStatus === 'pulling' || storeSyncStatus === 'pulling') && <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mb-4 flex items-center gap-2 text-[0.8rem] font-bold text-[var(--accent-primary)]"><Loader2 size={16} className="animate-spin" /> Restoring data...</motion.div>}
                                 {syncStatus === 'success' && <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mb-4 text-[0.8rem] font-bold text-[#10b981]">✓ Sync complete successfully.</motion.div>}
-                                {syncStatus === 'error' && <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mb-4 text-[0.8rem] font-bold text-red-500">Failed to sync. Please try again.</motion.div>}
+                                {(syncStatus === 'error' || storeSyncStatus === 'error') && <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mb-4 text-[0.8rem] font-bold text-red-500">{storeSyncError || 'Failed to sync. Please try again.'}</motion.div>}
                             </AnimatePresence>
                             
                             <div className="flex gap-3">

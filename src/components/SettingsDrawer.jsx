@@ -11,8 +11,9 @@ import * as quranApi from '../services/api/quranApi';
 import { getMushafById, getMushafFontOptions, isTajweedEnabledForMushaf, MUSHAFS } from '../config/mushaf';
 import { saveLocalAudioDirHandle } from '../utils/localAudio';
 import { getOfflinePackStats } from '../utils/offlineLibrary';
+import { mergeStateInto, slimStatePayload } from '../utils/syncMerge';
 import { authService, syncService } from '../services/appwrite';
-import { getSyncableState } from '../store/useAppStore';
+import { getSyncPayload } from '../store/useAppStore';
 import Coachmark from './ui/Coachmark';
 
 import { RECITERS } from '../config/reciters';
@@ -180,6 +181,7 @@ function CloudSyncView({ currentUser, setCurrentUser }) {
     const [error, setError] = useState('');
     const [syncStatus, setSyncStatus] = useState('');
     const [syncLoading, setSyncLoading] = useState(false);
+    const { syncStatus: storeSyncStatus, syncError: storeSyncError } = useAppStore();
 
     const handleAuth = async (e) => {
         e.preventDefault();
@@ -210,12 +212,12 @@ function CloudSyncView({ currentUser, setCurrentUser }) {
         if (!currentUser) return;
         setSyncLoading(true); setSyncStatus('Pushing to cloud...');
         try {
-            const state = getSyncableState(useAppStore.getState());
-            const result = await syncService.pushState(currentUser.$id, state);
+            const payload = slimStatePayload(getSyncPayload(useAppStore.getState()));
+            const result = await syncService.pushState(currentUser.$id, payload);
             useAppStore.setState({ lastSyncAt: result.updatedAt });
             setSyncStatus('Successfully backed up to cloud! ✅');
             setTimeout(() => setSyncStatus(''), 3000);
-        } catch (err) { console.error(err); setSyncStatus('Failed to push data ❌'); }
+        } catch (err) { console.error(err); useAppStore.getState().setSyncStatus('error', err.message); setSyncStatus('Failed to push data ❌'); }
         finally { setSyncLoading(false); }
     };
 
@@ -226,11 +228,17 @@ function CloudSyncView({ currentUser, setCurrentUser }) {
         try {
             const remoteData = await syncService.pullState(currentUser.$id);
             if (remoteData?.state) {
-                useAppStore.setState({ ...remoteData.state, lastSyncAt: remoteData.updatedAt });
+                const merged = mergeStateInto(useAppStore.getState(), remoteData.state);
+                useAppStore.setState({ ...merged, lastSyncAt: remoteData.updatedAt });
+                try {
+                    const payload = slimStatePayload(getSyncPayload(useAppStore.getState()));
+                    const result = await syncService.pushState(currentUser.$id, payload);
+                    useAppStore.setState({ lastSyncAt: result.updatedAt });
+                } catch (e) { console.error(e); useAppStore.getState().setSyncStatus('error', e.message); }
                 setSyncStatus('Successfully restored from cloud! ✅');
             } else { setSyncStatus('No cloud backup found.'); }
             setTimeout(() => setSyncStatus(''), 3000);
-        } catch (err) { console.error(err); setSyncStatus('Failed to pull data ❌'); }
+        } catch (err) { console.error(err); useAppStore.getState().setSyncStatus('error', err.message); setSyncStatus('Failed to pull data ❌'); }
         finally { setSyncLoading(false); }
     };
 
@@ -253,15 +261,16 @@ function CloudSyncView({ currentUser, setCurrentUser }) {
                     <div className="mb-3 text-[0.75rem] text-[var(--text-secondary)]">Securely back up your bookmarks, memorization progress, planners, and reading history.</div>
 
                     <div className="flex flex-col gap-2">
-                        <button type="button" onClick={handlePush} disabled={syncLoading} className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-[12px] border-none bg-accent px-4 py-[10px] text-[0.85rem] font-bold text-white transition-all duration-200 hover:bg-[var(--accent-hover)] disabled:opacity-60">
+                        <button type="button" onClick={handlePush} disabled={syncLoading || storeSyncStatus === 'pulling' || storeSyncStatus === 'pushing'} className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-[12px] border-none bg-accent px-4 py-[10px] text-[0.85rem] font-bold text-white transition-all duration-200 hover:bg-[var(--accent-hover)] disabled:opacity-60">
                             <UploadCloud size={16} /> {syncLoading ? 'Syncing...' : 'Backup to Cloud'}
                         </button>
-                        <button type="button" onClick={handlePull} disabled={syncLoading} className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-[12px] border-2 border-accent bg-transparent px-4 py-[10px] text-[0.85rem] font-bold text-accent transition-all duration-200 hover:bg-[var(--accent-light)] disabled:opacity-60">
+                        <button type="button" onClick={handlePull} disabled={syncLoading || storeSyncStatus === 'pulling' || storeSyncStatus === 'pushing'} className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-[12px] border-2 border-accent bg-transparent px-4 py-[10px] text-[0.85rem] font-bold text-accent transition-all duration-200 hover:bg-[var(--accent-light)] disabled:opacity-60">
                             <DownloadCloud size={16} /> Restore from Cloud
                         </button>
                     </div>
 
                     {syncStatus && <div className={`mt-2 text-[0.78rem] font-semibold ${syncStatus.includes('Failed') ? 'text-red-500' : 'text-green-600'}`}>{syncStatus}</div>}
+                    {storeSyncStatus === 'error' && storeSyncError && <div className="mt-2 text-[0.78rem] font-semibold text-red-500">{storeSyncError}</div>}
                 </div>
             </div>
         );
