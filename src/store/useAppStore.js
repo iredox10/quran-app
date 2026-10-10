@@ -16,6 +16,18 @@ import { adjustPlannerPace, rebalancePlanner } from '../utils/planner';
 const DEFAULT_ARABIC_FONT_ID = getCompatibleArabicFontId(DEFAULT_MUSHAF.id, DEFAULT_MUSHAF.defaultFontId);
 const DEFAULT_ARABIC_FONT_FAMILY = getArabicFontFamily(DEFAULT_ARABIC_FONT_ID);
 
+// Settings a user can pick explicitly. `userSetSettings` records which of them
+// were actually chosen so the sync payload can omit the rest (see
+// getSyncableState): pushing a hardcoded default would overwrite the value
+// another device already stored for that user.
+function withUserSet(set, fields, apply) {
+    return (...args) => set((state) => {
+        const patch = apply(state, ...args);
+        const userSetSettings = { ...(state.userSetSettings || {}) };
+        fields.forEach((field) => { userSetSettings[field] = true; });
+        return { ...patch, userSetSettings };
+    });
+}
 function updatePlannerCollection(state, updater) {
     const planners = state.planners || [];
     const activePlannerId = state.activePlannerId || planners[0]?.id || null;
@@ -67,6 +79,7 @@ function getPomodoroDurationSeconds(profile, mode) {
 export const useAppStore = create(
     persist(
         (set, get) => ({
+            userSetSettings: {}, // settings the user picked explicitly; never synced
             theme: 'light', // 'light' or 'dark'
             translationId: 85, // Default: M.A.S. Abdel Haleem (85)
             reciterId: 7, // Default: Mishary
@@ -124,10 +137,10 @@ export const useAppStore = create(
             }),
 
             dailyReadingGoal: 20, // minutes per day
-            setDailyReadingGoal: (minutes) => set({ dailyReadingGoal: minutes }),
+            setDailyReadingGoal: withUserSet(set, ['dailyReadingGoal'], (state, minutes) => ({ dailyReadingGoal: minutes })),
 
             setIsSettingsOpen: (isOpen) => set({ isSettingsOpen: isOpen }),
-            toggleTheme: () => set((state) => ({
+            toggleTheme: withUserSet(set, ['theme'], (state) => ({
                 theme: state.theme === 'light' ? 'dark' : 'light'
             })),
 
@@ -176,14 +189,14 @@ export const useAppStore = create(
                 return { globalConfirm: null };
             }),
 
-            setTranslation: (id) => set({ translationId: id }),
-            setReciter: (id) => set({ reciterId: id }),
-            setFontSize: (size) => set({ fontSize: size }),
-            setTranslationFontSize: (size) => set({ translationFontSize: size }),
-            setReadingMode: (mode) => set({ readingMode: mode }),
+            setTranslation: withUserSet(set, ['translationId'], (state, id) => ({ translationId: id })),
+            setReciter: withUserSet(set, ['reciterId'], (state, id) => ({ reciterId: id })),
+            setFontSize: withUserSet(set, ['fontSize'], (state, size) => ({ fontSize: size })),
+            setTranslationFontSize: withUserSet(set, ['translationFontSize'], (state, size) => ({ translationFontSize: size })),
+            setReadingMode: withUserSet(set, ['readingMode'], (state, mode) => ({ readingMode: mode })),
             mushafMode: false,
             setMushafMode: (mode) => set({ mushafMode: mode }),
-            setSelectedMushaf: (mushafId) => set((state) => {
+            setSelectedMushaf: withUserSet(set, ['mushafId', 'arabicFontId', 'arabicFont'], (state, mushafId) => {
                 const mushaf = getMushafById(mushafId);
                 const nextFontId = getCompatibleArabicFontId(mushaf.id, state.arabicFontId || getArabicFontByFamily(state.arabicFont)?.id);
 
@@ -194,19 +207,19 @@ export const useAppStore = create(
                     tajweedEnabled: mushaf.supportsTajweedToggle ? state.tajweedEnabled : false,
                 };
             }),
-            setArabicFont: (fontId) => set((state) => {
+            setArabicFont: withUserSet(set, ['arabicFontId', 'arabicFont'], (state, fontId) => {
                 const nextFontId = getCompatibleArabicFontId(state.mushafId, fontId);
                 return {
                     arabicFontId: nextFontId,
                     arabicFont: getArabicFontFamily(nextFontId),
                 };
             }),
-            setTajweed: (enabled) => set((state) => {
+            setTajweed: withUserSet(set, ['tajweedEnabled'], (state, enabled) => {
                 const mushaf = getMushafById(state.mushafId);
                 return { tajweedEnabled: mushaf.supportsTajweedToggle ? enabled : false };
             }),
-            setWordTooltipBehavior: (behavior) => set({ wordTooltipBehavior: behavior }),
-            setTafsirId: (id) => set({ tafsirId: id }),
+            setWordTooltipBehavior: withUserSet(set, ['wordTooltipBehavior'], (state, behavior) => ({ wordTooltipBehavior: behavior })),
+            setTafsirId: withUserSet(set, ['tafsirId'], (state, id) => ({ tafsirId: id })),
             setOfflineStatus: (status) => set({ offlineDataStatus: status }),
             setOfflinePackStatus: (packId, updates) => set((state) => ({
                 offlinePackStatus: {
@@ -781,7 +794,7 @@ export const useAppStore = create(
 
             // Custom Offline Audio Base URL
             customAudioBaseUrl: '',
-            setCustomAudioBaseUrl: (val) => set({ customAudioBaseUrl: val }),
+            setCustomAudioBaseUrl: withUserSet(set, ['customAudioBaseUrl'], (state, val) => ({ customAudioBaseUrl: val })),
 
             // Native File System Handle for Offline Audio
             localAudioDirHandle: null,
@@ -827,7 +840,7 @@ export const useAppStore = create(
             updatePrayerSettings: (settings) => set((state) => ({ prayerSettings: { ...state.prayerSettings, ...settings } })),
 
             intentionPromptEnabled: true,
-            setIntentionPromptEnabled: (enabled) => set({ intentionPromptEnabled: enabled }),
+            setIntentionPromptEnabled: withUserSet(set, ['intentionPromptEnabled'], (state, enabled) => ({ intentionPromptEnabled: enabled })),
 
         }),
         {
@@ -852,7 +865,12 @@ export const useAppStore = create(
                     activePomodoroProfileId: merged.activePomodoroProfileId || merged.pomodoroProfiles?.[0]?.id || DEFAULT_POMODORO_PROFILES[0].id,
                 };
             },
-            partialize: (state) => getSyncableState(state), // Persist settings and user data
+            partialize: (state) => ({
+                ...getSyncableState(state),
+                // Persist the user-chosen flags so "picked the default value"
+                // survives a reload; they are never part of the cloud payload.
+                userSetSettings: state.userSetSettings || {},
+            }), // Persist settings and user data
         }
     )
 );
