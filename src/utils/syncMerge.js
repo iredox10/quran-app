@@ -93,6 +93,8 @@ function mergePlanners(base, incoming) {
 function mergeValue(base, incoming) {
     if (incoming === undefined) return base;
     if (base === undefined) return incoming;
+    // Nulls never replace a unioned array/map child (see mergeStateInto).
+    if (incoming === null && (Array.isArray(base) || isPlainObject(base))) return base;
     if (base === null || incoming === null) return incoming ?? base;
     if (Array.isArray(base) && Array.isArray(incoming)) {
         return mergeValueArrays(base, incoming);
@@ -157,6 +159,12 @@ export function mergeStateInto(base, incoming) {
     for (const field of Object.keys(incoming)) {
         const inc = incoming[field];
         if (inc === undefined) continue;
+        // A section the other device never wrote can arrive as null. For array /
+        // map fields that null must not replace the base value, otherwise one
+        // device's empty section silently wipes the other's data — the Android
+        // engine drops null entries before merging, so this keeps both sides
+        // aligned. Scalars keep incoming-wins semantics.
+        if (inc === null && (Array.isArray(out[field]) || isPlainObject(out[field]))) continue;
 
         if (field === 'recentlyRead') {
             out[field] = mergeArray(out[field], inc, 'recentlyRead');
