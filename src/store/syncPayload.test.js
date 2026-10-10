@@ -1,22 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useAppStore, getSyncPayload, getSyncableState } from './useAppStore';
+import { mergeStateInto } from '../utils/syncMerge';
 
 const resetStore = () => {
-    useAppStore.setState({
-        userSetSettings: {},
-        theme: 'light',
-        translationId: 85,
-        reciterId: 7,
-        fontSize: 2,
-        translationFontSize: 2,
-        readingMode: false,
-        tajweedEnabled: false,
-        wordTooltipBehavior: 'tajweed',
-        tafsirId: 169,
-        dailyReadingGoal: 20,
-        intentionPromptEnabled: true,
-        customAudioBaseUrl: '',
-    });
+    useAppStore.setState(useAppStore.getInitialState());
 };
 
 describe('user-chosen setting tracking', () => {
@@ -77,5 +64,34 @@ describe('user-chosen setting tracking', () => {
         expect(payload.arabicFontId).toBe('qcf-v1');
         expect(payload.arabicFont).toBe('QCF');
         expect(payload.fontSize).toBeUndefined();
+    });
+});
+
+describe('fresh web client pushing into an existing cloud doc', () => {
+    beforeEach(() => resetStore());
+
+    it('keeps the settings another device already stored', () => {
+        const cloudDoc = {
+            bookmarks: [{ verseKey: '2:1' }],
+            fontSize: 4,
+            translationFontSize: 4,
+            mushafId: 'kfgqpc_v2',
+            arabicFontId: 'qcf-v2',
+            arabicFont: 'QCF',
+            wordTooltipBehavior: 'none',
+            theme: 'dark',
+            reciterId: 9,
+            dailyReadingGoal: 45,
+        };
+        const merged = mergeStateInto(cloudDoc, getSyncPayload(useAppStore.getState()));
+        expect(merged.fontSize).toBe(4);
+        expect(merged.translationFontSize).toBe(4);
+        expect(merged.mushafId).toBe('kfgqpc_v2');
+        expect(merged.arabicFontId).toBe('qcf-v2');
+        expect(merged.wordTooltipBehavior).toBe('none');
+        expect(merged.theme).toBe('dark');
+        expect(merged.reciterId).toBe(9);
+        expect(merged.dailyReadingGoal).toBe(45);
+        expect(merged.bookmarks).toEqual([{ verseKey: '2:1' }]);
     });
 });
