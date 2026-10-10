@@ -55,6 +55,13 @@ function mergeArray(base, incoming, field) {
     return merged;
 }
 
+// Collection items are keyed by (collection id, verse key) so the same verse
+// can live in several collections at once. This is the canonical key on both
+// clients: the Android engine keys `"${collectionId}|${verseKey}"`.
+function collectionItemKey(collectionId, item) {
+    return `${collectionId}|${item?.verseKey}`;
+}
+
 function mergeCollections(base, incoming) {
     const map = new Map((base || []).map(c => [c.id, { ...c }]));
     (incoming || []).forEach(inc => {
@@ -63,8 +70,8 @@ function mergeCollections(base, incoming) {
             map.set(inc.id, { ...inc });
             return;
         }
-        const itemsMap = new Map((existing.items || []).map(i => [i.verseKey, i]));
-        (inc.items || []).forEach(i => itemsMap.set(i.verseKey, i));
+        const itemsMap = new Map((existing.items || []).map(i => [collectionItemKey(inc.id, i), i]));
+        (inc.items || []).forEach(i => itemsMap.set(collectionItemKey(inc.id, i), i));
         map.set(inc.id, { ...existing, items: Array.from(itemsMap.values()) });
     });
     return Array.from(map.values());

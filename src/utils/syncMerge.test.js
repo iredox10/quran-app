@@ -84,11 +84,27 @@ describe('mergeStateInto', () => {
         expect(merged.pageVisitCounts).toEqual({ home: 3, library: 2, onlyBase: 6 });
     });
 
-    it('unions collection items by verseKey', () => {
+    it('unions collection items by collectionId|verseKey', () => {
         const base = { collections: [{ id: 'c1', name: 'Favs', items: [{ verseKey: '2:1' }] }] };
         const incoming = { collections: [{ id: 'c1', name: 'Favs', items: [{ verseKey: '2:1' }, { verseKey: '18:1' }] }] };
         const merged = mergeStateInto(base, incoming);
         expect(merged.collections[0].items).toHaveLength(2);
+    });
+
+    it('keeps the same verse in two different collections separate', () => {
+        const base = { collections: [
+            { id: 'c1', name: 'Favs', items: [{ verseKey: '2:1' }] },
+            { id: 'c2', name: 'Later', items: [{ verseKey: '18:1' }] },
+        ] };
+        const incoming = { collections: [
+            { id: 'c2', name: 'Later', items: [{ verseKey: '18:1' }, { verseKey: '2:1' }] },
+        ] };
+        const merged = mergeStateInto(base, incoming);
+        expect(merged.collections).toHaveLength(2);
+        const c1 = merged.collections.find(c => c.id === 'c1');
+        const c2 = merged.collections.find(c => c.id === 'c2');
+        expect(c1.items.map(i => i.verseKey)).toEqual(['2:1']);
+        expect(c2.items.map(i => i.verseKey)).toEqual(['18:1', '2:1']);
     });
 
     it('merges planners by id, preserving completed days from both sides', () => {
