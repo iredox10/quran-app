@@ -875,20 +875,49 @@ export const useAppStore = create(
     )
 );
 
+// Settings the user can pick, mapped to the value this client falls back to.
+// A setting still on its default that was never chosen is pushed as
+// `undefined`, which mergeStateInto (src/utils/syncMerge.js) skips, so a fresh
+// client cannot overwrite another device's stored value with its own default.
+const USER_SETTABLE_SETTINGS = {
+    theme: 'light',
+    translationId: 85,
+    reciterId: 7,
+    fontSize: 2,
+    translationFontSize: 2,
+    readingMode: false,
+    mushafId: DEFAULT_MUSHAF.id,
+    arabicFontId: DEFAULT_ARABIC_FONT_ID,
+    arabicFont: DEFAULT_ARABIC_FONT_FAMILY,
+    tajweedEnabled: false,
+    wordTooltipBehavior: 'tajweed',
+    tafsirId: 169,
+    dailyReadingGoal: 20,
+    intentionPromptEnabled: true,
+    customAudioBaseUrl: '',
+};
+
+function chosenSetting(state, field) {
+    if (state.userSetSettings?.[field] === true) return state[field];
+    const value = state[field];
+    const isDefault = value === undefined || value === USER_SETTABLE_SETTINGS[field];
+    return isDefault ? undefined : value;
+}
+
 export function getSyncableState(state) {
     return {
-        theme: state.theme,
-        translationId: state.translationId,
-        reciterId: state.reciterId,
-        fontSize: state.fontSize,
-        translationFontSize: state.translationFontSize || 2,
-        readingMode: state.readingMode,
-        mushafId: state.mushafId || DEFAULT_MUSHAF.id,
-        arabicFontId: state.arabicFontId || DEFAULT_ARABIC_FONT_ID,
-        arabicFont: state.arabicFont,
-        tajweedEnabled: state.tajweedEnabled,
-        wordTooltipBehavior: state.wordTooltipBehavior || 'tajweed',
-        tafsirId: state.tafsirId,
+        theme: chosenSetting(state, 'theme'),
+        translationId: chosenSetting(state, 'translationId'),
+        reciterId: chosenSetting(state, 'reciterId'),
+        fontSize: chosenSetting(state, 'fontSize'),
+        translationFontSize: chosenSetting(state, 'translationFontSize'),
+        readingMode: chosenSetting(state, 'readingMode'),
+        mushafId: chosenSetting(state, 'mushafId'),
+        arabicFontId: chosenSetting(state, 'arabicFontId'),
+        arabicFont: chosenSetting(state, 'arabicFont'),
+        tajweedEnabled: chosenSetting(state, 'tajweedEnabled'),
+        wordTooltipBehavior: chosenSetting(state, 'wordTooltipBehavior'),
+        tafsirId: chosenSetting(state, 'tafsirId'),
         bookmark: state.bookmark,
         bookmarks: state.bookmarks || [],
         memorizedAyahs: state.memorizedAyahs || [],
@@ -911,19 +940,19 @@ export function getSyncableState(state) {
         offlineDataStatus: state.offlineDataStatus,
         offlinePackStatus: state.offlinePackStatus || {},
         downloadedSurahs: state.downloadedSurahs || [],
-        customAudioBaseUrl: state.customAudioBaseUrl || '',
+        customAudioBaseUrl: chosenSetting(state, 'customAudioBaseUrl'),
         audioSettings: state.audioSettings || {
             startRange: null, endRange: null, reciterId: 7,
             repeatSelection: 1, repeatAya: 1, delayBetweenAyas: 0,
             playbackSpeed: 1.0, scrollWhilePlaying: true
         },
         lastSyncAt: state.lastSyncAt || 0,
-        dailyReadingGoal: state.dailyReadingGoal || 20,
+        dailyReadingGoal: chosenSetting(state, 'dailyReadingGoal'),
         prayerTimes: state.prayerTimes || null,
         location: state.location || null,
         archivedPlanners: state.archivedPlanners || [],
         prayerSettings: state.prayerSettings || { activePrayers: ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'], readPreference: 'after' },
-        intentionPromptEnabled: state.intentionPromptEnabled ?? true,
+        intentionPromptEnabled: chosenSetting(state, 'intentionPromptEnabled'),
         plannerReflections: state.plannerReflections || {},
         plannerBookmarks: state.plannerBookmarks || {},
         plannerSessionTimers: state.plannerSessionTimers || {},
