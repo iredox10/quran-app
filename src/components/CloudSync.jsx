@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useAppStore, getSyncPayload } from '../store/useAppStore';
-import { authService, syncService } from '../services/appwrite';
+import { authService, syncService, client, databaseId, collectionId } from '../services/appwrite';
 import { mergeStateInto, slimStatePayload } from '../utils/syncMerge';
 
 const PENDING_MARKER = 'quran-app-sync-pending';
@@ -14,10 +14,12 @@ const PENDING_MARKER = 'quran-app-sync-pending';
 export default function CloudSync() {
     const isPulling = useRef(false);
     const pushTimeout = useRef(null);
+    const pullTimeout = useRef(null);
     const pullInFlight = useRef(Promise.resolve());
     const retryTimers = useRef([]);
     const pushAfterPull = useRef(false);
     const disposed = useRef(false);
+    const realtimeUnsub = useRef(() => {});
 
     useEffect(() => {
         disposed.current = false;
@@ -139,6 +141,37 @@ export default function CloudSync() {
             }
         };
 
+        // 2b. Realtime: when the doc for this collection changes anywhere
+        //     (mobile push!), debounce a pull so an open tab stays current.
+        //     Without this the web only sees mobile activity after a full reload.
+        let currentUser = null;
+        const detachRealtime = () => {
+            try {
+                realtimeUnsub.current?.();
+            } catch { /* already closed */ }
+            realtimeUnsub.current = () => {};
+        };
+        const attachRealtime = (user) => {
+            if (!user) return;
+            currentUser = user;
+            try {
+                const channel = `databases.${databaseId}.collections.${collectionId}.documents`;
+                realtimeUnsub.current = client.subscribe(channel, (response) => {
+                    const payload = response?.payload;
+                    // Only react to this account's document (the channel carries all).
+                    if (payload?.userId && currentUser?.id && payload.userId !== currentUser.id) return;
+                    if (pullTimeout.current) clearTimeout(pullTimeout.current);
+                    pullTimeout.current = setTimeout(() => {
+                        const liveUser = useAppStore.getState().currentUser;
+                        if (liveUser) performPull(liveUser);
+                    }, 1500);
+                });
+            } catch (error) {
+                console.error('Appwrite realtime subscribe failed (falling back to visibility refresh)', error);
+                realtimeUnsub.current = () => {};
+            }
+        };
+
         const initializeSync = async () => {
             try {
                 // 1. Get current logged in user from Appwrite
@@ -150,12 +183,22 @@ export default function CloudSync() {
                     pullInFlight.current = pullInFlight.current
                         .then(() => performPull(user))
                         .then(() => flushPending());
+                    attachRealtime(user);
                 }
             } catch {
                 // Not authenticated, safely ignore
                 useAppStore.getState().setCurrentUser(null);
             }
         };
+
+        // Refresh whenever the tab becomes visible again: a stale tab (realtime
+        // offline, backgrounded app) catches up on focus. Gate is idempotent.
+        const handleVisibility = () => {
+            if (document.visibilityState !== 'visible') return;
+            const user = useAppStore.getState().currentUser;
+            if (user) pullInFlight.current = pullInFlight.current.then(() => performPull(user));
+        };
+        document.addEventListener('visibilitychange', handleVisibility);
 
         initializeSync();
 
@@ -167,8 +210,10 @@ export default function CloudSync() {
             if (userId && userId !== wasLoggedIn) {
                 useAppStore.setState({ lastSyncAt: 0 });
                 pullInFlight.current = pullInFlight.current.then(() => performPull(state.currentUser));
+                attachRealtime(state.currentUser);
             } else if (!userId && wasLoggedIn) {
                 useAppStore.setState({ lastSyncAt: 0, syncStatus: 'idle', syncError: null });
+                detachRealtime();
             }
         });
 
@@ -204,8 +249,11 @@ export default function CloudSync() {
             disposed.current = true;
             unsubscribeUser();
             unsubscribe();
+            detachRealtime();
+            document.removeEventListener('visibilitychange', handleVisibility);
             window.removeEventListener('online', handleOnline);
             if (pushTimeout.current) clearTimeout(pushTimeout.current);
+            if (pullTimeout.current) clearTimeout(pullTimeout.current);
             retryTimers.current.forEach((id) => clearTimeout(id));
             retryTimers.current = [];
         };
