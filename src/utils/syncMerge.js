@@ -48,7 +48,7 @@ function mergeArray(base, incoming, field) {
     let merged = Array.from(map.values());
     if (field === 'recentlyRead') {
         merged.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-        merged = merged.slice(0, 5);
+        merged = merged.slice(0, 20);
     }
     if (field === 'readingSessions') merged = merged.slice(-500);
     if (field === 'pomodoroHistory') merged = merged.slice(-500);

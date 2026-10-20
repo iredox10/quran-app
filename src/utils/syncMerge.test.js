@@ -15,7 +15,7 @@ describe('mergeStateInto', () => {
         expect(merged.bookmarks.map(b => b.verseKey)).toEqual(['2:1', '18:1']);
     });
 
-    it('keeps the latest recentlyRead entry per chapter, sorted, capped at 5', () => {
+    it('keeps the latest recentlyRead entry per chapter, sorted, capped at 20', () => {
         const base = { recentlyRead: [{ chapterId: 1, chapterName: 'Al-Fatihah', verseKey: '1:1', timestamp: 100 }] };
         const incoming = {
             recentlyRead: [
@@ -31,6 +31,18 @@ describe('mergeStateInto', () => {
         const ch1 = merged.recentlyRead.find(r => r.chapterId === 1);
         expect(ch1.verseKey).toBe('1:5');
         expect(merged.recentlyRead[0].chapterId).toBe(1);
+    });
+
+    it('caps recentlyRead history at 20 entries (web store parity)', () => {
+        const many = Array.from({ length: 25 }, (_, i) => ({
+            chapterId: i + 1,
+            chapterName: `Surah ${i + 1}`,
+            verseKey: `${i + 1}:1`,
+            timestamp: 1000 + i,
+        }));
+        const merged = mergeStateInto({ recentlyRead: [] }, { recentlyRead: many });
+        expect(merged.recentlyRead).toHaveLength(20);
+        expect(merged.recentlyRead[0].chapterId).toBe(25); // newest first
     });
 
     it('unions readingSessions by timestamp', () => {
