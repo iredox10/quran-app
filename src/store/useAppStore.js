@@ -68,7 +68,7 @@ export const useAppStore = create(
     persist(
         (set, get) => ({
             theme: 'light', // 'light' or 'dark'
-            translationId: 85, // Default: M.A.S. Abdel Haleem (85)
+            translationId: 20, // Default: Saheeh International (20)
             reciterId: 7, // Default: Mishary
             fontSize: 2, // 1, 2, 3, 4
             translationFontSize: 2, // 1, 2, 3, 4
@@ -844,7 +844,7 @@ export const useAppStore = create(
 
                 return {
                     ...merged,
-                    translationId: merged.translationId === 131 ? 85 : (merged.translationId || 85),
+                    translationId: merged.translationId === 131 ? 20 : (merged.translationId || 20),
                     planners,
                     activePlannerId: planner?.id || null,
                     planner,
