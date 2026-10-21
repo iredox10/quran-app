@@ -84,11 +84,27 @@ describe('mergeStateInto', () => {
         expect(merged.pageVisitCounts).toEqual({ home: 3, library: 2, onlyBase: 6 });
     });
 
-    it('unions collection items by verseKey', () => {
+    it('unions collection items by collectionId|verseKey', () => {
         const base = { collections: [{ id: 'c1', name: 'Favs', items: [{ verseKey: '2:1' }] }] };
         const incoming = { collections: [{ id: 'c1', name: 'Favs', items: [{ verseKey: '2:1' }, { verseKey: '18:1' }] }] };
         const merged = mergeStateInto(base, incoming);
         expect(merged.collections[0].items).toHaveLength(2);
+    });
+
+    it('keeps the same verse in two different collections separate', () => {
+        const base = { collections: [
+            { id: 'c1', name: 'Favs', items: [{ verseKey: '2:1' }] },
+            { id: 'c2', name: 'Later', items: [{ verseKey: '18:1' }] },
+        ] };
+        const incoming = { collections: [
+            { id: 'c2', name: 'Later', items: [{ verseKey: '18:1' }, { verseKey: '2:1' }] },
+        ] };
+        const merged = mergeStateInto(base, incoming);
+        expect(merged.collections).toHaveLength(2);
+        const c1 = merged.collections.find(c => c.id === 'c1');
+        const c2 = merged.collections.find(c => c.id === 'c2');
+        expect(c1.items.map(i => i.verseKey)).toEqual(['2:1']);
+        expect(c2.items.map(i => i.verseKey)).toEqual(['18:1', '2:1']);
     });
 
     it('merges planners by id, preserving completed days from both sides', () => {
@@ -179,6 +195,43 @@ describe('mergeStateInto', () => {
         const incoming = { planner: { id: 'p1', tags: [{ label: 'b' }, { label: 'c' }] } };
         const merged = mergeStateInto(base, incoming);
         expect(merged.planner.tags).toHaveLength(3);
+    });
+
+    it('never lets a null array or map field wipe the other side', () => {
+        const base = {
+            bookmarks: [{ verseKey: '2:1' }],
+            collections: [{ id: 'c1', name: 'Favs', items: [{ verseKey: '2:1' }] }],
+            plannerReflections: { p1: { 1: { text: 'a' } } },
+            audioSettings: { playbackSpeed: 2 },
+            planner: { id: 'p1', assignments: [{ dayNumber: 1, updatedAt: 1 }] },
+        };
+        const incoming = {
+            bookmarks: null,
+            collections: null,
+            plannerReflections: null,
+            audioSettings: null,
+            planner: null,
+            theme: 'dark',
+        };
+        const merged = mergeStateInto(base, incoming);
+        expect(merged.bookmarks).toEqual([{ verseKey: '2:1' }]);
+        expect(merged.collections).toEqual([{ id: 'c1', name: 'Favs', items: [{ verseKey: '2:1' }] }]);
+        expect(merged.plannerReflections).toEqual({ p1: { 1: { text: 'a' } } });
+        expect(merged.audioSettings).toEqual({ playbackSpeed: 2 });
+        expect(merged.planner).toEqual({ id: 'p1', assignments: [{ dayNumber: 1, updatedAt: 1 }] });
+        expect(merged.theme).toBe('dark');
+    });
+
+    it('keeps incoming-wins semantics for null scalars', () => {
+        const merged = mergeStateInto({ theme: 'dark', reciterId: 7 }, { theme: null, reciterId: 5 });
+        expect(merged.theme).toBeNull();
+        expect(merged.reciterId).toBe(5);
+    });
+
+    it('keeps base arrays nested inside merged objects when incoming is null', () => {
+        const base = { planner: { id: 'p1', assignments: [{ dayNumber: 1, updatedAt: 5 }] } };
+        const merged = mergeStateInto(base, { planner: { id: 'p1', assignments: null } });
+        expect(merged.planner.assignments).toEqual([{ dayNumber: 1, updatedAt: 5 }]);
     });
 
     it('derives planner from base planners matching activePlannerId', () => {

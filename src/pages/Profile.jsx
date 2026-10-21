@@ -101,7 +101,10 @@ export default function Profile() {
         if (!user) return; setSyncStatus('pushing');
         try {
             const payload = slimStatePayload(getSyncPayload(useAppStore.getState()));
-            await syncService.pushState(user.$id, payload);
+            const result = await syncService.pushState(user.$id, payload);
+            // Stamp the sync watermark from the server response so a later pull
+            // treats the cloud doc as current (mirrors SettingsDrawer).
+            useAppStore.setState({ lastSyncAt: result.updatedAt });
             setSyncStatus('success'); setTimeout(() => setSyncStatus(null), 3000);
         } catch (e) { console.error(e); useAppStore.getState().setSyncStatus('error', e.message); setSyncStatus('error'); setTimeout(() => setSyncStatus(null), 3000); }
     };
@@ -110,14 +113,18 @@ export default function Profile() {
         if (!user) return; setSyncStatus('pulling');
         try {
             const remote = await syncService.pullState(user.$id);
-            if (remote?.state) {
-                const merged = mergeStateInto(useAppStore.getState(), remote.state);
-                useAppStore.setState({ ...merged, lastSyncAt: remote.updatedAt });
-                try {
-                    const payload = slimStatePayload(getSyncPayload(useAppStore.getState()));
-                    await syncService.pushState(user.$id, payload);
-                } catch (e) { console.error(e); useAppStore.getState().setSyncStatus('error', e.message); }
+            if (!remote?.state) {
+                // Nothing stored yet: restoring did not happen, so don't say it did.
+                setSyncStatus('empty'); setTimeout(() => setSyncStatus(null), 3000);
+                return;
             }
+            const merged = mergeStateInto(useAppStore.getState(), remote.state);
+            useAppStore.setState({ ...merged, lastSyncAt: remote.updatedAt });
+            try {
+                const payload = slimStatePayload(getSyncPayload(useAppStore.getState()));
+                const result = await syncService.pushState(user.$id, payload);
+                useAppStore.setState({ lastSyncAt: result.updatedAt });
+            } catch (e) { console.error(e); useAppStore.getState().setSyncStatus('error', e.message); }
             setSyncStatus('success'); setTimeout(() => setSyncStatus(null), 3000);
         } catch (e) { console.error(e); useAppStore.getState().setSyncStatus('error', e.message); setSyncStatus('error'); setTimeout(() => setSyncStatus(null), 3000); }
     };
@@ -416,6 +423,7 @@ export default function Profile() {
                                 {(syncStatus === 'pushing' || storeSyncStatus === 'pushing') && <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mb-4 flex items-center gap-2 text-[0.8rem] font-bold text-[var(--accent-primary)]"><Loader2 size={16} className="animate-spin" /> Saving data...</motion.div>}
                                 {(syncStatus === 'pulling' || storeSyncStatus === 'pulling') && <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mb-4 flex items-center gap-2 text-[0.8rem] font-bold text-[var(--accent-primary)]"><Loader2 size={16} className="animate-spin" /> Restoring data...</motion.div>}
                                 {syncStatus === 'success' && <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mb-4 text-[0.8rem] font-bold text-[#10b981]">✓ Sync complete successfully.</motion.div>}
+                                {syncStatus === 'empty' && <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mb-4 text-[0.8rem] font-bold text-[var(--text-secondary)]">No cloud backup found.</motion.div>}
                                 {(syncStatus === 'error' || storeSyncStatus === 'error') && <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mb-4 text-[0.8rem] font-bold text-red-500">{storeSyncError || 'Failed to sync. Please try again.'}</motion.div>}
                             </AnimatePresence>
                             

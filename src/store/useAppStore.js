@@ -16,6 +16,18 @@ import { adjustPlannerPace, rebalancePlanner } from '../utils/planner';
 const DEFAULT_ARABIC_FONT_ID = getCompatibleArabicFontId(DEFAULT_MUSHAF.id, DEFAULT_MUSHAF.defaultFontId);
 const DEFAULT_ARABIC_FONT_FAMILY = getArabicFontFamily(DEFAULT_ARABIC_FONT_ID);
 
+// Settings a user can pick explicitly. `userSetSettings` records which of them
+// were actually chosen so the sync payload can omit the rest (see
+// getSyncableState): pushing a hardcoded default would overwrite the value
+// another device already stored for that user.
+function withUserSet(set, fields, apply) {
+    return (...args) => set((state) => {
+        const patch = apply(state, ...args);
+        const userSetSettings = { ...(state.userSetSettings || {}) };
+        fields.forEach((field) => { userSetSettings[field] = true; });
+        return { ...patch, userSetSettings };
+    });
+}
 function updatePlannerCollection(state, updater) {
     const planners = state.planners || [];
     const activePlannerId = state.activePlannerId || planners[0]?.id || null;
@@ -67,6 +79,7 @@ function getPomodoroDurationSeconds(profile, mode) {
 export const useAppStore = create(
     persist(
         (set, get) => ({
+            userSetSettings: {}, // settings the user picked explicitly; never synced
             theme: 'light', // 'light' or 'dark'
             translationId: 20, // Default: Saheeh International (20)
             reciterId: 7, // Default: Mishary
@@ -124,10 +137,10 @@ export const useAppStore = create(
             }),
 
             dailyReadingGoal: 20, // minutes per day
-            setDailyReadingGoal: (minutes) => set({ dailyReadingGoal: minutes }),
+            setDailyReadingGoal: withUserSet(set, ['dailyReadingGoal'], (state, minutes) => ({ dailyReadingGoal: minutes })),
 
             setIsSettingsOpen: (isOpen) => set({ isSettingsOpen: isOpen }),
-            toggleTheme: () => set((state) => ({
+            toggleTheme: withUserSet(set, ['theme'], (state) => ({
                 theme: state.theme === 'light' ? 'dark' : 'light'
             })),
 
@@ -176,14 +189,14 @@ export const useAppStore = create(
                 return { globalConfirm: null };
             }),
 
-            setTranslation: (id) => set({ translationId: id }),
-            setReciter: (id) => set({ reciterId: id }),
-            setFontSize: (size) => set({ fontSize: size }),
-            setTranslationFontSize: (size) => set({ translationFontSize: size }),
-            setReadingMode: (mode) => set({ readingMode: mode }),
+            setTranslation: withUserSet(set, ['translationId'], (state, id) => ({ translationId: id })),
+            setReciter: withUserSet(set, ['reciterId'], (state, id) => ({ reciterId: id })),
+            setFontSize: withUserSet(set, ['fontSize'], (state, size) => ({ fontSize: size })),
+            setTranslationFontSize: withUserSet(set, ['translationFontSize'], (state, size) => ({ translationFontSize: size })),
+            setReadingMode: withUserSet(set, ['readingMode'], (state, mode) => ({ readingMode: mode })),
             mushafMode: false,
             setMushafMode: (mode) => set({ mushafMode: mode }),
-            setSelectedMushaf: (mushafId) => set((state) => {
+            setSelectedMushaf: withUserSet(set, ['mushafId', 'arabicFontId', 'arabicFont'], (state, mushafId) => {
                 const mushaf = getMushafById(mushafId);
                 const nextFontId = getCompatibleArabicFontId(mushaf.id, state.arabicFontId || getArabicFontByFamily(state.arabicFont)?.id);
 
@@ -194,19 +207,19 @@ export const useAppStore = create(
                     tajweedEnabled: mushaf.supportsTajweedToggle ? state.tajweedEnabled : false,
                 };
             }),
-            setArabicFont: (fontId) => set((state) => {
+            setArabicFont: withUserSet(set, ['arabicFontId', 'arabicFont'], (state, fontId) => {
                 const nextFontId = getCompatibleArabicFontId(state.mushafId, fontId);
                 return {
                     arabicFontId: nextFontId,
                     arabicFont: getArabicFontFamily(nextFontId),
                 };
             }),
-            setTajweed: (enabled) => set((state) => {
+            setTajweed: withUserSet(set, ['tajweedEnabled'], (state, enabled) => {
                 const mushaf = getMushafById(state.mushafId);
                 return { tajweedEnabled: mushaf.supportsTajweedToggle ? enabled : false };
             }),
-            setWordTooltipBehavior: (behavior) => set({ wordTooltipBehavior: behavior }),
-            setTafsirId: (id) => set({ tafsirId: id }),
+            setWordTooltipBehavior: withUserSet(set, ['wordTooltipBehavior'], (state, behavior) => ({ wordTooltipBehavior: behavior })),
+            setTafsirId: withUserSet(set, ['tafsirId'], (state, id) => ({ tafsirId: id })),
             setOfflineStatus: (status) => set({ offlineDataStatus: status }),
             setOfflinePackStatus: (packId, updates) => set((state) => ({
                 offlinePackStatus: {
@@ -781,7 +794,7 @@ export const useAppStore = create(
 
             // Custom Offline Audio Base URL
             customAudioBaseUrl: '',
-            setCustomAudioBaseUrl: (val) => set({ customAudioBaseUrl: val }),
+            setCustomAudioBaseUrl: withUserSet(set, ['customAudioBaseUrl'], (state, val) => ({ customAudioBaseUrl: val })),
 
             // Native File System Handle for Offline Audio
             localAudioDirHandle: null,
@@ -827,7 +840,7 @@ export const useAppStore = create(
             updatePrayerSettings: (settings) => set((state) => ({ prayerSettings: { ...state.prayerSettings, ...settings } })),
 
             intentionPromptEnabled: true,
-            setIntentionPromptEnabled: (enabled) => set({ intentionPromptEnabled: enabled }),
+            setIntentionPromptEnabled: withUserSet(set, ['intentionPromptEnabled'], (state, enabled) => ({ intentionPromptEnabled: enabled })),
 
         }),
         {
@@ -852,25 +865,59 @@ export const useAppStore = create(
                     activePomodoroProfileId: merged.activePomodoroProfileId || merged.pomodoroProfiles?.[0]?.id || DEFAULT_POMODORO_PROFILES[0].id,
                 };
             },
-            partialize: (state) => getSyncableState(state), // Persist settings and user data
+            partialize: (state) => ({
+                ...getSyncableState(state),
+                // Persist the user-chosen flags so "picked the default value"
+                // survives a reload; they are never part of the cloud payload.
+                userSetSettings: state.userSetSettings || {},
+            }), // Persist settings and user data
         }
     )
 );
 
+// Settings the user can pick, mapped to the value this client falls back to.
+// A setting still on its default that was never chosen is pushed as
+// `undefined`, which mergeStateInto (src/utils/syncMerge.js) skips, so a fresh
+// client cannot overwrite another device's stored value with its own default.
+const USER_SETTABLE_SETTINGS = {
+    theme: 'light',
+    translationId: 85,
+    reciterId: 7,
+    fontSize: 2,
+    translationFontSize: 2,
+    readingMode: false,
+    mushafId: DEFAULT_MUSHAF.id,
+    arabicFontId: DEFAULT_ARABIC_FONT_ID,
+    arabicFont: DEFAULT_ARABIC_FONT_FAMILY,
+    tajweedEnabled: false,
+    wordTooltipBehavior: 'tajweed',
+    tafsirId: 169,
+    dailyReadingGoal: 20,
+    intentionPromptEnabled: true,
+    customAudioBaseUrl: '',
+};
+
+function chosenSetting(state, field) {
+    if (state.userSetSettings?.[field] === true) return state[field];
+    const value = state[field];
+    const isDefault = value === undefined || value === USER_SETTABLE_SETTINGS[field];
+    return isDefault ? undefined : value;
+}
+
 export function getSyncableState(state) {
     return {
-        theme: state.theme,
-        translationId: state.translationId,
-        reciterId: state.reciterId,
-        fontSize: state.fontSize,
-        translationFontSize: state.translationFontSize || 2,
-        readingMode: state.readingMode,
-        mushafId: state.mushafId || DEFAULT_MUSHAF.id,
-        arabicFontId: state.arabicFontId || DEFAULT_ARABIC_FONT_ID,
-        arabicFont: state.arabicFont,
-        tajweedEnabled: state.tajweedEnabled,
-        wordTooltipBehavior: state.wordTooltipBehavior || 'tajweed',
-        tafsirId: state.tafsirId,
+        theme: chosenSetting(state, 'theme'),
+        translationId: chosenSetting(state, 'translationId'),
+        reciterId: chosenSetting(state, 'reciterId'),
+        fontSize: chosenSetting(state, 'fontSize'),
+        translationFontSize: chosenSetting(state, 'translationFontSize'),
+        readingMode: chosenSetting(state, 'readingMode'),
+        mushafId: chosenSetting(state, 'mushafId'),
+        arabicFontId: chosenSetting(state, 'arabicFontId'),
+        arabicFont: chosenSetting(state, 'arabicFont'),
+        tajweedEnabled: chosenSetting(state, 'tajweedEnabled'),
+        wordTooltipBehavior: chosenSetting(state, 'wordTooltipBehavior'),
+        tafsirId: chosenSetting(state, 'tafsirId'),
         bookmark: state.bookmark,
         bookmarks: state.bookmarks || [],
         memorizedAyahs: state.memorizedAyahs || [],
@@ -893,19 +940,19 @@ export function getSyncableState(state) {
         offlineDataStatus: state.offlineDataStatus,
         offlinePackStatus: state.offlinePackStatus || {},
         downloadedSurahs: state.downloadedSurahs || [],
-        customAudioBaseUrl: state.customAudioBaseUrl || '',
+        customAudioBaseUrl: chosenSetting(state, 'customAudioBaseUrl'),
         audioSettings: state.audioSettings || {
             startRange: null, endRange: null, reciterId: 7,
             repeatSelection: 1, repeatAya: 1, delayBetweenAyas: 0,
             playbackSpeed: 1.0, scrollWhilePlaying: true
         },
         lastSyncAt: state.lastSyncAt || 0,
-        dailyReadingGoal: state.dailyReadingGoal || 20,
+        dailyReadingGoal: chosenSetting(state, 'dailyReadingGoal'),
         prayerTimes: state.prayerTimes || null,
         location: state.location || null,
         archivedPlanners: state.archivedPlanners || [],
         prayerSettings: state.prayerSettings || { activePrayers: ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'], readPreference: 'after' },
-        intentionPromptEnabled: state.intentionPromptEnabled ?? true,
+        intentionPromptEnabled: chosenSetting(state, 'intentionPromptEnabled'),
         plannerReflections: state.plannerReflections || {},
         plannerBookmarks: state.plannerBookmarks || {},
         plannerSessionTimers: state.plannerSessionTimers || {},
