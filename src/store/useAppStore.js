@@ -881,7 +881,7 @@ export const useAppStore = create(
 // client cannot overwrite another device's stored value with its own default.
 const USER_SETTABLE_SETTINGS = {
     theme: 'light',
-    translationId: 85,
+    translationId: 20, // Saheeh International — matches the store default above
     reciterId: 7,
     fontSize: 2,
     translationFontSize: 2,

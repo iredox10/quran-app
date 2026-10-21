@@ -159,7 +159,7 @@ export default function CloudSync() {
                 realtimeUnsub.current = client.subscribe(channel, (response) => {
                     const payload = response?.payload;
                     // Only react to this account's document (the channel carries all).
-                    if (payload?.userId && currentUser?.id && payload.userId !== currentUser.id) return;
+                    if (payload?.userId && currentUser?.$id && payload.userId !== currentUser.$id) return;
                     if (pullTimeout.current) clearTimeout(pullTimeout.current);
                     pullTimeout.current = setTimeout(() => {
                         const liveUser = useAppStore.getState().currentUser;
