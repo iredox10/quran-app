@@ -1,16 +1,21 @@
-import { buildOfflineCacheKey, getChapters, getTajweedVerses, getTajweedVersesByPage, getVerses, getVersesByPage } from '../services/api/quranApi';
+import { buildOfflineCacheKey, getChapters, getChapterTafsirs, getPageTafsirs, getTajweedVerses, getTajweedVersesByPage, getVerses, getVersesByPage } from '../services/api/quranApi';
 import { deleteOfflineCacheByPrefix, getOfflineCacheStats, getOfflineCacheData } from './offlineCache';
 
 export const OFFLINE_PACKS = {
   quranText: {
     id: 'quranText',
     title: 'Quran Text Pack',
-    description: 'Chapters, verses, page data, and Mushaf-aware Quran text for the current reading setup.',
+    description: 'Chapters, verses, word-by-word translations, page data, and Mushaf-aware Quran text for the current reading setup.',
   },
   tajweed: {
     id: 'tajweed',
     title: 'Tajweed Pack',
     description: 'Color-coded tajweed markup for every Surah in the Quran.',
+  },
+  tafsir: {
+    id: 'tafsir',
+    title: 'Tafsir Pack',
+    description: 'Tafsir Ibn Kathir (Abridged) for every ayah, chapter view and Mushaf page, ready to read offline.',
   },
 };
 
@@ -35,16 +40,19 @@ export async function getOfflinePackStats({ translationId, reciterId, mushafId }
     '/chapter_recitations/',
   ];
   const tajweedPrefix = '/quran/verses/uthmani_tajweed';
+  const tafsirPrefix = '/tafsirs/';
 
-  const [quranStats, tajweedStats, quranCompleteFlag, tajweedCompleteFlag] = await Promise.all([
+  const [quranStats, tajweedStats, tafsirStats, quranCompleteFlag, tajweedCompleteFlag, tafsirCompleteFlag] = await Promise.all([
     getOfflineCacheStats(),
     getOfflineCacheStats(tajweedPrefix),
+    getOfflineCacheStats(tafsirPrefix),
     getOfflineCacheData('PACK_SYNC_QURAN_TEXT'),
     getOfflineCacheData('PACK_SYNC_TAJWEED'),
+    getOfflineCacheData('PACK_SYNC_TAFSIR_169'),
   ]);
 
-  const quranEntryCount = quranStats.count - tajweedStats.count;
-  const quranBytes = Math.max(quranStats.approximateBytes - tajweedStats.approximateBytes, 0);
+  const quranEntryCount = quranStats.count - tajweedStats.count - tafsirStats.count;
+  const quranBytes = Math.max(quranStats.approximateBytes - tajweedStats.approximateBytes - tafsirStats.approximateBytes, 0);
 
   return {
     quranText: {
@@ -61,6 +69,13 @@ export async function getOfflinePackStats({ translationId, reciterId, mushafId }
       entryCount: tajweedStats.count,
       sizeLabel: formatBytes(tajweedStats.approximateBytes),
       prefixes: [tajweedPrefix],
+    },
+    tafsir: {
+      downloaded: !!tafsirCompleteFlag,
+      entryCount: tafsirStats.count,
+      sizeLabel: formatBytes(tafsirStats.approximateBytes),
+      tafsirId: 169,
+      prefixes: [tafsirPrefix],
     },
   };
 }
@@ -113,7 +128,35 @@ export async function syncTajweedPack({ onProgress }) {
   await setOfflineCacheEntry('PACK_SYNC_TAJWEED', { completedAt: Date.now() });
 }
 
+export async function syncTafsirPack({ tafsirId = 169, onProgress }) {
+  const chapters = await getChapters();
+  const totalUnits = chapters.length + 604;
+  let completedUnits = 0;
+
+  for (const chapter of chapters) {
+    await getChapterTafsirs(chapter.id, tafsirId);
+    completedUnits += 1;
+    onProgress?.({ current: completedUnits, total: totalUnits, label: `Caching Tafsir ${chapter.name_simple}` });
+  }
+
+  for (let page = 1; page <= 604; page += 1) {
+    await getPageTafsirs(page, tafsirId);
+    completedUnits += 1;
+    onProgress?.({ current: completedUnits, total: totalUnits, label: `Caching Tafsir Page ${page}` });
+  }
+
+  const { setOfflineCacheEntry } = await import('./offlineCache');
+  await setOfflineCacheEntry(`PACK_SYNC_TAFSIR_${tafsirId}`, { completedAt: Date.now() });
+}
+
 export async function deleteOfflinePack(packId) {
+  if (packId === 'tafsir') {
+    await deleteOfflineCacheByPrefix('/tafsirs/');
+    const { deleteOfflineCacheByPrefix: deleteExact } = await import('./offlineCache');
+    await deleteExact(`PACK_SYNC_TAFSIR_169`);
+    return;
+  }
+
   if (packId === 'tajweed') {
     await deleteOfflineCacheByPrefix('/quran/verses/uthmani_tajweed');
     const { deleteOfflineCacheByPrefix: deleteExact } = await import('./offlineCache');
