@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { CheckCircle2, DownloadCloud, HardDrive, RefreshCw, Trash2, WifiOff } from 'lucide-react';
 
 import { useAppStore } from '../store/useAppStore';
-import { OFFLINE_PACKS, deleteOfflinePack, getOfflinePackStats, syncQuranTextPack, syncTajweedPack } from '../utils/offlineLibrary';
+import { OFFLINE_PACKS, deleteOfflinePack, getOfflinePackStats, syncQuranTextPack, syncTafsirPack, syncTajweedPack } from '../utils/offlineLibrary';
 
 function PackCard({ title, description, stats, status, onSync, onDelete }) {
     const isSyncing = status?.state === 'syncing';
@@ -127,6 +127,8 @@ export default function OfflineLibrary() {
 
             if (packId === 'tajweed') {
                 await syncTajweedPack({ onProgress });
+            } else if (packId === 'tafsir') {
+                await syncTafsirPack({ onProgress });
             } else {
                 await syncQuranTextPack({ translationId, reciterId, mushafId, onProgress });
             }
