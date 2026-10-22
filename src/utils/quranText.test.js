@@ -6,20 +6,48 @@ import {
     sanitizeTajweedHtml,
 } from './quranText';
 
-const WAQF_WORD = 'فَٱتَّقُوا۟'; // ends with U+06DF (Arabic Small High Rounded Zero)
+const SAKTAH_WORD = 'فَٱتَّقُو۟'; // ends with U+06DF (Arabic Small High Rounded Zero / saktah)
 
 describe('cleanArabicText', () => {
-    it('strips U+06DF and the U+06EA-EC stop marks', () => {
-        expect(cleanArabicText('a\u06dfb')).toBe('ab');
-        expect(cleanArabicText('a\u06eab')).toBe('ab');
-        expect(cleanArabicText('a\u06ebb')).toBe('ab');
-        expect(cleanArabicText('a\u06ecb')).toBe('ab');
-        expect(cleanArabicText('بِسْمِ \u06dfٱللَّهِ')).toBe('بِسْمِ ٱللَّهِ');
+    it('keeps every Quranic annotation sign — the app must be sign-complete', () => {
+        const signs = [
+            0x6d6, 0x6d7, 0x6d8, 0x6d9, 0x6da, 0x6db, 0x6dc, // small high ligature..rounded zero
+            0x6dd, // end-of-ayah frame
+            0x6de, // sajda
+            0x6df, // saktah / small high rounded zero
+            0x6e0, 0x6e1, 0x6e2, 0x6e3, 0x6e4,
+            0x6e5, 0x6e6, // small waw / small ya
+            0x6e7, 0x6e8, 0x6e9, // small high ya / noon
+            0x6ea, // imalah
+            0x6eb, // ishmam
+            0x6ec, // rounded high stop with filled centre
+            0x6ed, // small low meem
+            0x614, 0x615, // IndoPak extended marks
+            0xfd3e, 0xfd3f, // ornate parentheses
+            0x64b, 0x64e, 0x650, 0x651, 0x652, 0x670, // harakat + superscript alef
+        ];
+        for (const cp of signs) {
+            expect(cleanArabicText(`a${String.fromCodePoint(cp)}`)).toBe(
+                `a${String.fromCodePoint(cp)}`
+            );
+        }
     });
 
-    it('preserves sala (U+06D6), small waw (U+06E5) and dotless khah head (U+06E1)', () => {
-        const kept = 'a\u06d6b\u06e5c\u06e1d';
-        expect(cleanArabicText(kept)).toBe(kept);
+    it('strips only the U+25CC dotted-circle placeholder', () => {
+        expect(cleanArabicText('a\u25ccb')).toBe('ab');
+        expect(cleanArabicText('بِسْمِ \u25ccٱللَّهِ')).toBe('بِسْمِ ٱللَّهِ');
+    });
+
+    it('keeps saktah/imalah/ishmam/end-frame/sajda inside realistic verse text', () => {
+        const sample = 'كِتَٰبٌ۟\u06ea\u06eb\u06ec\u06dd\u06de';
+        const signs = [0x6df, 0x6ea, 0x6eb, 0x6ec, 0x6dd, 0x6de].map((cp) =>
+            String.fromCodePoint(cp)
+        );
+        const out = cleanArabicText(sample);
+        for (const sign of signs) {
+            expect(out).toContain(sign);
+        }
+        expect(out).not.toContain('\u25cc');
     });
 
     it('passes null/empty through unchanged', () => {
@@ -37,16 +65,16 @@ describe('getWordArabicText', () => {
 
     it('falls back to text_uthmani when mushaf is undefined, a string, or unknown', () => {
         const word = { text_uthmani: 'u\u06df', text_indopak: 'i' };
-        expect(getWordArabicText(word, undefined)).toBe('u');
-        expect(getWordArabicText(word, 'madani-standard')).toBe('u');
-        expect(getWordArabicText(word, { scriptField: 'nope' })).toBe('u');
-        expect(getWordArabicText(word, {})).toBe('u');
+        expect(getWordArabicText(word, undefined)).toBe('u\u06df');
+        expect(getWordArabicText(word, 'madani-standard')).toBe('u\u06df');
+        expect(getWordArabicText(word, { scriptField: 'nope' })).toBe('u\u06df');
+        expect(getWordArabicText(word, {})).toBe('u\u06df');
     });
 
     it('continues the chain to text_indopak, text_qpc_hafs and text', () => {
-        expect(getWordArabicText({ text_indopak: 'i\u06df' })).toBe('i');
-        expect(getWordArabicText({ text_qpc_hafs: 'q\u06df' })).toBe('q');
-        expect(getWordArabicText({ text: 't\u06df' })).toBe('t');
+        expect(getWordArabicText({ text_indopak: 'i\u06df' })).toBe('i\u06df');
+        expect(getWordArabicText({ text_qpc_hafs: 'q\u06df' })).toBe('q\u06df');
+        expect(getWordArabicText({ text: 't\u06df' })).toBe('t\u06df');
         expect(getWordArabicText({})).toBe('');
     });
 
@@ -55,23 +83,22 @@ describe('getWordArabicText', () => {
         expect(getWordArabicText(undefined)).toBe('');
     });
 
-    it('drops U+06DF from the realistic waqf word but keeps the rest intact', () => {
-        expect(WAQF_WORD).toContain('\u06df');
-        const out = getWordArabicText({ text_uthmani: WAQF_WORD }, { scriptField: 'text_uthmani' });
-        expect(out).not.toContain('\u06df');
-        expect(out).toBe('فَٱتَّقُوا');
+    it('keeps the saktah sign of the realistic waqf word intact', () => {
+        expect(SAKTAH_WORD).toContain('\u06df');
+        const out = getWordArabicText({ text_uthmani: SAKTAH_WORD }, { scriptField: 'text_uthmani' });
+        expect(out).toBe(SAKTAH_WORD);
     });
 });
 
 describe('getVerseArabicText', () => {
-    it('prefers verse.arabic_text, cleaned', () => {
+    it('prefers verse.arabic_text', () => {
         const verse = { arabic_text: 'a\u06dfb', text_uthmani: 'other', words: [{ text: 'w' }] };
-        expect(getVerseArabicText(verse, { verseField: 'text_indopak' })).toBe('ab');
+        expect(getVerseArabicText(verse, { verseField: 'text_indopak' })).toBe('a\u06dfb');
     });
 
     it('uses mushaf.verseField when arabic_text is absent', () => {
         const verse = { text_qpc_hafs: 'field\u06df', text_uthmani: 'u', words: [{ text: 'w' }] };
-        expect(getVerseArabicText(verse, { verseField: 'text_qpc_hafs' })).toBe('field');
+        expect(getVerseArabicText(verse, { verseField: 'text_qpc_hafs' })).toBe('field\u06df');
         // no matching verseField -> drops through to the words branch
         expect(getVerseArabicText(verse, undefined)).toBe('w');
         expect(getVerseArabicText(verse, { verseField: 'missing' })).toBe('w');
@@ -81,13 +108,13 @@ describe('getVerseArabicText', () => {
         const verse = {
             words: [{ text_uthmani: 'ٱلْحَمْدُ' }, { text: 'لِلَّهِ' }, { text_uthmani: 'x\u06df' }, {}],
         };
-        expect(getVerseArabicText(verse)).toBe('ٱلْحَمْدُ لِلَّهِ x');
+        expect(getVerseArabicText(verse)).toBe('ٱلْحَمْدُ لِلَّهِ x\u06df');
     });
 
     it('falls back through text_uthmani, text_indopak, text_qpc_hafs', () => {
-        expect(getVerseArabicText({ text_uthmani: 'u\u06df', text_indopak: 'i' })).toBe('u');
-        expect(getVerseArabicText({ text_indopak: 'i\u06df' })).toBe('i');
-        expect(getVerseArabicText({ text_qpc_hafs: 'q\u06df' })).toBe('q');
+        expect(getVerseArabicText({ text_uthmani: 'u\u06df', text_indopak: 'i' })).toBe('u\u06df');
+        expect(getVerseArabicText({ text_indopak: 'i\u06df' })).toBe('i\u06df');
+        expect(getVerseArabicText({ text_qpc_hafs: 'q\u06df' })).toBe('q\u06df');
         expect(getVerseArabicText({ words: [] })).toBe('');
         expect(getVerseArabicText({})).toBe('');
     });
@@ -104,8 +131,13 @@ describe('sanitizeTajweedHtml', () => {
         expect(sanitizeTajweedHtml('<rule id="a">x</rule>')).toBe('<tajweed id="a">x</tajweed>');
     });
 
-    it('strips U+06DF and U+06EA-EC', () => {
-        expect(sanitizeTajweedHtml('a\u06dfb\u06eac\u06ebd\u06ece')).toBe('abcde');
+    it('keeps Quranic signs inside tajweed html', () => {
+        expect(sanitizeTajweedHtml('a\u06dfb\u06eac\u06ebd\u06ece\u06dd')).toContain('\u06df');
+        expect(sanitizeTajweedHtml('a\u06dfb\u06eac\u06ebd\u06ece\u06dd')).toContain('\u06dd');
+    });
+
+    it('strips the dotted-circle placeholder from tajweed html', () => {
+        expect(sanitizeTajweedHtml('a\u25ccb')).toBe('ab');
     });
 
     it('maps U+0672 to U+0670', () => {
@@ -119,9 +151,9 @@ describe('sanitizeTajweedHtml', () => {
         expect(sanitizeTajweedHtml(undefined)).toBe('');
     });
 
-    it('sanitizes realistic tajweed html containing the waqf word', () => {
-        expect(sanitizeTajweedHtml(`<rule class=ikhafa>${WAQF_WORD}</rule>`)).toBe(
-            '<tajweed class=ikhafa>فَٱتَّقُوا</tajweed>'
+    it('sanitizes realistic tajweed html containing the saktah word', () => {
+        expect(sanitizeTajweedHtml(`<rule class=ikhafa>${SAKTAH_WORD}</rule>`)).toBe(
+            `<tajweed class=ikhafa>${SAKTAH_WORD}</tajweed>`
         );
     });
 });

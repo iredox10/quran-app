@@ -183,9 +183,9 @@ describe('extractVerseText', () => {
         expect(extractVerseText('text')).toBeNull();
     });
 
-    it('reads arabic_text (decorated by getVerses) with problem chars removed', () => {
+    it('reads arabic_text (decorated by getVerses) keeping the Quranic signs', () => {
         const verse = { arabic_text: 'بِسْمِ ٱللَّهِ \u06eaٱلرَّحْمَٰنِ' };
-        expect(extractVerseText(verse).arabic).toBe('بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ');
+        expect(extractVerseText(verse).arabic).toBe('بِسْمِ ٱللَّهِ \u06eaٱلرَّحْمَٰنِ');
         expect(extractVerseText(verse).translation).toBe('');
     });
 

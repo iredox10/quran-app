@@ -2,7 +2,10 @@
 
 @font-face {
   font-family: 'KFGQPC Uthman Taha Naskh';
-  src: url('https://raw.githubusercontent.com/quranwbw/qpc-fonts/master/qpc_uthman_taha_naskh.ttf') format('truetype');
+  src: local('KFGQPC Uthman Taha Naskh'),
+       local('KFGQPCUthmanTahaNaskh-Regular'),
+       url('/fonts/UthmanTN1Ver10.woff2') format('woff2'),
+       url('https://raw.githubusercontent.com/quranwbw/qpc-fonts/master/various-woff2/UthmanTN1%20Ver10.woff2') format('woff2');
   font-weight: normal;
   font-style: normal;
   font-display: swap;
@@ -12,6 +15,7 @@
   font-family: 'KFGQPC Hafs Uthmanic Script';
   src: local('KFGQPC Uthmanic Script HAFS'),
        local('KFGQPC Uthmanic Script HAFS Regular'),
+       url('/fonts/UthmanicHafs1Ver18.woff2') format('woff2'),
        url('https://verses.quran.foundation/fonts/quran/hafs/uthmanic_hafs/UthmanicHafs1Ver18.woff2') format('woff2'),
        url('https://verses.quran.foundation/fonts/quran/hafs/uthmanic_hafs/UthmanicHafs1Ver18.ttf') format('truetype');
   font-weight: normal;

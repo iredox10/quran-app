@@ -1,13 +1,21 @@
-// Characters that often cause rendering issues (dotted circles) in web fonts:
-// \u06df: Arabic Small High Rounded Zero (waqf/saktah)
-// \u06ea: Arabic Empty Centre Low Stop (Imalah)
-// \u06eb: Arabic Empty Centre High Stop (Ishmam)
-// \u06ec: Arabic Rounded High Stop With Filled Centre
-const PROBLEM_CHARS = /[\u06df\u06ea\u06eb\u06ec]/g;
+// U+25CC DOTTED CIRCLE is a shaper placeholder that can leak into scraped
+// text and is never part of authoritative Uthmani/IndoPak Quran data, so it
+// is always removed.
+//
+// Every actual Quranic sign is kept: the Quranic annotation range
+// (U+06D6-06ED — saktah, imalah, ishmam, sajda, small high/low rounded
+// zeros, small waw/ya, noon, the U+06DD end-of-ayah frame), the extended
+// Arabic marks (U+0610-061A used by IndoPak text), the harakat, and the
+// ornate parentheses (U+FD3E/U+FD3F). All offered Arabic fonts carry those
+// glyphs (cmap-audited: KFGQPC Hafs Ver18, Uthman Taha Naskh Ver10, Amiri
+// Quran, Scheherazade New, Noto Naskh Arabic), and the limited Uthman Taha
+// Naskh stack still falls through to Amiri Quran for its missing marks, so
+// stripping signs only deleted real Quranic marks from every verse.
+const PLACEHOLDER_CHARS = /[\u25cc]/g;
 
 export function cleanArabicText(text) {
   if (!text) return text;
-  return text.replace(PROBLEM_CHARS, '');
+  return text.replace(PLACEHOLDER_CHARS, '');
 }
 
 export function getWordArabicText(word, mushaf) {
@@ -22,7 +30,7 @@ export function getWordArabicText(word, mushaf) {
 
 const TAJWEED_HTML_REPLACEMENTS = [
   [/\u0672/g, '\u0670'],
-  [PROBLEM_CHARS, ''],
+  [PLACEHOLDER_CHARS, ''],
 ];
 
 export function sanitizeTajweedHtml(html) {
