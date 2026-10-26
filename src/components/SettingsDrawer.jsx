@@ -12,7 +12,7 @@ import { getMushafById, getMushafFontOptions, isTajweedEnabledForMushaf, MUSHAFS
 import { saveLocalAudioDirHandle } from '../utils/localAudio';
 import { getOfflinePackStats } from '../utils/offlineLibrary';
 import { mergeStateInto, slimStatePayload } from '../utils/syncMerge';
-import { authService, syncService } from '../services/appwrite';
+import { authService, syncService } from '../services/backend';
 import { getSyncPayload } from '../store/useAppStore';
 import Coachmark from './ui/Coachmark';
 

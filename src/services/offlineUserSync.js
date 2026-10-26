@@ -1,5 +1,5 @@
 import { getSyncableState, useAppStore } from '../store/useAppStore';
-import { syncService } from './appwrite';
+import { syncService } from './backend';
 import { enqueueSyncQueueJob, getSyncQueueSummary, listSyncQueueJobs, removeSyncQueueJob, updateSyncQueueJob } from '../utils/syncQueue';
 
 const CLOUD_BACKUP_JOB_TYPE = 'cloud-state-backup';

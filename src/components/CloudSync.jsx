@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useAppStore, getSyncPayload } from '../store/useAppStore';
-import { authService, syncService, client, databaseId, collectionId } from '../services/appwrite';
+import { authService, syncService, client, databaseId, collectionId } from '../services/backend';
 import { mergeStateInto, slimStatePayload } from '../utils/syncMerge';
 
 const PENDING_MARKER = 'quran-app-sync-pending';

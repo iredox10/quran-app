@@ -8,7 +8,7 @@ import {
     Loader2, Mic, Languages, TrendingUp, CalendarDays, BookOpen, Brain, ChevronDown, Users,
     Clock, Shield, RotateCcw, Compass, Share2
 } from 'lucide-react';
-import { authService, syncService } from '../services/appwrite';
+import { authService, syncService } from '../services/backend';
 import { RECITERS } from '../config/reciters';
 import { APP_CONFIG } from '../config/constants';
 import { mergeStateInto, slimStatePayload } from '../utils/syncMerge';
