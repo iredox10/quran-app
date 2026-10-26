@@ -72,6 +72,16 @@ cp .env.example .env
 ```
 *(You can leave the default Appwrite URL for testing, or set up your own Appwrite project if you are working on the backend features).*
 
+**Optional — Render.com backend:** the app can also run against the self-hosted Render API (`https://quran-nur-api.onrender.com`) instead of Appwrite for auth, cloud sync and realtime notifications. This is opt-in and **off by default**:
+
+```bash
+# .env
+VITE_USE_RENDER_API=true                          # default: false (Appwrite)
+VITE_API_BASE_URL=https://quran-nur-api.onrender.com  # default shown
+```
+
+When the flag is on, tokens are persisted in `localStorage`, sync docs keep the exact same field names (`userId`, `stateData`), realtime is replaced by a light polling subscription (≤60 s + immediate refresh when the tab becomes visible), and the frozen `/v1` content endpoints are served from Render while offline packs, service-worker caching and CDN-direct audio (everyayah) stay untouched. When the flag is off, behavior is identical to the Appwrite setup.
+
 ### 4. Start the development server
 ```bash
 bun run dev
