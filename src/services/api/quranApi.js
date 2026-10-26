@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { getMushafById } from '../../config/mushaf';
 import { getOfflineCacheData, setOfflineCacheEntry } from '../../utils/offlineCache';
+import { useRenderApi, renderApiBaseUrl } from '../apiConfig';
 
 const api = axios.create({
   baseURL: 'https://api.quran.com/api/v4',
@@ -8,6 +9,41 @@ const api = axios.create({
     Accept: 'application/json',
   },
 });
+
+// Render /v1 content surface (only the endpoints frozen in the contract get
+// remapped when VITE_USE_RENDER_API is on; everything else — tajweed verse
+// dumps, juzs, footnotes, chapter recitations, page verses — keeps coming from
+// quran.com so behavior doesn't regress. Audio bytes are CDN-direct either way.)
+const renderApiHttp = axios.create({
+  baseURL: renderApiBaseUrl,
+  headers: {
+    Accept: 'application/json',
+  },
+});
+
+// quran.com v4 → Render /v1 mapping (quran-backend/docs/contract-content.md)
+const RENDER_PATH_MAP = [
+  [/^\/chapters$/, () => '/v1/chapters'],
+  [/^\/verses\/by_chapter\/([^/]+)$/, (m) => `/v1/verses/${m[1]}`],
+  [/^\/tafsirs\/([^/]+)\/by_chapter\/([^/]+)$/, (m) => `/v1/tafsir/${m[1]}/by_chapter/${m[2]}`],
+  [/^\/tafsirs\/([^/]+)\/by_page\/([^/]+)$/, (m) => `/v1/tafsir/${m[1]}/by_page/${m[2]}`],
+];
+
+export const mapRenderContentPath = (path) => {
+  if (!useRenderApi) return null;
+  for (const [pattern, build] of RENDER_PATH_MAP) {
+    const match = path.match(pattern);
+    if (match) return build(match);
+  }
+  return null;
+};
+
+const pickTransport = (path) => {
+  const renderPath = mapRenderContentPath(path);
+  return renderPath
+    ? { client: renderApiHttp, path: renderPath }
+    : { client: api, path };
+};
 
 const buildCacheKey = (path, params = {}) => {
   const normalizedParams = Object.entries(params)
@@ -22,7 +58,8 @@ const fetchWithOfflineCache = async (path, params = {}) => {
   const cacheKey = buildCacheKey(path, params);
 
   try {
-    const { data } = await api.get(path, { params });
+    const { client: apiClient, path: requestPath } = pickTransport(path);
+    const { data } = await apiClient.get(requestPath, { params });
     await setOfflineCacheEntry(cacheKey, data);
     return data;
   } catch (error) {
@@ -70,6 +107,14 @@ export const getChapters = async () => {
 };
 
 export const getChapter = async (id) => {
+  // The Render contract has no single-chapter endpoint; reuse the frozen
+  // /v1/chapters list (its cache is shared) and pick the id from it.
+  if (useRenderApi) {
+    const chapters = await getChapters();
+    const chapter = chapters.find((c) => String(c.id) === String(id));
+    if (chapter) return chapter;
+    throw new Error(`Chapter ${id} not found`);
+  }
   try {
     const data = await fetchWithOfflineCache(`/chapters/${id}`, { language: 'en' });
     return data.chapter;
