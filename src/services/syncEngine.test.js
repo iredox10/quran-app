@@ -146,3 +146,16 @@ it('sends a complete replacement schedule when pace revision changes',()=>{
     expect(delta.planners[0].assignments).toEqual([{dayNumber:1}]);
     expect(mergeStateInto(before,delta).planners).toEqual(after.planners);
 });
+
+it('includes remapped empty progress maps with a new schedule revision',()=>{
+    const old={id:'p',assignmentsUpdatedAt:10,assignments:[{dayNumber:1},{dayNumber:2},{dayNumber:3}],completedDays:[3],assignmentProgress:{3:1},assignmentReadPages:{3:[7]},assignmentCompletedItems:{3:['7']},assignmentCompletedAt:{3:'old'}};
+    const next={...old,assignmentsUpdatedAt:20,completedDays:[1],assignmentProgress:{1:1},assignmentReadPages:{1:[7]},assignmentCompletedItems:{},assignmentCompletedAt:{}};
+    const delta=diffSyncState({planners:[old]},{planners:[next]});
+    expect(delta.planners[0].assignmentCompletedAt).toEqual({});
+    expect(delta.planners[0].assignmentCompletedItems).toEqual({});
+    expect(mergeStateInto({planners:[old]},delta).planners).toEqual([next]);
+    const progressed={...next,assignmentProgress:{1:1,2:1}};
+    const progress=diffSyncState({planners:[next]},{planners:[progressed]});
+    expect(progress.planners[0]).toEqual({id:'p',assignmentsUpdatedAt:20,assignmentProgress:{2:1}});
+    expect(mergeStateInto({planners:[next]},progress).planners).toEqual([progressed]);
+});
