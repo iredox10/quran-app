@@ -34,6 +34,12 @@ describe('durable account-owned sync engine',()=>{
         expect(h.sync.pushState.mock.calls[0][2].mutations.map(row=>row.changes)).toEqual([{theme:'dark'},{bookmarks:[{verseKey:'1:1'}]}]);
         expect(h.storage.length).toBe(0);expect(h.remote.state).toEqual({theme:'dark',bookmarks:[{verseKey:'1:1'}]});h.engine.stop();
     });
+    it('does not repeatedly upload a visit count that the wire payload intentionally caps',async()=>{
+        const h=setup({remote:{state:{theme:'light',bookmarks:[],pageVisitCounts:{home:10004}},updatedAt:10}});
+        const engine=createSyncEngine({...h.options,payload:state=>({theme:state.theme,bookmarks:state.bookmarks,pageVisitCounts:state.pageVisitCounts || {}})});
+        engine.start();await settle();await vi.advanceTimersByTimeAsync(1000);
+        expect(h.sync.pushState).not.toHaveBeenCalled();expect(h.storage.length).toBe(0);engine.stop();
+    });
     it('keeps same-millisecond edits to one setting in their original order',async()=>{
         const h=setup();h.engine.start();await settle();
         h.store.setState({theme:'dark'});h.store.setState({theme:'light'});h.store.setState({theme:'sepia'});

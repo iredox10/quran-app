@@ -64,7 +64,7 @@ export function createSyncEngine({store,payload,auth,sync,subscribe,storage=glob
         suppress=true;
         try {store.setState({...merged,lastSyncAt:ctx.known});} finally {suppress=false;}
         // A fresh device can have local progress too. Publish only the missing union.
-        const expected=mergeStateInto(remote.state,queued);
+        const expected=encode(mergeStateInto(remote.state,queued));
         enqueue(ctx,diffSyncState(expected,snapshot()));
     };
     async function flush(ctx=context) {
