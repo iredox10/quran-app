@@ -1,6 +1,6 @@
 /** Small, mergeable mutations: unchanged history never rides every upload. */
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
-const keyed = {bookmarks:'verseKey',collections:'id',planners:'id',hifdhGoals:'id',archivedPlanners:'id',readingSessions:'timestamp',recentlyRead:'chapterId',pomodoroHistory:'completedAt'};
+const keyed = {bookmarks:'verseKey',collections:'id',planners:'id',hifdhGoals:'id',archivedPlanners:'id',readingSessions:'timestamp',recentlyRead:'chapterId',pomodoroHistory:'completedAt',assignments:'dayNumber'};
 const equal = (a,b) => JSON.stringify(a)===JSON.stringify(b);
 const noChange=Symbol('unchanged');
 function difference(before,after,field) {
@@ -10,7 +10,14 @@ function difference(before,after,field) {
         const id=item => key ? item?.[key] : JSON.stringify(item);
         const previous=new Map(before.map(item=>[id(item),item]));
         const changed=after.filter(item=>!previous.has(id(item)) || !equal(previous.get(id(item)),item));
-        return changed.length ? changed : noChange;
+        const rows = (field === 'planners') ? changed.map(item => {
+            const old = previous.get(id(item));
+            if (!object(old) || !object(item)) return item;
+            const patch={id:item.id,...difference(old,item,'')};
+            if(item.assignmentsUpdatedAt !== old.assignmentsUpdatedAt && Array.isArray(item.assignments)) patch.assignments=item.assignments;
+            return patch;
+        }) : changed;
+        return rows.length ? rows : noChange;
     }
     if(object(before) && object(after)) {
         const changed={};

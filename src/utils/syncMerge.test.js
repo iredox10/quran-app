@@ -346,7 +346,7 @@ describe('slimStatePayload', () => {
         expect(slimmed.planners).not.toBe(state.planners);
     });
 
-    it('trims readingSessions and pomodoroHistory to the last 100 when oversized', () => {
+    it('preserves history above the former snapshot cap', () => {
         const filler = 'x'.repeat(600);
         const state = {
             readingSessions: Array.from({ length: 2000 }, (_, i) => ({ timestamp: i, note: filler })),
@@ -354,20 +354,37 @@ describe('slimStatePayload', () => {
             note: 'a'.repeat(10000),
         };
         const slimmed = slimStatePayload(state);
-        expect(slimmed.readingSessions).toHaveLength(100);
-        expect(slimmed.pomodoroHistory).toHaveLength(100);
-        expect(slimmed.readingSessions[0].timestamp).toBe(1900);
-        expect(slimmed.pomodoroHistory[99].completedAt).toBe(1999);
+        expect(slimmed.readingSessions).toHaveLength(2000);
+        expect(slimmed.pomodoroHistory).toHaveLength(2000);
+        expect(slimmed.readingSessions[0].timestamp).toBe(0);
+        expect(slimmed.pomodoroHistory[1999].completedAt).toBe(1999);
         expect(slimmed.note).toBe('a'.repeat(10000));
     });
 
-    it('throws when the payload is still too large after trimming', () => {
+    it('reports backups above the shared bound without trimming history', () => {
         const filler = 'x'.repeat(600);
         const state = {
             readingSessions: Array.from({ length: 2000 }, (_, i) => ({ timestamp: i, note: filler })),
             pomodoroHistory: Array.from({ length: 2000 }, (_, i) => ({ completedAt: i, note: filler })),
-            hugeNote: 'y'.repeat(960000),
+            hugeNote: 'y'.repeat(8_000_000),
         };
         expect(() => slimStatePayload(state)).toThrow('sync payload too large');
     });
+});
+
+it('backs up a planner larger than the old limit without losing assignments',()=>{
+    const plan={id:'large',assignments:Array.from({length:604},(_,i)=>({dayNumber:i+1,title:'x'.repeat(1800)}))};
+    expect(JSON.stringify(plan).length).toBeGreaterThan(1_100_000);
+    expect(slimStatePayload({planners:[plan],planner:plan}).planners).toEqual([plan]);
+});
+
+it('new pace schedules replace removed days and survive stale-device progress',()=>{
+    const old={id:'p',assignmentsUpdatedAt:10,assignments:[{dayNumber:1,title:'old'},{dayNumber:2,title:'removed'}],assignmentProgress:{1:2}};
+    const next={id:'p',assignmentsUpdatedAt:11,assignments:[{dayNumber:1,title:'new'}]};
+    const merged=mergeStateInto({planners:[old]},{planners:[next]});
+    expect(merged.planners[0].assignments).toEqual(next.assignments);
+    expect(merged.planners[0].assignmentProgress).toEqual({1:2});
+    const stale=mergeStateInto(merged,{planners:[{...old,assignmentProgress:{2:1}}]});
+    expect(stale.planners[0].assignments).toEqual(next.assignments);
+    expect(stale.planners[0].assignmentsUpdatedAt).toBe(11);
 });

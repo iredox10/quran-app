@@ -104,3 +104,45 @@ it('a long history sends just the changed entry and a map sends just its changed
     expect(diffSyncState(before,after)).toEqual({readingSessions:[{timestamp:501,duration:90}],hifdhHistory:{today:{pages:3}}});
     expect(JSON.stringify(diffSyncState(before,after)).length).toBeLessThan(150);
 });
+
+describe('large planner recovery',()=>{
+    it('uploads a 1.1MB planner then sends only a progress change, and never queues status changes',async()=>{
+        const h=setup();
+        const plan={id:'large',assignments:Array.from({length:604},(_,i)=>({dayNumber:i+1,title:'x'.repeat(1800)})),assignmentProgress:{}};
+        h.store.setState({planners:[plan]});
+        const engine=createSyncEngine({...h.options,payload:state=>({theme:state.theme,bookmarks:state.bookmarks,planners:state.planners || []})});
+        engine.start();await settle();await vi.advanceTimersByTimeAsync(1000);
+        expect(h.remote.state.planners[0].assignments).toHaveLength(604);
+        h.sync.pushState.mockClear();
+        expect(()=>h.store.setState({planners:[{...plan,assignmentProgress:{1:1}}]})).not.toThrow();
+        await vi.advanceTimersByTimeAsync(300);
+        const mutations=h.sync.pushState.mock.calls[0][2].mutations;
+        expect(JSON.stringify(mutations).length).toBeLessThan(200);
+        expect(mutations[0].changes).toEqual({planners:[{id:'large',assignmentProgress:{1:1}}]});
+        expect(h.remote.state.planners[0].assignments).toEqual(plan.assignments);
+        expect(h.remote.state.planners[0].assignmentProgress).toEqual({1:1});
+        expect(h.storage.length).toBe(0);engine.stop();
+    });
+    it('reports an unencodable backup without breaking click handlers, recursion or promise rejection',async()=>{
+        const h=setup();
+        const engine=createSyncEngine({...h.options,payload:state=>({theme:state.theme,notes:state.notes})});
+        h.store.setState({notes:'x'.repeat(8_000_001)});
+        engine.start();await settle();
+        expect(h.store.getState().syncStatus).toBe('error');
+        expect(()=>h.store.setState({theme:'dark'})).not.toThrow();
+        expect(h.store.getState().theme).toBe('dark');
+        expect(h.store.getState().syncError).toContain('sync payload too large');
+        await expect(engine.pull()).resolves.toBeUndefined();
+        h.store.setState({notes:'recovered'});
+        await vi.advanceTimersByTimeAsync(300);
+        expect(h.remote.state.notes).toBe('recovered');engine.stop();
+    });
+});
+
+it('sends a complete replacement schedule when pace revision changes',()=>{
+    const before={planners:[{id:'p',assignmentsUpdatedAt:1,assignments:[{dayNumber:1},{dayNumber:2}]}]};
+    const after={planners:[{id:'p',assignmentsUpdatedAt:2,assignments:[{dayNumber:1}]}]};
+    const delta=diffSyncState(before,after);
+    expect(delta.planners[0].assignments).toEqual([{dayNumber:1}]);
+    expect(mergeStateInto(before,delta).planners).toEqual(after.planners);
+});

@@ -86,7 +86,15 @@ function mergePlanners(base, incoming) {
             map.set(inc.id, inc);
             return;
         }
-        map.set(inc.id, mergeValue(existing, inc));
+        const merged = mergeValue(existing, inc);
+        const previousRevision = Number(existing.assignmentsUpdatedAt || 0);
+        const incomingRevision = Number(inc.assignmentsUpdatedAt || 0);
+        if (previousRevision || incomingRevision) {
+            if (incomingRevision > previousRevision && Array.isArray(inc.assignments)) merged.assignments = inc.assignments;
+            else merged.assignments = existing.assignments;
+            merged.assignmentsUpdatedAt = Math.max(previousRevision,incomingRevision);
+        }
+        map.set(inc.id, merged);
     });
     return Array.from(map.values());
 }
@@ -245,7 +253,7 @@ function clampCount(value) {
     return Math.min(10000, Math.max(0, Math.trunc(n)));
 }
 
-export function slimStatePayload(state) {
+export function slimStatePayload(state, { validate = true } = {}) {
     const result = { ...state };
     delete result.planner;
 
@@ -260,18 +268,13 @@ export function slimStatePayload(state) {
 
     const slimmed = slimDeep(result);
 
-    let size = JSON.stringify(slimmed).length;
-    if (size > 950000) {
-        if (Array.isArray(slimmed.readingSessions) && slimmed.readingSessions.length > 100) {
-            slimmed.readingSessions = slimmed.readingSessions.slice(-100);
-        }
-        if (Array.isArray(slimmed.pomodoroHistory) && slimmed.pomodoroHistory.length > 100) {
-            slimmed.pomodoroHistory = slimmed.pomodoroHistory.slice(-100);
-        }
-        size = JSON.stringify(slimmed).length;
-        if (size > 950000) {
-            throw new Error('sync payload too large: ' + size + ' chars');
-        }
+    // Planner schedules can legitimately exceed the old Appwrite-sized document cap.
+    // Never discard reading history just to fit a backup; the backend shares this bound.
+    const size = JSON.stringify(slimmed).length;
+    if (validate && size > 8_000_000) {
+        const error = new Error('sync payload too large: ' + size + ' chars');
+        error.retryable = false;
+        throw error;
     }
     return slimmed;
 }

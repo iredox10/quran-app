@@ -47,13 +47,20 @@ function buildPlannerState(planners, activePlannerId) {
     };
 }
 
+function revisionedPlanner(previous, next) {
+    if(previous && JSON.stringify(previous.assignments)!==JSON.stringify(next.assignments)) {
+        return {...next,assignmentsUpdatedAt:Math.max(Date.now(),Number(previous.assignmentsUpdatedAt || 0)+1)};
+    }
+    return next;
+}
+
 function replaceActivePlanner(state, plannerUpdater) {
     return updatePlannerCollection(state, ({ planners, activePlannerId, activePlanner }) => {
         if (!activePlanner) {
             return {};
         }
 
-        const nextPlanner = plannerUpdater(activePlanner);
+        const nextPlanner = revisionedPlanner(activePlanner,plannerUpdater(activePlanner));
         const nextPlanners = planners.map((planner) => planner.id === activePlannerId ? nextPlanner : planner);
         return buildPlannerState(nextPlanners, activePlannerId);
     });
@@ -567,6 +574,7 @@ export const useAppStore = create(
             setPlanner: (planner) => set((state) => {
                 const planners = state.planners || [];
                 const existingIndex = planners.findIndex((item) => item.id === planner.id);
+                planner = revisionedPlanner(planners[existingIndex],planner);
                 const nextPlanners = existingIndex >= 0
                     ? planners.map((item, index) => index === existingIndex ? planner : item)
                     : [planner, ...planners];

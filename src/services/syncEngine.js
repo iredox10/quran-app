@@ -9,12 +9,16 @@ export function createSyncEngine({store,payload,auth,sync,subscribe,storage=glob
     events=globalThis.window,visibility=globalThis.document,online=()=>globalThis.navigator?.onLine!==false,
     namespace='quran-sync-v2',cancelled=error=>error?.code==='ERR_CANCELED'}) {
     let stopped=true,context=null,suppress=false,unAuth=()=>{},unStore=()=>{};
-    const encode=value=>JSON.parse(JSON.stringify(slimStatePayload(value)));
+    const encode=(value,validate=true)=>JSON.parse(JSON.stringify(slimStatePayload(value,{validate})));
     const snapshot=()=>encode(payload(store.getState()));
     const fields=new Set(Object.keys(payload(store.getState())));
     const prefix=owner=>`${namespace}:${owner}:`;
     const current=ctx=>!stopped && context===ctx && auth.snapshot().user?.$id===ctx.owner && auth.snapshot().version===ctx.version;
-    const status=(ctx,value,error=null)=>{if(current(ctx)) store.getState().setSyncStatus(value,error);};
+    const status=(ctx,value,error=null)=>{
+        if(!current(ctx)) return;
+        const previous=suppress;suppress=true;
+        try {store.getState().setSyncStatus(value,error);} finally {suppress=previous;}
+    };
     const readPackets=ctx=>{
         const packets=[];
         for(let i=0;i<storage.length;i++) {
@@ -72,7 +76,7 @@ export function createSyncEngine({store,payload,auth,sync,subscribe,storage=glob
         if(!online()) {status(ctx,'pending');return;}
         clearTimeout(ctx.pushTimer);
         const packets=pending(ctx);
-        if(!packets.length) {ctx.firstDirtyAt=0;status(ctx,'idle');return;}
+        if(!packets.length) {ctx.firstDirtyAt=0;if(store.getState().syncStatus!=='error') status(ctx,'idle');return;}
         // Bound each batch: small packets over a slow uplink, one compact ACK back.
         let size=0; const batch=[];
         for(const packet of packets) {
@@ -80,9 +84,10 @@ export function createSyncEngine({store,payload,auth,sync,subscribe,storage=glob
             if(batch.length && (batch.length>=32 || size+bytes>256000)) break;
             batch.push(packet);size+=bytes;
         }
-        ctx.pushing=true; const before=snapshot();status(ctx,'pushing');
+        ctx.pushing=true;status(ctx,'pushing');
         ctx.pushPromise=(async()=>{
             try {
+                const before=snapshot();
                 const result=await sync.pushState(ctx.owner,{}, {mutations:batch.map(({id,changes})=>({id,changes}))});
                 if(!current(ctx)) return;
                 for(const packet of batch) if(packet.key) storage.removeItem(packet.key);
@@ -105,9 +110,10 @@ export function createSyncEngine({store,payload,auth,sync,subscribe,storage=glob
     async function pull(ctx=context) {
         if(!ctx || !current(ctx) || !online()) return;
         if(ctx.pulling) {ctx.pullAgain=true;return ctx.pullPromise;}
-        ctx.pulling=true;const before=snapshot();status(ctx,ctx.pushing?'pushing':'pulling');
+        ctx.pulling=true;status(ctx,ctx.pushing?'pushing':'pulling');
         ctx.pullPromise=(async()=>{
             try {
+                const before=snapshot();
                 const remote=await sync.pullState(ctx.owner,{updatedAt:ctx.known});
                 if(!current(ctx)) return;
                 ctx.pullFailures=0;
@@ -146,7 +152,10 @@ export function createSyncEngine({store,payload,auth,sync,subscribe,storage=glob
         ctx.detach=subscribe(event=>{
             if(!current(ctx) || (event?.payload?.userId && event.payload.userId!==owner)) return;
             const stamp=event?.payload?.updatedAt;
-            if(event?.payload?.snapshot) apply(ctx,event.payload.snapshot,snapshot());
+            if(event?.payload?.snapshot) {
+                try {apply(ctx,event.payload.snapshot,snapshot());}
+                catch(error) {status(ctx,'error',error.message);}
+            }
             else if(event?.payload?.reconnected) {pull(ctx);flush(ctx);}
             else if(!stamp || stamp>ctx.known) {clearTimeout(ctx.pullTimer);ctx.pullTimer=setTimeout(()=>pull(ctx),100);}
         });
@@ -164,8 +173,17 @@ export function createSyncEngine({store,payload,auth,sync,subscribe,storage=glob
             unAuth=auth.subscribe(selectSession);
             unStore=store.subscribe((state,previous)=>{
                 if(suppress || !context || !current(context)) return;
-                const changes=diffSyncState(encode(payload(previous)),encode(payload(state)));
-                enqueue(context,changes);
+                const before=payload(previous),after=payload(state);
+                // Status and other device-local changes must not serialize the entire library.
+                if(Object.keys(after).every(key=>key==='planner' || after[key]===before[key])) return;
+                try {
+                    const changes=diffSyncState(encode(before,false),encode(after));
+                    enqueue(context,changes);
+                } catch(error) {
+                    // Zustand has already saved the user's edit. Report failure without throwing
+                    // into click handlers or recursively notifying this subscriber.
+                    status(context,'error',error.message);
+                }
             });
             events?.addEventListener('online',resume);events?.addEventListener('focus',resume);events?.addEventListener('storage',storageChange);
             visibility?.addEventListener('visibilitychange',resume);
