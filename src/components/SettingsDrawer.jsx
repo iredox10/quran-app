@@ -13,6 +13,7 @@ import { saveLocalAudioDirHandle } from '../utils/localAudio';
 import { getOfflinePackStats } from '../utils/offlineLibrary';
 import { mergeStateInto, slimStatePayload } from '../utils/syncMerge';
 import { authService, syncService } from '../services/backend';
+import { isSyncCancellation } from '../services/renderApi';
 import { getSyncPayload } from '../store/useAppStore';
 import Coachmark from './ui/Coachmark';
 
@@ -185,6 +186,7 @@ function CloudSyncView({ currentUser, setCurrentUser }) {
 
     const handleAuth = async (e) => {
         e.preventDefault();
+        if (loading) return;
         setLoading(true);
         setError('');
         try {
@@ -192,13 +194,12 @@ function CloudSyncView({ currentUser, setCurrentUser }) {
                 await authService.login(email, password);
             } else {
                 await authService.register(email, password, name);
-                await authService.login(email, password);
             }
             const user = await authService.getCurrentUser();
             setCurrentUser(user);
             setEmail(''); setPassword('');
         } catch (err) {
-            setError(err.message || 'Authentication failed');
+            if (!isSyncCancellation(err)) setError(err.message || 'Authentication failed');
         } finally { setLoading(false); }
     };
 
@@ -214,31 +215,33 @@ function CloudSyncView({ currentUser, setCurrentUser }) {
         try {
             const payload = slimStatePayload(getSyncPayload(useAppStore.getState()));
             const result = await syncService.pushState(currentUser.$id, payload);
-            useAppStore.setState({ lastSyncAt: result.updatedAt });
+            if (authService.snapshot().user?.$id !== currentUser.$id) return;
+            useAppStore.setState({ lastSyncAt: Math.max(useAppStore.getState().lastSyncAt || 0, result.updatedAt) });
             setSyncStatus('Successfully backed up to cloud! ✅');
             setTimeout(() => setSyncStatus(''), 3000);
-        } catch (err) { console.error(err); useAppStore.getState().setSyncStatus('error', err.message); setSyncStatus('Failed to push data ❌'); }
+        } catch (err) { if (isSyncCancellation(err)) return; console.error(err); useAppStore.getState().setSyncStatus('error', err.message); setSyncStatus('Failed to push data ❌'); }
         finally { setSyncLoading(false); }
     };
 
     const handlePull = async () => {
         if (!currentUser) return;
-        if (!window.confirm("Warning: This will overwrite your local data with the cloud data. Proceed?")) return;
         setSyncLoading(true); setSyncStatus('Pulling from cloud...');
         try {
             const remoteData = await syncService.pullState(currentUser.$id);
+            if (authService.snapshot().user?.$id !== currentUser.$id) return;
             if (remoteData?.state) {
                 const merged = mergeStateInto(useAppStore.getState(), remoteData.state);
                 useAppStore.setState({ ...merged, lastSyncAt: remoteData.updatedAt });
                 try {
                     const payload = slimStatePayload(getSyncPayload(useAppStore.getState()));
                     const result = await syncService.pushState(currentUser.$id, payload);
-                    useAppStore.setState({ lastSyncAt: result.updatedAt });
-                } catch (e) { console.error(e); useAppStore.getState().setSyncStatus('error', e.message); }
+                    if (authService.snapshot().user?.$id !== currentUser.$id) return;
+            useAppStore.setState({ lastSyncAt: Math.max(useAppStore.getState().lastSyncAt || 0, result.updatedAt) });
+                } catch (e) { if (isSyncCancellation(e)) return; console.error(e); useAppStore.getState().setSyncStatus('error', e.message); }
                 setSyncStatus('Successfully restored from cloud! ✅');
             } else { setSyncStatus('No cloud backup found.'); }
             setTimeout(() => setSyncStatus(''), 3000);
-        } catch (err) { console.error(err); useAppStore.getState().setSyncStatus('error', err.message); setSyncStatus('Failed to pull data ❌'); }
+        } catch (err) { if (isSyncCancellation(err)) return; console.error(err); useAppStore.getState().setSyncStatus('error', err.message); setSyncStatus('Failed to pull data ❌'); }
         finally { setSyncLoading(false); }
     };
 

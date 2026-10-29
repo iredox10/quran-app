@@ -72,7 +72,7 @@ function mergeCollections(base, incoming) {
         }
         const itemsMap = new Map((existing.items || []).map(i => [collectionItemKey(inc.id, i), i]));
         (inc.items || []).forEach(i => itemsMap.set(collectionItemKey(inc.id, i), i));
-        map.set(inc.id, { ...existing, items: Array.from(itemsMap.values()) });
+        map.set(inc.id, { ...existing, ...inc, items: Array.from(itemsMap.values()) });
     });
     return Array.from(map.values());
 }

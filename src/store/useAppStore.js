@@ -967,5 +967,12 @@ export function getSyncableState(state) {
 export function getSyncPayload(state) {
     const payload = { ...getSyncableState(state) };
     delete payload.lastSyncAt;
+    // A ticking countdown is device-local, not a new cloud backup every second.
+    delete payload.pomodoroSecondsLeft;
+    delete payload.pomodoroIsRunning;
+    // A download on this device does not put files on another device.
+    delete payload.offlineDataStatus;
+    delete payload.offlinePackStatus;
+    delete payload.downloadedSurahs;
     return payload;
 }

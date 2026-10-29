@@ -47,13 +47,13 @@ describe('Heroku browser wire contracts',()=>{
   await api.authService.login('person@test.io','password');
   handler=async(req,res)=>{
    if(req.method==='GET')return json(res,200,{id:'old-doc',userId:'original-id',stateData:null,state:null,updatedAt:10,createdAt:1,theme:'dark'});
-   expect(JSON.parse(req.body.stateData)).toMatchObject({theme:'dark',fontSize:18});return json(res,200,{userId:'original-id',updatedAt:20});
+   expect(req.method).toBe('PATCH');expect(req.body.changes).toMatchObject({fontSize:18});return json(res,200,{userId:'original-id',updatedAt:20});
   };
   expect(await api.syncService.pullState('original-id')).toEqual({state:{theme:'dark'},updatedAt:10});
   expect(await api.syncService.pushState('original-id',{fontSize:18})).toEqual({updatedAt:20});
   handler=async(_req,res)=>json(res,200,{userId:'someone-else',stateData:'{}',updatedAt:20});
   await expect(api.syncService.pushState('original-id',{})).rejects.toThrow('mismatch');
-  expect(requests.filter(r=>r.method==='PUT')).toHaveLength(1);
+  expect(requests.filter(r=>r.method==='PATCH')).toHaveLength(2);
  });
  it('supports the empty sync canary and never invents a missing write watermark',async()=>{
   await api.authService.login('person@test.io','password');
@@ -70,4 +70,43 @@ describe('Heroku browser wire contracts',()=>{
   const {getVersesByPage}=await import('./api/quranApi');
   expect((await getVersesByPage(1,85,7,'madani-tajweed')).verses[0].arabic_text).toBe('بسم الله');
  });
+ it('does not cancel an active restore when the same user signs in again or a sign-in fails',async()=>{
+  await api.authService.login('person@test.io','password');
+  let release,started;const ready=new Promise(resolve=>{started=resolve;});
+  handler=async(req,res)=>{
+   if(req.url==='/auth/login')return req.body.password==='wrong'?json(res,401,{error:'invalid_credentials'}):json(res,200,session('new'));
+   started();await new Promise(resolve=>{release=resolve;});json(res,200,{userId:'original-id',stateData:'{"theme":"dark"}',updatedAt:123});
+  };
+  const pulling=api.syncService.pullState('original-id');await ready;
+  await expect(api.authService.login('person@test.io','wrong')).rejects.toThrow('Check your email');
+  await api.authService.login('person@test.io','password');release();
+  expect(await pulling).toEqual({state:{theme:'dark'},updatedAt:123});
+ });
+ it('cancels the old owner request when switching accounts without returning stale data',async()=>{
+  await api.authService.login('person@test.io','password');
+  let release,started;const ready=new Promise(resolve=>{started=resolve;});
+  handler=async(req,res)=>{
+   if(req.url==='/auth/login')return json(res,200,{...session('other'),user:{id:'other-id',email:'other@test.io'}});
+   started();await new Promise(resolve=>{release=resolve;});json(res,200,{userId:'original-id',stateData:'{}',updatedAt:123});
+  };
+  const pulling=api.syncService.pullState('original-id').catch(error=>error);await ready;
+  await api.authService.login('other@test.io','password');release();
+  expect(api.isSyncCancellation(await pulling)).toBe(true);expect((await api.authService.getCurrentUser()).$id).toBe('other-id');
+ });
+ it('deduplicates concurrent pulls and sends a validator for unchanged state',async()=>{
+  await api.authService.login('person@test.io','password');
+  handler=async(req,res)=>json(res,200,{userId:'original-id',stateData:'{"theme":"dark"}',updatedAt:123});
+  const before=requests.length;
+  const results=await Promise.all([api.syncService.pullState('original-id'),api.syncService.pullState('original-id')]);
+  expect(results[0]).toEqual(results[1]);expect(requests.length-before).toBe(1);expect(requests.at(-1).url).toBe('/v1/sync?compact=1');
+  handler=async(_req,res)=>{res.writeHead(304);res.end();};
+  expect(await api.syncService.pullState('original-id',{updatedAt:123})).toMatchObject({unchanged:true,state:{theme:'dark'},updatedAt:123});
+ });
+ it('a temporary refresh outage stays retryable and does not sign out the user',async()=>{
+  await api.authService.login('person@test.io','password');
+  handler=async(req,res)=>req.url==='/auth/refresh'?json(res,503,{error:'unavailable'}):json(res,401,{error:'unauthorized'});
+  const error=await api.http.get('/private').catch(error=>error);
+  expect(error.status).toBe(503);expect(error.retryable).toBe(true);expect((await api.authService.getCurrentUser()).$id).toBe('original-id');
+ });
+
 });

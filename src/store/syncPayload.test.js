@@ -95,3 +95,10 @@ describe('fresh web client pushing into an existing cloud doc', () => {
         expect(merged.bookmarks).toEqual([{ verseKey: '2:1' }]);
     });
 });
+
+it('keeps ticking timers and file availability local to each device',()=>{
+    const state={...useAppStore.getInitialState(),pomodoroSecondsLeft:17,pomodoroIsRunning:true,offlineDataStatus:'downloaded',offlinePackStatus:{quran:true},downloadedSurahs:[1]};
+    const payload=getSyncPayload(state);
+    for(const key of ['pomodoroSecondsLeft','pomodoroIsRunning','offlineDataStatus','offlinePackStatus','downloadedSurahs']) expect(payload).not.toHaveProperty(key);
+    expect(getSyncableState(state).downloadedSurahs).toEqual([1]);
+});

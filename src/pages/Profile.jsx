@@ -9,6 +9,7 @@ import {
     Clock, Shield, RotateCcw, Compass, Share2
 } from 'lucide-react';
 import { authService, syncService } from '../services/backend';
+import { isSyncCancellation } from '../services/renderApi';
 import { RECITERS } from '../config/reciters';
 import { APP_CONFIG } from '../config/constants';
 import { mergeStateInto, slimStatePayload } from '../utils/syncMerge';
@@ -76,7 +77,7 @@ export default function Profile() {
     };
 
     const handleAuth = async (e) => {
-        e.preventDefault(); setIsLoading(true); setAuthError(''); setAuthSuccess('');
+        e.preventDefault(); if (isLoading) return; setIsLoading(true); setAuthError(''); setAuthSuccess('');
         try {
             if (authMode === 'register') { await authService.register(email, password, name); }
             else if (authMode === 'forgot') {
@@ -87,13 +88,13 @@ export default function Profile() {
             }
             else { await authService.login(email, password); }
             await checkUser(); setEmail(''); setPassword(''); setName(''); setShowAuthForm(false);
-        } catch (err) { setAuthError(err.message || 'Authentication failed'); }
+        } catch (err) { if (!isSyncCancellation(err)) setAuthError(err.message || 'Authentication failed'); }
         finally { setIsLoading(false); }
     };
 
     const handleLogout = async () => {
         setIsLoading(true);
-        try { await authService.logout(); setUser(null); useAppStore.getState().setCurrentUser(null); } catch (e) { console.error(e); }
+        try { await authService.logout(); setUser(null); useAppStore.getState().setCurrentUser(null); } catch (e) { if (isSyncCancellation(e)) return; console.error(e); }
         finally { setIsLoading(false); }
     };
 
@@ -104,15 +105,17 @@ export default function Profile() {
             const result = await syncService.pushState(user.$id, payload);
             // Stamp the sync watermark from the server response so a later pull
             // treats the cloud doc as current (mirrors SettingsDrawer).
-            useAppStore.setState({ lastSyncAt: result.updatedAt });
+            if (authService.snapshot().user?.$id !== user.$id) return;
+            useAppStore.setState({ lastSyncAt: Math.max(useAppStore.getState().lastSyncAt || 0, result.updatedAt) });
             setSyncStatus('success'); setTimeout(() => setSyncStatus(null), 3000);
-        } catch (e) { console.error(e); useAppStore.getState().setSyncStatus('error', e.message); setSyncStatus('error'); setTimeout(() => setSyncStatus(null), 3000); }
+        } catch (e) { if (isSyncCancellation(e)) return; console.error(e); useAppStore.getState().setSyncStatus('error', e.message); setSyncStatus('error'); setTimeout(() => setSyncStatus(null), 3000); }
     };
 
     const handlePullSync = async () => {
         if (!user) return; setSyncStatus('pulling');
         try {
             const remote = await syncService.pullState(user.$id);
+            if (authService.snapshot().user?.$id !== user.$id) return;
             if (!remote?.state) {
                 // Nothing stored yet: restoring did not happen, so don't say it did.
                 setSyncStatus('empty'); setTimeout(() => setSyncStatus(null), 3000);
@@ -123,10 +126,11 @@ export default function Profile() {
             try {
                 const payload = slimStatePayload(getSyncPayload(useAppStore.getState()));
                 const result = await syncService.pushState(user.$id, payload);
-                useAppStore.setState({ lastSyncAt: result.updatedAt });
-            } catch (e) { console.error(e); useAppStore.getState().setSyncStatus('error', e.message); }
+                if (authService.snapshot().user?.$id !== user.$id) return;
+            useAppStore.setState({ lastSyncAt: Math.max(useAppStore.getState().lastSyncAt || 0, result.updatedAt) });
+            } catch (e) { if (isSyncCancellation(e)) return; console.error(e); useAppStore.getState().setSyncStatus('error', e.message); }
             setSyncStatus('success'); setTimeout(() => setSyncStatus(null), 3000);
-        } catch (e) { console.error(e); useAppStore.getState().setSyncStatus('error', e.message); setSyncStatus('error'); setTimeout(() => setSyncStatus(null), 3000); }
+        } catch (e) { if (isSyncCancellation(e)) return; console.error(e); useAppStore.getState().setSyncStatus('error', e.message); setSyncStatus('error'); setTimeout(() => setSyncStatus(null), 3000); }
     };
 
     // ─── Computed ───
