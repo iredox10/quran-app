@@ -78,6 +78,25 @@ function mergeCollections(base, incoming) {
     return Array.from(map.values());
 }
 
+const PLANNER_DAY_PROGRESS_FIELDS = ['assignmentProgress','assignmentReadPages','assignmentCompletedItems','assignmentCompletedAt','completedDays'];
+const PLANNER_SCHEDULE_FIELDS = ['assignments','durationDays','startDate','startUnit','endUnit','unitType','isCustomRange','excludeDays'];
+const completeScheduleShape = plan => Array.isArray(plan.assignments) && plan.assignments.some(day =>
+    isPlainObject(day) && ('items' in day));
+const usableSchedule = (plan, requireCompleteRows = false) => {
+    const number = (row,key,min=0) => typeof row[key] === 'number' && Number.isFinite(row[key]) && row[key]>=min;
+    return Array.isArray(plan.assignments) && plan.assignments.length > 0 && plan.assignments.every(day => {
+        if(!isPlainObject(day) || !number(day,'dayNumber',1)) return false;
+        if(!requireCompleteRows) return true;
+        return Array.isArray(day.items) && typeof day.date==='string' && day.date.trim().length>0 &&
+            ['unitType','title','subtitle','primaryRoute'].every(key=>typeof day[key]==='string') &&
+            ['startUnit','endUnit','pageStart','pageEnd'].every(key=>number(day,key)) &&
+            day.items.every(item=>isPlainObject(item) && ['title','subtitle','route'].every(key=>typeof item[key]==='string') &&
+                (typeof item.rangeValue==='string' || (typeof item.rangeValue==='number' && Number.isFinite(item.rangeValue))) &&
+                ['pageStart','pageEnd'].every(key=>number(item,key)));
+    }) && (!requireCompleteRows || plan.assignments.some(day=>day.items.length>0));
+};
+const scheduleRevision = plan => Number.isFinite(Number(plan.assignmentsUpdatedAt)) ? Math.max(0,Number(plan.assignmentsUpdatedAt)) : 0;
+
 function mergePlanners(base, incoming) {
     const map = new Map((base || []).map(p => [p.id, p]));
     (incoming || []).forEach(inc => {
@@ -87,12 +106,28 @@ function mergePlanners(base, incoming) {
             return;
         }
         const merged = mergeValue(existing, inc);
-        const previousRevision = Number(existing.assignmentsUpdatedAt || 0);
-        const incomingRevision = Number(inc.assignmentsUpdatedAt || 0);
-        if (previousRevision || incomingRevision) {
-            if (incomingRevision > previousRevision && Array.isArray(inc.assignments)) merged.assignments = inc.assignments;
-            else merged.assignments = existing.assignments;
-            merged.assignmentsUpdatedAt = Math.max(previousRevision,incomingRevision);
+        const previousRevision = scheduleRevision(existing);
+        const incomingRevision = scheduleRevision(inc);
+        const previousSchedule = usableSchedule(existing,completeScheduleShape(existing) || completeScheduleShape(inc)), nextSchedule = usableSchedule(inc,completeScheduleShape(existing) || completeScheduleShape(inc));
+        const invalidReplacement = previousSchedule && 'assignments' in inc && !nextSchedule;
+        if (previousRevision || incomingRevision || invalidReplacement) {
+            if (nextSchedule && (!previousSchedule || incomingRevision > previousRevision)) {
+                merged.assignments = inc.assignments;
+                merged.assignmentsUpdatedAt = Math.max(previousRevision,incomingRevision);
+                for(const field of PLANNER_DAY_PROGRESS_FIELDS) {
+                    if(isPlainObject(inc[field]) || Array.isArray(inc[field])) merged[field]=inc[field];
+                }
+            } else {
+                // A delayed progress packet cannot change a newer schedule's duration or range.
+                for (const field of PLANNER_SCHEDULE_FIELDS) {
+                    if (field in existing) merged[field] = existing[field]; else delete merged[field];
+                }
+                if(incomingRevision!==previousRevision) for(const field of PLANNER_DAY_PROGRESS_FIELDS) {
+                    if(field in existing) merged[field]=existing[field]; else delete merged[field];
+                }
+                if ('assignmentsUpdatedAt' in existing) merged.assignmentsUpdatedAt = previousRevision;
+                else delete merged.assignmentsUpdatedAt;
+            }
         }
         map.set(inc.id, merged);
     });

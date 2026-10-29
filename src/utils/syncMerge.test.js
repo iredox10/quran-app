@@ -388,3 +388,50 @@ it('new pace schedules replace removed days and survive stale-device progress',(
     expect(stale.planners[0].assignments).toEqual(next.assignments);
     expect(stale.planners[0].assignmentsUpdatedAt).toBe(11);
 });
+
+it('keeps schedule metadata with its revision while merging delayed progress',()=>{
+    const current={id:'p',assignmentsUpdatedAt:20,durationDays:1,startDate:'new',assignments:[{dayNumber:1,title:'new'}]};
+    const stale={id:'p',assignmentsUpdatedAt:10,durationDays:30,startDate:'old',assignments:[{dayNumber:1,title:'old'}],assignmentProgress:{1:2}};
+    const row=mergeStateInto({planners:[current]},{planners:[stale]}).planners[0];
+    expect(row.durationDays).toBe(1);expect(row.startDate).toBe('new');
+    expect(row.assignments).toEqual(current.assignments);expect(row.assignmentsUpdatedAt).toBe(20);
+    expect(row.assignmentProgress).toBeUndefined();
+});
+it('rejects malformed and empty revised schedules without clearing a plan',()=>{
+    const current={id:'p',assignmentsUpdatedAt:20,durationDays:1,assignments:[{dayNumber:1}]};
+    for(const assignments of [null,[],'broken',[{dayNumber:null}]]) {
+        const row=mergeStateInto({planners:[current]},{planners:[{id:'p',assignmentsUpdatedAt:30,durationDays:0,assignments}]}).planners[0];
+        expect(row).toEqual(current);
+    }
+});
+it('repairs a partial plan at the same schedule revision',()=>{
+    const partial={id:'p',assignmentsUpdatedAt:20,assignmentProgress:{1:2}};
+    const complete={id:'p',assignmentsUpdatedAt:20,title:'Plan',durationDays:1,assignments:[{dayNumber:1}]};
+    const row=mergeStateInto({planners:[partial]},{planners:[complete]}).planners[0];
+    expect(row).toEqual({...complete,assignmentProgress:{1:2}});
+});
+
+it('does not let sparse revised rows erase complete day content',()=>{
+    const item={title:'Page 1',subtitle:'',route:'/page/1',rangeValue:'1',pageStart:1,pageEnd:1};
+    const day={dayNumber:1,date:'2026-10-29',unitType:'page',title:'Day 1',subtitle:'',primaryRoute:'/page/1',startUnit:1,endUnit:1,pageStart:1,pageEnd:1,items:[item]};
+    const current={id:'p',durationDays:1,assignmentsUpdatedAt:20,assignments:[day]};
+    for(const replacement of [{dayNumber:1},{...day,items:[{id:1}]},{...day,items:[]},{...day,date:null}]) {
+        const row=mergeStateInto({planners:[current]},{planners:[{id:'p',durationDays:30,assignmentsUpdatedAt:30,assignments:[replacement]}]}).planners[0];
+        expect(row).toEqual(current);
+    }
+    const updated=mergeStateInto({planners:[current]},{planners:[{id:'p',assignmentsUpdatedAt:30,assignments:[{...day,date:'2026-10-30',items:[{...item,rangeValue:1}]}]}]}).planners[0];
+    expect(updated.assignments[0].date).toBe('2026-10-30');
+    const broken={...current,assignments:[{dayNumber:1}]};
+    expect(mergeStateInto({planners:[broken]},{planners:[current]}).planners[0]).toEqual(current);
+});
+
+it('replaces remapped day progress with a revised schedule and rejects stale day numbers',()=>{
+    const days=[1,2,3].map(dayNumber=>({dayNumber}));
+    const old={id:'p',assignmentsUpdatedAt:10,assignments:days,completedDays:[3],assignmentProgress:{3:1},assignmentReadPages:{3:[7]},assignmentCompletedItems:{3:['7']},assignmentCompletedAt:{3:'2026-10-28'}};
+    const next={...old,assignmentsUpdatedAt:20,completedDays:[1],assignmentProgress:{1:1},assignmentReadPages:{1:[7]},assignmentCompletedItems:{},assignmentCompletedAt:{}};
+    const row=mergeStateInto({planners:[old]},{planners:[next]}).planners[0];
+    expect(row).toEqual(next);
+    expect(mergeStateInto({planners:[row]},{planners:[old]}).planners[0]).toEqual(next);
+    const progress={id:'p',assignmentsUpdatedAt:20,assignmentProgress:{2:1}};
+    expect(mergeStateInto({planners:[row]},{planners:[progress]}).planners[0].assignmentProgress).toEqual({1:1,2:1});
+});

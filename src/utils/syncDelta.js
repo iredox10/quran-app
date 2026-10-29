@@ -3,6 +3,7 @@ const object = value => value !== null && typeof value === 'object' && !Array.is
 const keyed = {bookmarks:'verseKey',collections:'id',planners:'id',hifdhGoals:'id',archivedPlanners:'id',readingSessions:'timestamp',recentlyRead:'chapterId',pomodoroHistory:'completedAt',assignments:'dayNumber'};
 const equal = (a,b) => JSON.stringify(a)===JSON.stringify(b);
 const noChange=Symbol('unchanged');
+const dayProgressFields=['assignmentProgress','assignmentReadPages','assignmentCompletedItems','assignmentCompletedAt','completedDays'];
 function difference(before,after,field) {
     if(after===undefined || equal(before,after)) return noChange;
     if(Array.isArray(before) && Array.isArray(after)) {
@@ -14,7 +15,12 @@ function difference(before,after,field) {
             const old = previous.get(id(item));
             if (!object(old) || !object(item)) return item;
             const patch={id:item.id,...difference(old,item,'')};
-            if(item.assignmentsUpdatedAt !== old.assignmentsUpdatedAt && Array.isArray(item.assignments)) patch.assignments=item.assignments;
+            if(item.assignmentsUpdatedAt !== old.assignmentsUpdatedAt && Array.isArray(item.assignments)) {
+                patch.assignments=item.assignments;
+                for(const field of dayProgressFields) if(field in item) patch[field]=item[field];
+            } else if(dayProgressFields.some(field=>field in patch) && 'assignmentsUpdatedAt' in item) {
+                patch.assignmentsUpdatedAt=item.assignmentsUpdatedAt;
+            }
             return patch;
         }) : changed;
         return rows.length ? rows : noChange;
