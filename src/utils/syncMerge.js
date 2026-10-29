@@ -1,3 +1,4 @@
+import { normalizeSyncLibrary } from './syncLibrary';
 // Bidirectional merge semantics for cloud sync.
 // The cloud document is treated as a superset snapshot: pushes merge local
 // into the existing remote doc, pulls merge remote into local. This keeps
@@ -172,7 +173,7 @@ export function mergeStateInto(base, incoming) {
             out[field] = mergeCollections(out[field], inc);
         } else if (field === 'planners') {
             out[field] = mergePlanners(out[field], inc);
-        } else if (field === 'pageVisitCounts') {
+        } else if ((field === 'pageVisitCounts' || field === 'bookmarkRemovals')) {
             const counts = { ...(out[field] || {}) };
             const keys = new Set([...Object.keys(counts), ...Object.keys(inc || {})]);
             keys.forEach(k => {
@@ -199,7 +200,7 @@ export function mergeStateInto(base, incoming) {
             || out.planners.find(p => out.planner && p?.id === out.planner.id)
             || (out.planner ?? null);
     }
-    return out;
+    return normalizeSyncLibrary(out);
 }
 
 function dedupeAssignments(items) {

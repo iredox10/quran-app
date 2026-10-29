@@ -91,7 +91,7 @@ function VerseItem({
     tajweedEnabled, tajweedMap, activeTafsir, setActiveTafsir, isTafsirFetching,
     showPageDivider, tafsirs, isAudioPlaying, mushaf, onPlayVerse,
     collections, addCollection, addToCollection, memorizedAyahs, toggleMemorizedAyah,
-    memorizeMode, bookmark, setBookmark, addRecentlyRead, onShare
+    memorizeMode, bookmark, bookmarks, setBookmark, addRecentlyRead, onShare
 }) {
     const { ref, inView } = useInView({ threshold: 0.5, triggerOnce: false });
     const [showCollectionModal, setShowCollectionModal] = useState(false);
@@ -201,8 +201,8 @@ function VerseItem({
                     <div className="verse-actions-row flex flex-wrap items-center gap-2">
                         <button className="flex h-8 w-8 items-center justify-center rounded-full text-[var(--text-muted)] transition-all duration-200 hover:bg-[var(--bg-secondary)] hover:text-accent hover:shadow-[var(--shadow-sm)]" onClick={() => setShowCollectionModal(true)} title="Add to Collection"><Plus size={18} /></button>
                         {setBookmark && (
-                            <button className="flex h-8 w-8 items-center justify-center rounded-full transition-all duration-200 hover:bg-[var(--bg-secondary)] hover:shadow-[var(--shadow-sm)]" style={{ color: bookmark?.verseKey === verse.verse_key ? 'var(--accent-primary)' : 'var(--text-muted)' }} onClick={() => setBookmark(verse.verse_key, chapter ? chapter.name_simple : `Surah ${verse.verse_key.split(':')[0]}`, chapter?.id)} title="Bookmark Verse">
-                                <Bookmark size={18} fill={bookmark?.verseKey === verse.verse_key ? 'currentColor' : 'none'} />
+                            <button className="flex h-8 w-8 items-center justify-center rounded-full transition-all duration-200 hover:bg-[var(--bg-secondary)] hover:shadow-[var(--shadow-sm)]" style={{ color: (bookmarks || (bookmark ? [bookmark] : [])).some(b=>b.verseKey===verse.verse_key) ? 'var(--accent-primary)' : 'var(--text-muted)' }} onClick={() => setBookmark(verse.verse_key, chapter ? chapter.name_simple : `Surah ${verse.verse_key.split(':')[0]}`, chapter?.id)} title="Bookmark Verse">
+                                <Bookmark size={18} fill={(bookmarks || (bookmark ? [bookmark] : [])).some(b=>b.verseKey===verse.verse_key) ? 'currentColor' : 'none'} />
                             </button>
                         )}
                         <button className="flex h-8 w-8 items-center justify-center rounded-full transition-all duration-200" style={{ color: isAudioPlaying ? 'var(--accent-primary)' : 'var(--text-muted)', backgroundColor: isAudioPlaying ? 'var(--accent-light)' : 'transparent' }} title={isAudioPlaying ? "Playing" : "Play this Ayah"} onClick={() => onPlayVerse?.(verse)}>
@@ -323,7 +323,7 @@ export default function Surah() {
     const {
         translationId, setTranslation, reciterId, setReciter, fontSize, setFontSize, translationFontSize, setTranslationFontSize,
         readingMode, setReadingMode, mushafMode,
-        bookmark, setBookmark,
+        bookmark, bookmarks, setBookmark,
         addRecentlyRead,
         setIsPlaying, currentAudioUrl, isPlaying,
         audioPlaylist, setAudioPlaylist, audioTrackIndex,
@@ -630,6 +630,7 @@ export default function Surah() {
                                         readingMode={readingMode}
                                         chapter={chapter}
                                         bookmark={bookmark}
+                                        bookmarks={bookmarks}
                                         setBookmark={setBookmark}
                                         addRecentlyRead={addRecentlyRead}
                                         fontSize={fontSize}

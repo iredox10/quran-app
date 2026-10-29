@@ -1,3 +1,4 @@
+import { toggleSavedBookmark } from '../utils/syncLibrary';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { fsrs, createEmptyCard, Rating } from 'ts-fsrs';
@@ -99,6 +100,7 @@ export const useAppStore = create(
             isSettingsOpen: false, // Global settings state
 
             bookmark: null, // { verseKey, surahName }
+            bookmarkRemovals: {},
             bookmarks: [], // Array of { verseKey, surahName, chapterId }
             memorizedAyahs: [], // Array of verse keys '1:1'
             memorizedSurahs: [], // Array of chapter IDs
@@ -234,18 +236,8 @@ export const useAppStore = create(
                 downloadedSurahs: state.downloadedSurahs.includes(id) ? state.downloadedSurahs : [...state.downloadedSurahs, id]
             })),
 
-            setBookmark: (verseKey, surahName, chapterId = null) => set((state) => ({
-                bookmark: state.bookmark?.verseKey === verseKey ? null : { verseKey, surahName, chapterId }
-            })),
-
-            toggleBookmark: (verseKey, surahName, chapterId = null) => set((state) => {
-                const exists = state.bookmarks?.find(b => b.verseKey === verseKey);
-                if (exists) {
-                    return { bookmarks: state.bookmarks.filter(b => b.verseKey !== verseKey) };
-                } else {
-                    return { bookmarks: [...(state.bookmarks || []), { verseKey, surahName, chapterId, createdAt: Date.now() }] };
-                }
-            }),
+            setBookmark: (verseKey, surahName, chapterId = null) => get().toggleBookmark(verseKey,surahName,chapterId),
+            toggleBookmark: (verseKey, surahName, chapterId = null) => set(state=>toggleSavedBookmark(state,verseKey,surahName,chapterId)),
 
             toggleMemorizedAyah: (verseKey) => set((state) => {
                 const isMemorized = (state.memorizedAyahs || []).includes(verseKey);
@@ -355,6 +347,7 @@ export const useAppStore = create(
             })),
 
             addRecentlyRead: (chapterId, chapterName, verseKey = null) => set((state) => {
+                if(verseKey && Number(verseKey.split(':')[0])!==Number(chapterId)) return state;
                 const filtered = (state.recentlyRead || []).filter(r => r.chapterId !== chapterId);
                 const newList = [{ chapterId, chapterName, verseKey, timestamp: Date.now() }, ...filtered].slice(0, 20);
                 return { recentlyRead: newList };
@@ -920,6 +913,7 @@ export function getSyncableState(state) {
         tafsirId: chosenSetting(state, 'tafsirId'),
         bookmark: state.bookmark,
         bookmarks: state.bookmarks || [],
+        bookmarkRemovals: state.bookmarkRemovals || {},
         memorizedAyahs: state.memorizedAyahs || [],
         memorizedSurahs: state.memorizedSurahs || [],
         hifdhHistory: state.hifdhHistory || {},

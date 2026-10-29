@@ -19,7 +19,7 @@ const TAFSIR_NAMES = {
 };
 
 const VerseRow = ({
-    verse, readingMode, chapter, bookmark, setBookmark, addRecentlyRead,
+    verse, readingMode, chapter, bookmark, bookmarks, setBookmark, addRecentlyRead,
     fontSize, translationFontSize, arabicFont, tajweedEnabled, tajweedMap, activeTafsir,
     setActiveTafsir, isTafsirFetching, tafsirId, showPageDivider, tafsirs,
     isAudioPlaying,
@@ -173,11 +173,11 @@ const VerseRow = ({
                         {setBookmark && (
                             <button
                                 className="flex h-8 w-8 items-center justify-center rounded-full transition-all duration-200 hover:bg-[var(--bg-secondary)] hover:shadow-[var(--shadow-sm)]"
-                                style={{ color: bookmark?.verseKey === verse.verse_key ? 'var(--accent-primary)' : 'var(--text-muted)' }}
+                                style={{ color: (bookmarks || (bookmark ? [bookmark] : [])).some(b=>b.verseKey===verse.verse_key) ? 'var(--accent-primary)' : 'var(--text-muted)' }}
                                 onClick={() => setBookmark(verse.verse_key, chapter ? chapter.name_simple : `Surah ${verse.verse_key.split(':')[0]}`, chapter?.id)}
                                 title="Bookmark Verse"
                             >
-                                <Bookmark size={18} fill={bookmark?.verseKey === verse.verse_key ? 'currentColor' : 'none'} />
+                                <Bookmark size={18} fill={(bookmarks || (bookmark ? [bookmark] : [])).some(b=>b.verseKey===verse.verse_key) ? 'currentColor' : 'none'} />
                             </button>
                         )}
                         {onPlannerBookmark && (
