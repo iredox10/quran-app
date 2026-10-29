@@ -78,10 +78,10 @@ export default function Profile() {
     const handleAuth = async (e) => {
         e.preventDefault(); setIsLoading(true); setAuthError(''); setAuthSuccess('');
         try {
-            if (authMode === 'register') { await authService.register(email, password, name); await authService.login(email, password); }
+            if (authMode === 'register') { await authService.register(email, password, name); }
             else if (authMode === 'forgot') {
-                await authService.sendPasswordRecovery(email, window.location.origin + '/profile');
-                setAuthSuccess('Recovery email sent. Check your inbox.');
+                const result = await authService.sendPasswordRecovery(email);
+                setAuthSuccess(result.message);
                 setIsLoading(false);
                 return;
             }

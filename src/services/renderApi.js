@@ -1,104 +1,52 @@
-/**
- * Render.com API backend — mirrors the exported surface of `appwrite.js` so
- * consumers can swap cleanly (see `backend.js` for the selector).
- *
- *  - auth: POST /auth/register | /auth/login | /auth/refresh (JWT HS256,
- *    persisted in localStorage — tokens only, never secrets)
- *  - sync: GET /v1/sync (pull) + PUT /v1/sync (push) with the EXACT same
- *    document field names appwrite.js serializes: { userId, stateData } where
- *    stateData is the JSON-stringified sync payload. Push keeps the Appwrite
- *    merge semantics: remote doc is fetched and merged via mergeStateInto so
- *    both devices' data survives.
- *  - realtime: Appwrite Realtime has no JWT equivalent here, so `client` is a
- *    polling shim with the same subscribe(channel, callback) signature.
- *    Emits { payload: { userId, updatedAt } } whenever the server-side sync
- *    doc timestamp changes: every POLL_INTERVAL_MS (<=60s per the contract's
- *    documented fallback) and immediately on visibilitychange.
- *
- * Endpoints are frozen in the Render backend contract:
- * quran-backend/docs/contract-auth-sync.md
- */
+/** Heroku API transport, app sessions, byte-preserving sync, and change polling. */
 import axios from 'axios';
 import { mergeStateInto } from '../utils/syncMerge';
-import { renderApiBaseUrl } from './apiConfig';
+import { apiBaseUrl } from './apiConfig';
 
-// Realtime shim: probe frequency (contract fallback interval is <=60s).
-const POLL_INTERVAL_MS = 30000;
-// Refresh the access token this many seconds before it expires.
-const TOKEN_EXPIRY_MARGIN_S = 30;
-
-export const databaseId = 'render_sync';
+export const databaseId = 'heroku';
 export const collectionId = 'user_sync';
-
-export const isRenderConfigured = !!renderApiBaseUrl;
-
-/* ─── Token persistence (localStorage; tokens are credentials, not secrets) ─── */
-
-export const TOKEN_KEYS = {
-    access: 'quran-nur.render.accessToken',
-    refresh: 'quran-nur.render.refreshToken',
-    user: 'quran-nur.render.user',
+export const isRenderConfigured = true;
+export const TOKEN_KEYS = Object.fromEntries(['access', 'refresh', 'user'].map(key => [key, `quran-nur.api.${apiBaseUrl}.${key}`]));
+let sessionVersion = 0;
+let refreshInFlight = null;
+const listeners = new Set();
+const stored = key => { try { return localStorage.getItem(key); } catch { return null; } };
+const readTokens = () => ({ access: stored(TOKEN_KEYS.access), refresh: stored(TOKEN_KEYS.refresh) });
+const readStoredUser = () => { try { return JSON.parse(stored(TOKEN_KEYS.user)); } catch { return null; } };
+export const normalizeUser = user => {
+    const id = user?.$id || user?.id || user?._id || user?.sub;
+    return id ? { $id: id, id, email: user.email ?? null, name: user.name ?? null } : null;
 };
-
-const readTokens = () => {
-    try {
-        return {
-            access: localStorage.getItem(TOKEN_KEYS.access) || null,
-            refresh: localStorage.getItem(TOKEN_KEYS.refresh) || null,
-        };
-    } catch {
-        return { access: null, refresh: null };
-    }
-};
-
+const notify = user => listeners.forEach(callback => { try { callback(user); } catch { console.warn('Authentication listener failed'); } });
 const clearTokens = () => {
-    try {
-        localStorage.removeItem(TOKEN_KEYS.access);
-        localStorage.removeItem(TOKEN_KEYS.refresh);
-        localStorage.removeItem(TOKEN_KEYS.user);
-    } catch { /* storage unavailable */ }
+    sessionVersion++;
+    for (const key of Object.values(TOKEN_KEYS)) { try { localStorage.removeItem(key); } catch { /* unavailable */ } }
+    notify(null);
 };
-
-const persistTokens = (accessToken, refreshToken, user) => {
-    try {
-        if (accessToken) localStorage.setItem(TOKEN_KEYS.access, accessToken);
-        if (refreshToken) localStorage.setItem(TOKEN_KEYS.refresh, refreshToken);
-        if (user) localStorage.setItem(TOKEN_KEYS.user, JSON.stringify(user));
-    } catch { /* storage unavailable */ }
+const persistSession = (data, expectedVersion) => {
+    const user = normalizeUser(data?.user);
+    if (!user || typeof data?.accessToken !== 'string' || !data.accessToken || typeof data?.refreshToken !== 'string' || !data.refreshToken) throw new Error('Incomplete authentication response');
+    if (expectedVersion !== sessionVersion) throw new Error('Session changed during sign-in');
+    localStorage.setItem(TOKEN_KEYS.access, data.accessToken);
+    localStorage.setItem(TOKEN_KEYS.refresh, data.refreshToken);
+    localStorage.setItem(TOKEN_KEYS.user, JSON.stringify(user));
+    notify(user);
+    return user;
 };
-
-const readStoredUser = () => {
-    try {
-        const raw = localStorage.getItem(TOKEN_KEYS.user);
-        return raw ? JSON.parse(raw) : null;
-    } catch {
-        return null;
+export class ApiError extends Error {
+    constructor(error) {
+        const code = error?.response?.data?.error;
+        const messages = { account_requires_recovery: 'This account already exists. Use Forgot password to verify your email.', email_exists: 'An account already exists for this email.', invalid_credentials: 'Check your email and password.', recovery_not_configured: 'Password recovery is temporarily unavailable.', audio_too_large: 'Voice notes must be smaller than 5 MB.', forbidden: 'You do not have access to this group.', assignment_claimed: 'Someone has already claimed this part.', unauthorized: 'Please sign in again.' };
+        super(messages[code] || code?.replaceAll('_', ' ') || (error?.response ? 'The request could not be completed.' : 'Unable to connect. Please try again.'));
+        this.code = code;
+        this.response = error?.response ? { status: error.response.status, data: { error: code } } : undefined;
     }
-};
-
-/* ─── Small pure helpers (also exercised by tests) ─── */
-
-// Appwrite models use `$id`; the Render contract returns `{ id }`. Normalize so
-// every `currentUser.$id` in the app keeps working regardless of backend.
-export const normalizeUser = (user) => {
-    if (!user) return null;
-    const id = user.$id || user.id || user._id || user.sub;
-    if (!id) return null;
-    return {
-        $id: id,
-        id,
-        email: user.email ?? null,
-        name: user.name ?? null,
-    };
-};
-
+}
+const publicHttp = axios.create({ baseURL: apiBaseUrl, timeout: 25000, headers: { Accept: 'application/json' } });
 const decodeBase64Url = (value) => {
     const base64 = value.replace(/-/g, '+').replace(/_/g, '/');
     const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
-    if (typeof atob === 'function') {
-        return atob(padded);
-    }
-    return Buffer.from(padded, 'base64').toString('utf8');
+    return atob(padded);
 };
 
 // Decode a JWT's payload claims ({ sub, typ, ... }) — never verify here; the
@@ -114,7 +62,7 @@ export const decodeJwtClaims = (token) => {
     }
 };
 
-const isAccessTokenUsable = (token, marginSeconds = TOKEN_EXPIRY_MARGIN_S) => {
+const isAccessTokenUsable = (token, marginSeconds = 30) => {
     if (!token) return false;
     const claims = decodeJwtClaims(token);
     if (!claims?.exp) return true; // opaque/non-JWT token: let the server decide via 401
@@ -157,260 +105,146 @@ export const parseSyncState = (doc) => {
     if (doc.state != null) {
         return typeof doc.state === 'string' ? JSON.parse(doc.state) : doc.state;
     }
+    if (doc.id && doc.updatedAt > 0) {
+        const metadata = new Set(['id','userId','stateData','state','updatedAt','createdAt','version']);
+        const legacy = Object.fromEntries(Object.entries(doc).filter(([key]) => !metadata.has(key) && !key.startsWith('_') && !key.startsWith('$')));
+        if (Object.keys(legacy).length) return legacy;
+    }
     return null;
 };
 
-/* ─── HTTP client with Bearer auth + single-flight 401 refresh retry ─── */
-
-export const http = axios.create({
-    baseURL: renderApiBaseUrl,
-    headers: { Accept: 'application/json' },
-});
-
-http.interceptors.request.use((config) => {
-    const { access } = readTokens();
-    if (access) config.headers.Authorization = `Bearer ${access}`;
-    return config;
-});
-
-let refreshInFlight = null;
 
 const refreshSession = () => {
     if (!refreshInFlight) {
-        refreshInFlight = authService.refresh().finally(() => {
-            refreshInFlight = null;
-        });
+        const expectedVersion = sessionVersion;
+        const token = readTokens().refresh;
+        refreshInFlight = (async () => {
+            if (!token) throw new Error('Please sign in again.');
+            try {
+                const { data } = await publicHttp.post('/auth/refresh', { refreshToken: token });
+                return persistSession(data, expectedVersion);
+            } catch (error) {
+                if (error?.response?.status === 401 && expectedVersion === sessionVersion) clearTokens();
+                throw error instanceof ApiError ? error : new ApiError(error);
+            }
+        })().finally(() => { refreshInFlight = null; });
     }
     return refreshInFlight;
 };
-
-http.interceptors.response.use(undefined, async (error) => {
+export const http = axios.create({ baseURL: apiBaseUrl, timeout: 25000, headers: { Accept: 'application/json' } });
+http.interceptors.request.use(config => {
+    const { access } = readTokens();
+    config.sessionVersion = sessionVersion;
+    if (access) config.headers.Authorization = `Bearer ${access}`;
+    return config;
+});
+http.interceptors.response.use(response => {
+    if (response.config.sessionVersion !== sessionVersion) throw new Error('Session changed during request');
+    return response;
+}, async error => {
     const { config, response } = error;
+    if (config && config.sessionVersion !== sessionVersion) throw new Error('Session changed during request');
     if (response?.status === 401 && config && !config.retriedAfterRefresh && readTokens().refresh) {
         config.retriedAfterRefresh = true;
-        try {
-            await refreshSession();
-        } catch {
-            return Promise.reject(error);
+        const latest = readTokens().access;
+        if (config.headers.Authorization === `Bearer ${latest}`) {
+            try { await refreshSession(); } catch { throw new ApiError(error); }
         }
-        const { access } = readTokens();
-        if (access) config.headers.Authorization = `Bearer ${access}`;
-        else delete config.headers.Authorization;
         return http(config);
     }
-    return Promise.reject(error);
+    throw new ApiError(error);
 });
-
-/* ─── Auth Service Actions (same shape as appwrite.js authService) ─── */
-
 export const authService = {
+    subscribe(callback) { listeners.add(callback); return () => listeners.delete(callback); },
     async getCurrentUser() {
         const tokens = readTokens();
         if (!tokens.access && !tokens.refresh) return null;
         if (isAccessTokenUsable(tokens.access)) return readStoredUser();
-        // Access token near/at expiry: rotate silently; a dead refresh token
-        // signs the local session out (Appwrite parity: invalid session → null).
-        try {
-            return await authService.refresh();
-        } catch {
-            return null;
-        }
+        try { return await refreshSession(); } catch { return readStoredUser(); }
     },
-
-    async refresh() {
-        const tokens = readTokens();
-        if (!tokens.refresh) throw new Error('RenderApi: no refresh token stored');
-        try {
-            const { data } = await axios.post(
-                `${renderApiBaseUrl}/auth/refresh`,
-                { refreshToken: tokens.refresh },
-                { headers: { Accept: 'application/json' } },
-            );
-            const user = normalizeUser(data?.user);
-            persistTokens(data?.accessToken, data?.refreshToken, user);
-            return user;
-        } catch (error) {
-            // Rotation failed → session is unusable; drop local credentials so
-            // getCurrentUser() reports signed-out on the next call.
-            clearTokens();
-            throw error;
-        }
-    },
-
+    refresh: refreshSession,
     async login(email, password) {
-        const { data } = await axios.post(
-            `${renderApiBaseUrl}/auth/login`,
-            { email, password },
-            { headers: { Accept: 'application/json' } },
-        );
-        const user = normalizeUser(data?.user);
-        persistTokens(data?.accessToken, data?.refreshToken, user);
-        return user;
+        const expected = ++sessionVersion;
+        try { const { data } = await publicHttp.post('/auth/login', { email: email.trim(), password }); return persistSession(data, expected); }
+        catch (error) { throw error instanceof ApiError ? error : new ApiError(error); }
     },
-
     async register(email, password, name) {
-        const { data } = await axios.post(
-            `${renderApiBaseUrl}/auth/register`,
-            { email, password, ...(name ? { name } : {}) },
-            { headers: { Accept: 'application/json' } },
-        );
-        const user = normalizeUser(data?.user);
-        persistTokens(data?.accessToken, data?.refreshToken, user);
-        return user;
+        const expected = ++sessionVersion;
+        try { const { data } = await publicHttp.post('/auth/register', { email: email.trim(), password, ...(name?.trim() ? { name: name.trim() } : {}) }); return persistSession(data, expected); }
+        catch (error) { throw error instanceof ApiError ? error : new ApiError(error); }
     },
-
-    // No recovery endpoint in the frozen contract yet — fail loudly instead of
-    // pretending it succeeded; the auth forms surface err.message.
-    async sendPasswordRecovery() {
-        throw new Error('Password recovery is handled by the account email on the Render backend (not yet available).');
+    async sendPasswordRecovery(email) {
+        try { return (await publicHttp.post('/auth/recovery', { email: email.trim() })).data; }
+        catch (error) { throw new ApiError(error); }
     },
-
-    // JWTs are stateless (no server session to delete): sign out locally only.
-    async logout() {
-        clearTokens();
-        return null;
-    },
+    async logout() { clearTokens(); },
 };
 
-/* ─── Sync Service (same document contract as appwrite.js) ─── */
-
+let syncQueue = Promise.resolve();
+const serialized = task => {
+    const version = sessionVersion;
+    const job = syncQueue.catch(() => {}).then(() => {
+        if (version !== sessionVersion) throw new Error('Session changed before sync');
+        return task();
+    });
+    syncQueue = job;
+    return job;
+};
+const ownDocument = (body, userId) => {
+    const doc = pickSyncDoc(body);
+    if (doc?.userId && doc.userId !== userId) throw new Error('Sync account mismatch');
+    return doc;
+};
+const requireOwner = userId => {
+    const user = readStoredUser();
+    if (!user || (userId && user.$id !== userId)) throw new Error('Sync account mismatch');
+    return user.$id;
+};
 export const syncService = {
-    async pullState() {
-        try {
-            const { data } = await http.get('/v1/sync');
-            const body = pickSyncDoc(data);
-            if (!body) return null;
-            const state = parseSyncState(body);
-            if (state == null) return null;
-            return {
-                state,
-                updatedAt: extractSyncUpdatedAt(data, body) ?? 0,
-            };
-        } catch (error) {
-            if (error?.response?.status === 404) return null; // no doc yet
-            console.error('RenderApi sync pull error:', error);
-            throw error;
-        }
-    },
-
-    async pushState(userId, stateData) {
-        try {
-            // Merge local into the existing cloud doc so both devices' data
-            // survives (identical to appwrite.js push semantics).
-            let mergedData = stateData;
-            let existingData = {};
-            try {
-                const { data } = await http.get('/v1/sync');
-                const body = pickSyncDoc(data);
-                if (body?.stateData != null) {
-                    existingData = parseSyncState(body) || {};
-                } else {
-                    existingData = {};
-                }
-            } catch (error) {
-                if (error?.response?.status !== 404) throw error;
-                // 404 = first push for this user; nothing to merge with.
-            }
-            mergedData = mergeStateInto(existingData, stateData);
-
-            const { data } = await http.put('/v1/sync', {
-                userId,
-                stateData: JSON.stringify(mergedData),
-            });
-            return {
-                updatedAt: parseTimestamp(data?.lastSyncAt ?? data?.updatedAt) ?? Date.now(),
-            };
-        } catch (error) {
-            console.error('RenderApi sync push error:', error);
-            throw error;
-        }
-    },
+    pullState(userId) { return serialized(async () => {
+        const owner = requireOwner(userId);
+        const { data } = await http.get('/v1/sync');
+        const body = ownDocument(data, owner), state = parseSyncState(body);
+        if (state == null) return null;
+        const updatedAt = extractSyncUpdatedAt(data, body);
+        if (!Number.isFinite(updatedAt) || updatedAt <= 0) throw new Error('Missing sync timestamp');
+        return { state, updatedAt };
+    }); },
+    pushState(userId, stateData) { return serialized(async () => {
+        const owner = requireOwner(userId);
+        const { data: previous } = await http.get('/v1/sync');
+        const remote = parseSyncState(ownDocument(previous, owner)) || {};
+        const merged = mergeStateInto(remote, stateData);
+        const { data } = await http.put('/v1/sync', { userId: owner, stateData: JSON.stringify(merged) });
+        if (data?.userId !== owner) throw new Error('Sync account mismatch');
+        const updatedAt = parseTimestamp(data?.updatedAt);
+        if (!Number.isFinite(updatedAt) || updatedAt <= 0) throw new Error('Missing sync timestamp');
+        return { updatedAt };
+    }); },
 };
 
-/* ─── Realtime replacement: polling shim with client.subscribe signature ─── */
-
+/** One non-overlapping poll loop per subscription, with immediate resume checks. */
 export const client = {
-    /**
-     * Poll-for-change subscription, signature-compatible with Appwrite Realtime
-     * (`client.subscribe(channel, (response) => ...)` → `response.payload`).
-     * Emits `{ payload: { userId, updatedAt } }` only when the server-side
-     * sync timestamp CHANGES (first observation is the baseline — CloudSync
-     * already performs the initial pull at attach time). The channel string is
-     * accepted for signature parity; there is exactly one sync doc per user.
-     * Returns an unsubscribe function.
-     */
-    subscribe(channel, callback) {
-        if (typeof callback !== 'function') return () => {};
-        let stopped = false;
-        let timerId = null;
-        let lastUpdatedAt = null;
-
-        const stopPolling = () => {
-            if (timerId) clearTimeout(timerId);
-            timerId = null;
+    subscribe(_channel, callback) {
+        let stopped = false, timer = null, pending = null, last = null;
+        const owner = readStoredUser()?.$id;
+        const poll = () => {
+            if (stopped || pending || !owner || readStoredUser()?.$id !== owner) return pending;
+            pending = (async () => {
+                try {
+                    const { data } = await http.get('/v1/sync');
+                    if (stopped || readStoredUser()?.$id !== owner) return;
+                    const doc = ownDocument(data, owner), stamp = extractSyncUpdatedAt(data, doc);
+                    if (last !== null && stamp !== last) callback({ payload: { userId: owner, updatedAt: stamp } });
+                    last = stamp;
+                } catch { /* Offline requests retry on the next interval or focus. */ }
+            })().finally(() => { pending = null; });
+            return pending;
         };
-
-        const pollOnce = async () => {
-            if (stopped) return;
-            const tokens = readTokens();
-            if (!tokens.access && !tokens.refresh) return; // signed out — nothing to poll
-            try {
-                const { data } = await http.get('/v1/sync');
-                if (stopped) return;
-                const body = pickSyncDoc(data);
-                const userId = body?.userId;
-                const updatedAt = extractSyncUpdatedAt(data, body);
-                if (updatedAt == null) return;
-                if (lastUpdatedAt === null) {
-                    lastUpdatedAt = updatedAt; // baseline; do not emit
-                    return;
-                }
-                // A missing userId would be dropped by CloudSync's own filter,
-                // so only emit payloads we know belong to a document.
-                if (updatedAt !== lastUpdatedAt && userId != null) {
-                    lastUpdatedAt = updatedAt;
-                    callback({ payload: { userId, updatedAt } });
-                }
-            } catch (error) {
-                if (error?.response?.status === 401) {
-                    // The interceptor already attempted a refresh; a persisting
-                    // 401 means the refresh token is dead → stop polling
-                    // silently (CloudSync re-attaches after next login).
-                    stopPolling();
-                    return;
-                }
-                // Steady-state failures (offline, server cold start) are not
-                // fatal — visibilitychange + the next tick will retry.
-            }
-        };
-
-        const scheduleNext = () => {
-            if (stopped) return;
-            timerId = setTimeout(async () => {
-                await pollOnce();
-                scheduleNext();
-            }, POLL_INTERVAL_MS);
-        };
-
-        const onVisibility = () => {
-            if (stopped) return;
-            if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
-                // Immediate check on resume, matching the contract's poll fallback.
-                pollOnce();
-            }
-        };
-
-        document.addEventListener('visibilitychange', onVisibility);
-        // Immediate first check to establish the baseline (no emit on first observation).
-        (async () => {
-            await pollOnce();
-            scheduleNext();
-        })();
-
-        return () => {
-            stopped = true;
-            stopPolling();
-            document.removeEventListener('visibilitychange', onVisibility);
-        };
+        const tick = async () => { await poll(); if (!stopped) timer = setTimeout(tick, 30000); };
+        const visibility = () => { if (document.visibilityState === 'visible') poll(); };
+        document.addEventListener('visibilitychange', visibility);
+        tick();
+        return () => { stopped = true; clearTimeout(timer); document.removeEventListener('visibilitychange', visibility); };
     },
 };

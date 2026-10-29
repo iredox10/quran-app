@@ -25,39 +25,16 @@ describe('apiConfig.parseBooleanFlag', () => {
     });
 });
 
-describe('backend selector (VITE_USE_RENDER_API)', () => {
-    beforeEach(() => {
-        vi.resetModules();
-    });
-    afterEach(() => {
-        vi.unstubAllEnvs();
-    });
-
-    it('defaults OFF → auth/sync/realtime come from appwrite.js (byte-identical behavior)', async () => {
+describe('Heroku backend selection', () => {
+    beforeEach(() => vi.resetModules());
+    afterEach(() => vi.unstubAllEnvs());
+    it('uses Heroku even when the retired Render flag is false', async () => {
         vi.stubEnv('VITE_USE_RENDER_API', 'false');
         const backend = await import('./backend');
-        const appwrite = await import('./appwrite');
-        expect(backend.cloudBackendId).toBe('appwrite');
-        expect(backend.authService).toBe(appwrite.authService);
-        expect(backend.syncService).toBe(appwrite.syncService);
-        expect(backend.client).toBe(appwrite.client);
-        expect(backend.databaseId).toBe(appwrite.databaseId);
-        expect(backend.collectionId).toBe(appwrite.collectionId);
-    });
-
-    it('VITE_USE_RENDER_API=true swaps the same surface to renderApi.js', async () => {
-        vi.stubEnv('VITE_USE_RENDER_API', 'true');
-        const backend = await import('./backend');
-        const renderApi = await import('./renderApi');
-        const appwrite = await import('./appwrite');
-        expect(backend.cloudBackendId).toBe('render');
-        expect(backend.authService).toBe(renderApi.authService);
-        expect(backend.syncService).toBe(renderApi.syncService);
-        expect(backend.client).toBe(renderApi.client);
-        // Import parity is preserved even where the values differ.
-        expect(backend.databaseId).not.toBe(appwrite.databaseId);
-        expect(backend.databaseId).toBe(renderApi.databaseId);
-        expect(backend.collectionId).toBe(renderApi.collectionId);
+        const api = await import('./renderApi');
+        expect(backend.cloudBackendId).toBe('heroku');
+        expect(backend.authService).toBe(api.authService);
+        expect(backend.syncService).toBe(api.syncService);
     });
 });
 
@@ -125,8 +102,8 @@ describe('renderApi sync doc envelope tolerance', () => {
     });
 
     it('token keys are namespaced away from Appwrite values', () => {
-        expect(TOKEN_KEYS.access).toContain('quran-nur.render.');
-        expect(TOKEN_KEYS.refresh).toContain('quran-nur.render.');
-        expect(TOKEN_KEYS.user).toContain('quran-nur.render.');
+        expect(TOKEN_KEYS.access).toContain('quran-nur.api.');
+        expect(TOKEN_KEYS.refresh).toContain('quran-nur.api.');
+        expect(TOKEN_KEYS.user).toContain('quran-nur.api.');
     });
 });

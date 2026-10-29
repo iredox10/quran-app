@@ -1,9 +1,14 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
+import process from 'node:process'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), 'VITE_')
+  const apiOrigin = new URL(env.VITE_API_BASE_URL || 'https://qurannur-backend-d7d7312f118d.herokuapp.com').origin
+  const escapedOrigin = apiOrigin.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return ({
   plugins: [
     tailwindcss(),
     react(),
@@ -45,16 +50,16 @@ export default defineConfig({
         navigateFallback: '/index.html',
         runtimeCaching: [
           {
-            urlPattern: ({ url }) => url.origin === 'https://api.quran.com',
+            urlPattern: new RegExp(`^${escapedOrigin}/v1/(?:chapters|verses|pages|tafsir|packs|reciters|juzs|footnotes|chapter-audio)(?:/|[?]|$)`),
             handler: 'CacheFirst',
             options: {
-              cacheName: 'quran-api-cache',
+              cacheName: 'quran-heroku-content-v1',
               expiration: {
                 maxEntries: 2000,
                 maxAgeSeconds: 60 * 60 * 24 * 60,
               },
               cacheableResponse: {
-                statuses: [0, 200],
+                statuses: [200],
               },
             },
           },
@@ -132,4 +137,5 @@ export default defineConfig({
       }
     })
   ],
+  })
 })

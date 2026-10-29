@@ -31,28 +31,22 @@ describe('quranApi.mapRenderContentPath (frozen /v1 content endpoints)', () => {
         vi.unstubAllEnvs();
     });
 
-    it('flag off (default) → never remaps, quran.com paths stay byte-identical', async () => {
+    it('maps all web content paths to Heroku, including pages and metadata', async () => {
         vi.stubEnv('VITE_USE_RENDER_API', 'false');
-        const { useRenderApi, mapRenderContentPath } = await loadMapper();
-        expect(useRenderApi).toBe(false);
-        expect(mapRenderContentPath('/chapters')).toBeNull();
-        expect(mapRenderContentPath('/verses/by_chapter/2')).toBeNull();
-        expect(mapRenderContentPath('/tafsirs/169/by_chapter/36')).toBeNull();
-    });
-
-    it('flag on → remaps exactly the frozen contract endpoints, leaves the rest alone', async () => {
-        vi.stubEnv('VITE_USE_RENDER_API', 'true');
         const { useRenderApi, mapRenderContentPath } = await loadMapper();
         expect(useRenderApi).toBe(true);
         expect(mapRenderContentPath('/chapters')).toBe('/v1/chapters');
         expect(mapRenderContentPath('/verses/by_chapter/2')).toBe('/v1/verses/2');
-        expect(mapRenderContentPath('/tafsirs/169/by_chapter/36')).toBe('/v1/tafsir/169/by_chapter/36');
+        expect(mapRenderContentPath('/verses/by_page/1')).toBe('/v1/pages/1');
         expect(mapRenderContentPath('/tafsirs/169/by_page/241')).toBe('/v1/tafsir/169/by_page/241');
-        // Not in contract-content.md → intentionally untouched (stays on quran.com).
-        expect(mapRenderContentPath('/verses/by_page/1')).toBeNull();
-        expect(mapRenderContentPath('/quran/verses/uthmani_tajweed')).toBeNull();
-        expect(mapRenderContentPath('/juzs')).toBeNull();
-        expect(mapRenderContentPath('/foot_notes/15')).toBeNull();
-        expect(mapRenderContentPath('/chapter_recitations/7/2')).toBeNull();
+        expect(mapRenderContentPath('/juzs')).toBe('/v1/juzs');
+        expect(mapRenderContentPath('/foot_notes/15')).toBe('/v1/footnotes/15');
+        expect(mapRenderContentPath('/chapter_recitations/7/2')).toBe('/v1/chapter-audio/7/2');
+        expect(() => mapRenderContentPath('/unknown')).toThrow('Unsupported');
+    });
+    it('sends the selected edition using the backend query contract', async () => {
+        const { backendContentParams } = await import('./quranApi');
+        expect(backendContentParams({ translations: 85, words: true, mushaf: 19, page: 2, per_page: 50, audio: 7 }))
+            .toEqual({ translation: 85, words: 1, mushaf: 19, page: 2, per_page: 50, tajweed: 1 });
     });
 });

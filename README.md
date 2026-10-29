@@ -17,7 +17,7 @@
 
 **Quran Nur** is a modern, premium, Progressive Web Application (PWA) designed to provide the most beautiful and seamless Quran reading experience on the web. It aims to help Muslims worldwide build and track their daily Quran reading habits with elegant design and rich features.
 
-Built with **React**, **Tailwind CSS**, and **Appwrite**, the app works fully offline and syncs across your devices seamlessly.
+Built with **React**, **Tailwind CSS**, and **Heroku Postgres**, the app works fully offline and syncs across your devices seamlessly.
 
 ---
 
@@ -30,7 +30,7 @@ Built with **React**, **Tailwind CSS**, and **Appwrite**, the app works fully of
 - 📶 **Fully Offline Mode:** Download chapters, pages, and audio packs for reliable reading without internet.
 - 🗓️ **Personalized Planners:** Set your reading goals (e.g., read the whole Quran in 30 days) and track daily progress.
 - 👥 **Group Reading (Sauka):** Create or join groups to distribute reading parts (Juz) among friends or community members.
-- ☁️ **Cross-Device Sync:** Seamlessly sync your bookmarks, plans, and progress across all your devices using Appwrite.
+- ☁️ **Cross-Device Sync:** Seamlessly sync your bookmarks, plans, and progress across all your devices using the Heroku API.
 
 ---
 
@@ -38,7 +38,7 @@ Built with **React**, **Tailwind CSS**, and **Appwrite**, the app works fully of
 
 - **Frontend:** React 18, Vite, React Router, Zustand (State Management), React Query, Framer Motion
 - **Styling:** Tailwind CSS, PostCSS
-- **Backend & Auth:** Appwrite
+- **Backend & Auth:** Hono/TypeScript on Heroku with Heroku Postgres
 - **Data Source:** Quran.com API
 
 ---
@@ -50,7 +50,7 @@ Want to run the app locally and contribute? It's easy!
 ### Prerequisites
 - [Node.js](https://nodejs.org/) (v18 or higher)
 - [Bun](https://bun.sh/) (Optional but recommended for faster installs)
-- An [Appwrite](https://appwrite.io/) account (if you want to test cloud sync features)
+- Access to the Quran Nur API, or a local copy of the companion `quran-backend` project
 
 ### 1. Clone the repository
 ```bash
@@ -70,28 +70,21 @@ Duplicate the `.env.example` file and rename it to `.env`:
 ```bash
 cp .env.example .env
 ```
-*(You can leave the default Appwrite URL for testing, or set up your own Appwrite project if you are working on the backend features).*
+The browser uses the deployed Heroku API by default. `.env.production` contains
+only the public API origin:
 
-**Optional — Render.com backend:** the app can also run against the self-hosted Render API (`https://quran-nur-api.onrender.com`) instead of Appwrite for auth, cloud sync and realtime notifications. This is opt-in and **off by default**:
-
-```bash
-# .env
-VITE_USE_RENDER_API=true                          # default: false (Appwrite)
-VITE_API_BASE_URL=https://quran-nur-api.onrender.com  # default shown
+```env
+VITE_API_BASE_URL=https://qurannur-backend-d7d7312f118d.herokuapp.com
 ```
 
-When the flag is on, tokens are persisted in `localStorage`, sync docs keep the exact same field names (`userId`, `stateData`), realtime is replaced by a light polling subscription (≤60 s + immediate refresh when the tab becomes visible), and the frozen `/v1` content endpoints are served from Render while offline packs, service-worker caching and CDN-direct audio (everyayah) stay untouched. When the flag is off, behavior is identical to the Appwrite setup.
+Appwrite is no longer used for browser authentication, sync, group documents,
+realtime subscriptions, or voice-note storage. Its existing static-site hosting
+can remain in place. The retired `VITE_USE_RENDER_API` switch is ignored;
+there is no silent fallback to the old data service. Server/admin keys must
+never be put in `VITE_*` settings.
 
-### 4. Start the development server
-```bash
-bun run dev
-# or
-npm run dev
-```
-
-Open [http://localhost:5173](http://localhost:5173) in your browser.
-
----
+See [docs/heroku-cutover.md](docs/heroku-cutover.md) for deployment, migration,
+validation, and session behavior.
 
 ## 🤝 Contributing
 

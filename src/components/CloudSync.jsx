@@ -18,11 +18,10 @@ export default function CloudSync() {
     const pullInFlight = useRef(Promise.resolve());
     const retryTimers = useRef([]);
     const pushAfterPull = useRef(false);
-    const disposed = useRef(false);
     const realtimeUnsub = useRef(() => {});
 
     useEffect(() => {
-        disposed.current = false;
+        let disposed = false;
         const { setSyncStatus } = useAppStore.getState();
 
         const delay = (ms) => new Promise((resolve) => {
@@ -31,13 +30,14 @@ export default function CloudSync() {
         });
 
         const runPush = async (getFreshPayloadFn) => {
+            const intendedUserId = useAppStore.getState().currentUser?.$id;
             const delays = [0, 5000, 20000];
             let lastError = null;
             for (let attempt = 0; attempt < delays.length; attempt++) {
                 if (attempt > 0) await delay(delays[attempt]);
-                if (disposed.current) return false;
+                if (disposed) return false;
                 const user = useAppStore.getState().currentUser;
-                if (!user) return false;
+                if (!user || user.$id !== intendedUserId) return false;
 
                 let payload;
                 try {
@@ -52,6 +52,7 @@ export default function CloudSync() {
                 try {
                     setSyncStatus('pushing');
                     const result = await syncService.pushState(user.$id, payload);
+                    if (disposed || useAppStore.getState().currentUser?.$id !== intendedUserId) return false;
                     useAppStore.setState({ lastSyncAt: result.updatedAt });
                     localStorage.removeItem(PENDING_MARKER);
                     setSyncStatus('idle');
@@ -101,15 +102,16 @@ export default function CloudSync() {
                 remoteData = await syncService.pullState(user.$id);
                 const localLastSyncAt = useAppStore.getState().lastSyncAt || 0;
 
+                if (disposed || useAppStore.getState().currentUser?.$id !== user.$id) return;
                 if (remoteData && remoteData.state && remoteData.updatedAt > localLastSyncAt) {
                     const mergedState = mergeStateInto(useAppStore.getState(), remoteData.state);
                     useAppStore.setState({ ...mergedState, lastSyncAt: remoteData.updatedAt });
                     merged = true;
-                    console.log('Successfully pulled remote state from Appwrite');
+                    console.log('Successfully pulled remote state from the backend');
                 }
                 setSyncStatus('idle');
             } catch (error) {
-                console.error('Failed to pull state from Appwrite', error);
+                console.error('Failed to pull state from the backend', error);
                 setSyncStatus('error', String(error?.message || error));
             } finally {
                 isPulling.current = false;
@@ -153,6 +155,7 @@ export default function CloudSync() {
         };
         const attachRealtime = (user) => {
             if (!user) return;
+            detachRealtime();
             currentUser = user;
             try {
                 const channel = `databases.${databaseId}.collections.${collectionId}.documents`;
@@ -167,18 +170,20 @@ export default function CloudSync() {
                     }, 1500);
                 });
             } catch (error) {
-                console.error('Appwrite realtime subscribe failed (falling back to visibility refresh)', error);
+                console.error('Backend change subscription failed (falling back to visibility refresh)', error);
                 realtimeUnsub.current = () => {};
             }
         };
 
         const initializeSync = async () => {
             try {
-                // 1. Get current logged in user from Appwrite
+                // 1. Get current logged in user from the backend
                 const user = await authService.getCurrentUser();
+                if (disposed) return;
+                const previousUserId = useAppStore.getState().currentUser?.$id;
                 useAppStore.getState().setCurrentUser(user);
 
-                if (user) {
+                if (user && previousUserId === user.$id) {
                     // 2. Initial Pull (already authenticated at app start)
                     pullInFlight.current = pullInFlight.current
                         .then(() => performPull(user))
@@ -200,6 +205,9 @@ export default function CloudSync() {
         };
         document.addEventListener('visibilitychange', handleVisibility);
 
+        const unsubscribeAuth = authService.subscribe(user => {
+            if (!disposed) useAppStore.getState().setCurrentUser(user);
+        });
         initializeSync();
 
         // 3. Pull whenever the user logs in (null -> user transition), so a
@@ -231,7 +239,7 @@ export default function CloudSync() {
             const currentStr = JSON.stringify(currentCompare);
 
             if (prevStr !== currentStr) {
-                // Debounce the push step to prevent hammering the Appwrite DB
+                // Debounce the push step to prevent hammering backend API
                 if (pushTimeout.current) clearTimeout(pushTimeout.current);
 
                 pushTimeout.current = setTimeout(() => {
@@ -246,7 +254,8 @@ export default function CloudSync() {
         window.addEventListener('online', handleOnline);
 
         return () => {
-            disposed.current = true;
+            disposed = true;
+            unsubscribeAuth();
             unsubscribeUser();
             unsubscribe();
             detachRealtime();

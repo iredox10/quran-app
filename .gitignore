@@ -29,3 +29,7 @@ dist-ssr
 
 # Vite PWA dev build output
 dev-dist
+
+.env.*
+!.env.example
+!.env.production

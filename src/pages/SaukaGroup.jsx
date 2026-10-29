@@ -1,13 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useParams, useNavigate } from 'react-router-dom';
-import { saukaService, ASSIGNMENTS_COLLECTION, COMMENTS_COLLECTION } from '../services/saukaService';
+import { saukaService } from '../services/saukaService';
 import { JUZ_STARTS, HIZB_STARTS } from '../data/quranNavigation';
-import { client, databaseId, storage, audioBucketId } from '../services/appwrite';
 import { useAppStore } from '../store/useAppStore';
 import { Loader2, ArrowLeft, ArrowRight, CheckCircle2, Clock, Share2, Copy, BookOpen, Trash2, MessageSquare, UserPlus, Users, Mic, Square, X, Check, CheckCheck } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { ID } from 'appwrite';
 import { getVersesByPage } from '../services/api/quranApi';
 
 export default function SaukaGroup() {
@@ -78,7 +76,7 @@ export default function SaukaGroup() {
             const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
             mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
 
-            const fileId = ID.unique();
+            const fileId = crypto.randomUUID();
             const ext = mimeType.includes('mp4') ? 'mp4' : mimeType.includes('ogg') ? 'ogg' : 'webm';
             const file = new File([audioBlob], `voice_note_${fileId}.${ext}`, { type: mimeType });
             
@@ -100,10 +98,11 @@ export default function SaukaGroup() {
 
             try {
                 // Background upload without blocking UI
-                const uploadedFile = await storage.createFile(audioBucketId, fileId, file);
-                const audioUrl = storage.getFileView(audioBucketId, uploadedFile.$id);
+                const audioUrl = await saukaService.uploadAudio(groupId, file);
                 
                 await saukaService.addComment(groupId, '🎤 Voice Note', audioUrl);
+                URL.revokeObjectURL(localUrl);
+                await loadData(true);
                 // The realtime subscription will fetch the true database record and replace tempComment!
             } catch (e) {
                 console.error(e);
@@ -129,21 +128,7 @@ export default function SaukaGroup() {
     useEffect(() => {
         loadData();
 
-        const unsubscribe = client.subscribe(
-            [
-                `databases.${databaseId}.collections.${ASSIGNMENTS_COLLECTION}.documents`,
-                `databases.${databaseId}.collections.${COMMENTS_COLLECTION}.documents`
-            ],
-            (response) => {
-                if (
-                    response.events.includes('databases.*.collections.*.documents.*.update') ||
-                    response.events.includes('databases.*.collections.*.documents.*.create') ||
-                    response.events.includes('databases.*.collections.*.documents.*.delete')
-                ) {
-                    loadData(true); // silent reload
-                }
-            }
-        );
+        const unsubscribe = saukaService.subscribe(groupId, () => loadData(true));
 
         return () => unsubscribe();
     }, [groupId]);
@@ -155,6 +140,10 @@ export default function SaukaGroup() {
                 saukaService.getGroup(groupId),
                 saukaService.getComments(groupId)
             ]);
+            if (result.group.isPublic && !result.group.members?.includes(result.userId)) {
+                await saukaService.joinPublic(groupId);
+                result.group.members = [...(result.group.members || []), result.userId];
+            }
             setData(result);
             setNavHeaderTitle(result.group.title);
             setComments(commentsData);
@@ -532,7 +521,7 @@ export default function SaukaGroup() {
                                         onClick={async () => {
                                             if (!(await useAppStore.getState().confirm("This will archive current progress and start a fresh round. Continue?"))) return;
                                             try {
-                                                await saukaService.startNextRound(id);
+                                                await saukaService.startNextRound(groupId);
                                                 loadData();
                                             } catch (e) { alert("Failed to start next round: " + e.message); }
                                         }}
@@ -553,7 +542,7 @@ export default function SaukaGroup() {
                             onClick={async () => {
                                 if (!(await useAppStore.getState().confirm("This will randomly assign all remaining unclaimed parts to members of this group. Are you sure?"))) return;
                                 try {
-                                    await saukaService.autoAssignRemaining(id);
+                                    await saukaService.autoAssignRemaining(groupId);
                                     loadData();
                                 } catch (e) { alert("Failed to auto-assign: " + e.message); }
                             }}
@@ -640,9 +629,9 @@ export default function SaukaGroup() {
                                                 {c.text}
                                             </p>
                                             
-                                            {c.audioUrl && (
+                                            {(c.audioId || c.audioUrl) && (
                                                 <div className="mt-1 mb-4">
-                                                    <audio controls src={c.audioUrl} className={`h-11 w-full min-w-[220px] sm:min-w-[260px] rounded-full ${isMe ? 'opacity-90' : 'opacity-80'}`} />
+                                                    <GroupAudio audioId={c.audioId} legacyUrl={c.audioUrl} className={`h-11 w-full min-w-[220px] sm:min-w-[260px] rounded-full ${isMe ? 'opacity-90' : 'opacity-80'}`} />
                                                 </div>
                                             )}
                                             
@@ -879,4 +868,19 @@ export default function SaukaGroup() {
             </AnimatePresence>
         </div>
     );
+}
+
+/** Authenticated voice-note reads never put bearer credentials in media URLs. */
+function GroupAudio({ audioId, legacyUrl, className }) {
+    const [src, setSrc] = useState(null);
+    useEffect(() => {
+        let active = true, objectUrl = null;
+        if (!audioId) return;
+        saukaService.audioBlob(audioId).then(blob => {
+            if (active) { objectUrl = URL.createObjectURL(blob); setSrc(objectUrl); }
+        }).catch(() => { if (active) setSrc(null); });
+        return () => { active = false; if (objectUrl) URL.revokeObjectURL(objectUrl); };
+    }, [audioId]);
+    if (!src && !legacyUrl?.startsWith('blob:')) return <span className="text-xs">Audio unavailable</span>;
+    return <audio controls src={src || legacyUrl} className={className} />;
 }

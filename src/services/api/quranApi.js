@@ -1,49 +1,32 @@
 import axios from 'axios';
+import { buildReciterUrl } from '../../utils/audioUrl';
 import { getMushafById } from '../../config/mushaf';
 import { getOfflineCacheData, setOfflineCacheEntry } from '../../utils/offlineCache';
-import { useRenderApi, renderApiBaseUrl } from '../apiConfig';
+import { renderApiBaseUrl } from '../apiConfig';
 
-const api = axios.create({
-  baseURL: 'https://api.quran.com/api/v4',
-  headers: {
-    Accept: 'application/json',
-  },
-});
-
-// Render /v1 content surface (only the endpoints frozen in the contract get
-// remapped when VITE_USE_RENDER_API is on; everything else — tajweed verse
-// dumps, juzs, footnotes, chapter recitations, page verses — keeps coming from
-// quran.com so behavior doesn't regress. Audio bytes are CDN-direct either way.)
-const renderApiHttp = axios.create({
-  baseURL: renderApiBaseUrl,
-  headers: {
-    Accept: 'application/json',
-  },
-});
-
-// quran.com v4 → Render /v1 mapping (quran-backend/docs/contract-content.md)
-const RENDER_PATH_MAP = [
+const api = axios.create({ baseURL: renderApiBaseUrl, timeout: 25000, headers: { Accept: 'application/json' } });
+const PATH_MAP = [
   [/^\/chapters$/, () => '/v1/chapters'],
-  [/^\/verses\/by_chapter\/([^/]+)$/, (m) => `/v1/verses/${m[1]}`],
-  [/^\/tafsirs\/([^/]+)\/by_chapter\/([^/]+)$/, (m) => `/v1/tafsir/${m[1]}/by_chapter/${m[2]}`],
-  [/^\/tafsirs\/([^/]+)\/by_page\/([^/]+)$/, (m) => `/v1/tafsir/${m[1]}/by_page/${m[2]}`],
+  [/^\/verses\/by_chapter\/([^/]+)$/, m => `/v1/verses/${m[1]}`],
+  [/^\/verses\/by_page\/([^/]+)$/, m => `/v1/pages/${m[1]}`],
+  [/^\/tafsirs\/([^/]+)\/by_chapter\/([^/]+)$/, m => `/v1/tafsir/${m[1]}/by_chapter/${m[2]}`],
+  [/^\/tafsirs\/([^/]+)\/by_page\/([^/]+)$/, m => `/v1/tafsir/${m[1]}/by_page/${m[2]}`],
+  [/^\/foot_notes\/([^/]+)$/, m => `/v1/footnotes/${m[1]}`],
+  [/^\/chapter_recitations\/([^/]+)\/([^/]+)$/, m => `/v1/chapter-audio/${m[1]}/${m[2]}`],
+  [/^\/juzs$/, () => '/v1/juzs'],
 ];
-
-export const mapRenderContentPath = (path) => {
-  if (!useRenderApi) return null;
-  for (const [pattern, build] of RENDER_PATH_MAP) {
-    const match = path.match(pattern);
-    if (match) return build(match);
-  }
-  return null;
+export const mapRenderContentPath = path => {
+  for (const [pattern, build] of PATH_MAP) { const match = path.match(pattern); if (match) return build(match); }
+  throw new Error(`Unsupported content endpoint: ${path}`);
 };
-
-const pickTransport = (path) => {
-  const renderPath = mapRenderContentPath(path);
-  return renderPath
-    ? { client: renderApiHttp, path: renderPath }
-    : { client: api, path };
-};
+export const backendContentParams = (params = {}) => ({
+  ...(params.translations != null ? { translation: params.translations } : {}),
+  ...(params.mushaf != null ? { mushaf: params.mushaf } : {}),
+  ...(params.page != null ? { page: params.page } : {}),
+  ...(params.per_page != null ? { per_page: params.per_page } : {}),
+  ...(params.words != null ? { words: params.words ? 1 : 0 } : {}),
+  tajweed: 1,
+});
 
 const buildCacheKey = (path, params = {}) => {
   const normalizedParams = Object.entries(params)
@@ -58,8 +41,7 @@ const fetchWithOfflineCache = async (path, params = {}) => {
   const cacheKey = buildCacheKey(path, params);
 
   try {
-    const { client: apiClient, path: requestPath } = pickTransport(path);
-    const { data } = await apiClient.get(requestPath, { params });
+    const { data } = await api.get(mapRenderContentPath(path), { params: backendContentParams(params) });
     await setOfflineCacheEntry(cacheKey, data);
     return data;
   } catch (error) {
@@ -106,29 +88,11 @@ export const getChapters = async () => {
   return data.chapters;
 };
 
-export const getChapter = async (id) => {
-  // The Render contract has no single-chapter endpoint; reuse the frozen
-  // /v1/chapters list (its cache is shared) and pick the id from it.
-  if (useRenderApi) {
-    const chapters = await getChapters();
-    const chapter = chapters.find((c) => String(c.id) === String(id));
-    if (chapter) return chapter;
-    throw new Error(`Chapter ${id} not found`);
-  }
-  try {
-    const data = await fetchWithOfflineCache(`/chapters/${id}`, { language: 'en' });
-    return data.chapter;
-  } catch (error) {
-    // If individual chapter fetch fails (e.g. offline and not cached), fallback to the full chapters list
-    try {
-      const chapters = await getChapters();
-      const chapter = chapters.find((c) => String(c.id) === String(id));
-      if (chapter) return chapter;
-    } catch (e) {
-      // ignore nested error
-    }
-    throw error;
-  }
+export const getChapter = async id => {
+  const chapters = await getChapters();
+  const chapter = chapters.find(row => String(row.id) === String(id));
+  if (!chapter) throw new Error(`Chapter ${id} not found`);
+  return chapter;
 };
 
 export const getVerses = async (chapterId, translationId = 85, reciterId = 7, page = 1, mushafId = 'madani-standard', perPage = 50) => {
@@ -147,12 +111,9 @@ export const getVerses = async (chapterId, translationId = 85, reciterId = 7, pa
   };
   const data = await fetchWithOfflineCache(`/verses/by_chapter/${chapterId}`, params);
   
-  if (isEveryAyah) {
+  {
       data.verses.forEach(v => {
-          const [chapter, ayah] = v.verse_key.split(':');
-          const chapterStr = String(chapter).padStart(3, '0');
-          const ayahStr = String(ayah).padStart(3, '0');
-          v.audio = { url: `https://everyayah.com/data/${reciterId}/${chapterStr}${ayahStr}.mp3` };
+          v.audio = { url: buildReciterUrl(reciterId, v.verse_key) };
       });
   }
 
@@ -177,12 +138,9 @@ export const getVersesByPage = async (pageNumber, translationId = 85, reciterId 
   };
   const data = await fetchWithOfflineCache(`/verses/by_page/${pageNumber}`, params);
   
-  if (isEveryAyah) {
+  {
       data.verses.forEach(v => {
-          const [chapter, ayah] = v.verse_key.split(':');
-          const chapterStr = String(chapter).padStart(3, '0');
-          const ayahStr = String(ayah).padStart(3, '0');
-          v.audio = { url: `https://everyayah.com/data/${reciterId}/${chapterStr}${ayahStr}.mp3` };
+          v.audio = { url: buildReciterUrl(reciterId, v.verse_key) };
       });
   }
 
@@ -194,6 +152,7 @@ export const getVersesByPage = async (pageNumber, translationId = 85, reciterId 
 
 
 export const getChapterAudio = async (chapterId, reciterId = 7) => {
+  if (typeof reciterId === 'string') return null;
   const data = await fetchWithOfflineCache(`/chapter_recitations/${reciterId}/${chapterId}`);
   return data.audio_file;
 };
@@ -208,14 +167,13 @@ export const getPageTafsirs = async (pageNumber, tafsirId = 169) => {
   return data.tafsirs;
 };
 
-export const getTajweedVerses = async (chapterId) => {
-  const data = await fetchWithOfflineCache('/quran/verses/uthmani_tajweed', { chapter_number: chapterId });
-  return data.verses; // Array of { id, verse_key, text_uthmani_tajweed }
+export const getTajweedVerses = async chapterId => {
+  const result = await getVerses(chapterId, 20, 7, 1, 'madani-standard', 300);
+  return result.verses;
 };
-
-export const getTajweedVersesByPage = async (pageNumber) => {
-  const data = await fetchWithOfflineCache('/quran/verses/uthmani_tajweed', { page_number: pageNumber });
-  return data.verses;
+export const getTajweedVersesByPage = async page => {
+  const result = await getVersesByPage(page, 20, 7);
+  return result.verses;
 };
 
 export const getJuzs = async () => {

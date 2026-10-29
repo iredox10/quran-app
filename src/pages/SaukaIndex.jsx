@@ -113,7 +113,6 @@ export default function SaukaIndex() {
         try {
             if (authMode === 'register') { 
                 await authService.register(email, password, name); 
-                await authService.login(email, password); 
             } else { 
                 await authService.login(email, password); 
             }
