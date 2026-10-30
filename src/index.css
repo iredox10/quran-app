@@ -23,6 +23,15 @@
   font-display: swap;
 }
 
+/* Same OFL Amiri font bundled by Android; available offline with the app shell. */
+@font-face {
+  font-family: 'Quran Nur Amiri';
+  src: url('/fonts/QuranNur-Amiri-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 @theme {
   --color-paper: #F9F7F1;
   --color-ink: #2D2D2A;

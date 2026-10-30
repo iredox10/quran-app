@@ -61,14 +61,14 @@ describe('Heroku browser wire contracts',()=>{
   expect(await api.syncService.pullState('original-id')).toBeNull();
   await expect(api.syncService.pushState('original-id',{})).rejects.toThrow('timestamp');
  });
- it('routes page content and the selected translation/mushaf through the backend',async()=>{
+ it.each([['madani-tajweed','5','text_qpc_hafs'],['uthmani-hafs','4','text_uthmani']])('routes selected %s page content and translation through the backend',async(mushafId,apiId,field)=>{
   handler=async(req,res)=>{
    const url=new URL(req.url,origin);expect(url.pathname).toBe('/v1/pages/1');
-   expect(url.searchParams.get('translation')).toBe('85');expect(url.searchParams.get('mushaf')).toBe('19');expect(url.searchParams.get('words')).toBe('1');
-   json(res,200,{verses:[{verse_key:'1:1',text_qpc_hafs:'بسم الله',translations:[{resource_id:85,text:'Selected'}]}],pagination:{next_page:null}});
+   expect(url.searchParams.get('translation')).toBe('85');expect(url.searchParams.get('mushaf')).toBe(apiId);expect(url.searchParams.get('words')).toBe('1');
+   json(res,200,{verses:[{verse_key:'1:1',[field]:'بسم الله',translations:[{resource_id:85,text:'Selected'}]}],pagination:{next_page:null}});
   };
   const {getVersesByPage}=await import('./api/quranApi');
-  expect((await getVersesByPage(1,85,7,'madani-tajweed')).verses[0].arabic_text).toBe('بسم الله');
+  expect((await getVersesByPage(1,85,7,mushafId)).verses[0].arabic_text).toBe('بسم الله');
  });
  it('does not cancel an active restore when the same user signs in again or a sign-in fails',async()=>{
   await api.authService.login('person@test.io','password');

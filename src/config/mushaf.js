@@ -3,31 +3,31 @@ export const ARABIC_FONT_OPTIONS = [
     id: 'kfgqpc-hafs',
     name: 'KFGQPC Hafs',
     family: "'KFGQPC Hafs Uthmanic Script', 'Amiri Quran', serif",
-    mushafIds: ['madani-standard', 'madani-tajweed'],
+    mushafIds: ['madani-standard', 'madani-tajweed', 'uthmani-hafs'],
   },
   {
     id: 'uthman-taha-naskh',
     name: 'Uthman Taha Naskh',
     family: "'KFGQPC Uthman Taha Naskh', 'Amiri Quran', serif",
-    mushafIds: ['madani-standard', 'madani-tajweed'],
+    mushafIds: [],
   },
   {
     id: 'amiri-quran',
     name: 'Amiri Quran',
-    family: "'Amiri Quran', serif",
-    mushafIds: ['madani-standard', 'madani-tajweed', 'indopak'],
+    family: "'Quran Nur Amiri', 'Amiri Quran', serif",
+    mushafIds: ['madani-standard', 'madani-tajweed', 'uthmani-hafs'],
   },
   {
     id: 'noto-naskh-arabic',
     name: 'Noto Naskh Arabic',
     family: "'Noto Naskh Arabic', serif",
-    mushafIds: ['madani-standard', 'madani-tajweed'],
+    mushafIds: ['madani-standard', 'madani-tajweed', 'uthmani-hafs'],
   },
   {
     id: 'scheherazade-new',
     name: 'Scheherazade New',
     family: "'Scheherazade New', serif",
-    mushafIds: ['madani-standard', 'madani-tajweed', 'indopak'],
+    mushafIds: ['madani-standard', 'madani-tajweed', 'uthmani-hafs'],
   },
 ];
 
@@ -35,7 +35,7 @@ export const MUSHAFS = [
   {
     id: 'madani-standard',
     name: 'Madani Standard',
-    description: 'QPC Hafs script for continuous reading with compatible Madani fonts.',
+    description: 'Madani QPC Hafs script with flowing, adjustable text. 604-page navigation.',
     apiMushafId: 5,
     verseField: 'text_qpc_hafs',
     scriptField: 'text_qpc_hafs',
@@ -43,7 +43,7 @@ export const MUSHAFS = [
     pageLayout: 'continuous',
     pageCount: 604,
     defaultFontId: 'kfgqpc-hafs',
-    supportedFontIds: ['kfgqpc-hafs', 'uthman-taha-naskh', 'amiri-quran', 'noto-naskh-arabic', 'scheherazade-new'],
+    supportedFontIds: ['kfgqpc-hafs', 'amiri-quran', 'noto-naskh-arabic', 'scheherazade-new'],
     supportsTajweedToggle: true,
     forcesTajweed: false,
     tajweedSource: 'uthmani_html',
@@ -51,23 +51,40 @@ export const MUSHAFS = [
   {
     id: 'madani-tajweed',
     name: 'Madani Tajweed',
-    description: 'Mushaf-first setup for page-accurate rendering and Tajweed guidance.',
-    apiMushafId: 19,
+    description: 'Madani Hafs text with Tajweed colors. Adjustable text, not a fixed printed-page facsimile.',
+    apiMushafId: 5,
     verseField: 'text_qpc_hafs',
     scriptField: 'text_qpc_hafs',
-    renderMode: 'qcf-page',
-    pageLayout: 'page-accurate',
+    renderMode: 'unicode',
+    pageLayout: 'continuous',
     pageCount: 604,
     defaultFontId: 'kfgqpc-hafs',
-    supportedFontIds: ['kfgqpc-hafs', 'uthman-taha-naskh', 'amiri-quran'],
+    supportedFontIds: ['kfgqpc-hafs', 'amiri-quran', 'noto-naskh-arabic', 'scheherazade-new'],
     supportsTajweedToggle: true,
     forcesTajweed: true,
     tajweedSource: 'uthmani_html',
   },
   {
+    id: 'uthmani-hafs',
+    name: 'Uthmani Hafs',
+    description: 'Traditional Uthmani orthography in Amiri Quran. 604-page navigation.',
+    apiMushafId: 4,
+    verseField: 'text_uthmani',
+    scriptField: 'text_uthmani',
+    renderMode: 'unicode',
+    pageLayout: 'continuous',
+    pageCount: 604,
+    defaultFontId: 'amiri-quran',
+    supportedFontIds: ['amiri-quran', 'kfgqpc-hafs', 'noto-naskh-arabic', 'scheherazade-new'],
+    supportsTajweedToggle: true,
+    forcesTajweed: false,
+    tajweedSource: 'uthmani_html',
+  },
+  {
     id: 'indopak',
     name: 'IndoPak',
-    description: 'South Asian script with a dedicated Mushaf profile and compatible fonts.',
+    description: 'Unavailable: a matching IndoPak font and complete offline text edition must be installed first.',
+    isSelectable: false,
     apiMushafId: 3,
     verseField: 'text_indopak',
     scriptField: 'text_indopak',
@@ -82,10 +99,12 @@ export const MUSHAFS = [
   },
 ];
 
+export const SELECTABLE_MUSHAFS = MUSHAFS.filter(mushaf => mushaf.isSelectable !== false);
+
 export const DEFAULT_MUSHAF = MUSHAFS[0];
 
 export function getMushafById(mushafId) {
-  return MUSHAFS.find((mushaf) => mushaf.id === mushafId) || DEFAULT_MUSHAF;
+  return MUSHAFS.find((mushaf) => mushaf.id === mushafId && mushaf.isSelectable !== false) || DEFAULT_MUSHAF;
 }
 
 export function getArabicFontById(fontId) {
