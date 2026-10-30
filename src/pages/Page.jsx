@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Helmet } from 'react-helmet-async';
 import { ArrowLeft, ArrowRight, CheckCircle2, ChevronRight, ChevronLeft, Minus, Pause, Play, Plus, Target, X, Loader2 } from 'lucide-react';
 
-import { getVersesByPage, getTajweedVersesByPage, getChapters } from '../services/api/quranApi';
+import { getVersesByPage, getChapters } from '../services/api/quranApi';
 import { JUZ_STARTS, getJuzByPage, getHizbByPage } from '../data/quranNavigation';
 import { useAppStore } from '../store/useAppStore';
 import { getMushafById, isTajweedEnabledForMushaf } from '../config/mushaf';
@@ -105,15 +105,9 @@ export default function Page() {
     const isTajweedActive = isTajweedEnabledForMushaf(mushafId, tajweedEnabled);
 
     // Queries
-    const { data: pageData, isLoading: isPageLoading, isFetching: isPageFetching } = useQuery({
+    const { data: pageData, error: pageError, refetch: retryPage, isLoading: isPageLoading, isFetching: isPageFetching } = useQuery({
         queryKey: ['pageVerses', pageNumber, translationId, reciterId, mushafId],
         queryFn: () => getVersesByPage(pageNumber, translationId, reciterId, mushafId),
-    });
-
-    const { data: tajweedData } = useQuery({
-        queryKey: ['tajweedPage', pageNumber, mushafId],
-        queryFn: () => getTajweedVersesByPage(pageNumber),
-        enabled: isTajweedActive && mushaf.tajweedSource === 'uthmani_html',
     });
 
     const { data: chapters } = useQuery({
@@ -123,12 +117,12 @@ export default function Page() {
     });
 
     const tajweedMap = React.useMemo(() => {
-        if (!tajweedData) return {};
-        return tajweedData.reduce((acc, v) => {
+        if (!pageData?.verses) return {};
+        return pageData.verses.reduce((acc, v) => {
             acc[v.verse_key] = sanitizeTajweedHtml(v.text_uthmani_tajweed);
             return acc;
         }, {});
-    }, [tajweedData]);
+    }, [pageData]);
 
     const verses = pageData?.verses || [];
     const maxPageNumber = mushaf.pageCount || 604;
@@ -136,27 +130,17 @@ export default function Page() {
     const maxPageLimit = backToSauka && saukaEndPage ? saukaEndPage : maxPageNumber;
     const queryClient = useQueryClient();
 
-    // Prefetch the next 5 pages
+    // Load the visible page before spending bandwidth on its neighbor.
     useEffect(() => {
-        for (let i = 1; i <= 5; i++) {
-            const nextPg = pageNumber + i;
-            if (nextPg <= maxPageLimit) {
-                queryClient.prefetchQuery({
-                    queryKey: ['pageVerses', nextPg, translationId, reciterId, mushafId],
-                    queryFn: () => getVersesByPage(nextPg, translationId, reciterId, mushafId),
-                    staleTime: 1000 * 60 * 30, // Keep fresh for 30 minutes
-                });
-                
-                if (isTajweedActive && mushaf.tajweedSource === 'uthmani_html') {
-                    queryClient.prefetchQuery({
-                        queryKey: ['tajweedPage', nextPg, mushafId],
-                        queryFn: () => getTajweedVersesByPage(nextPg),
-                        staleTime: 1000 * 60 * 30,
-                    });
-                }
-            }
-        }
-    }, [pageNumber, maxPageLimit, translationId, reciterId, mushafId, isTajweedActive, mushaf.tajweedSource, queryClient]);
+        const connection = navigator.connection;
+        if (!pageData || connection?.saveData || /(^|-)2g$/.test(connection?.effectiveType || '')) return;
+        const nextPg = pageNumber + 1;
+        if (nextPg <= maxPageLimit) queryClient.prefetchQuery({
+            queryKey: ['pageVerses', nextPg, translationId, reciterId, mushafId],
+            queryFn: () => getVersesByPage(nextPg, translationId, reciterId, mushafId),
+            staleTime: Infinity,
+        });
+    }, [pageData, pageNumber, maxPageLimit, translationId, reciterId, mushafId, queryClient]);
 
     const activeSurahId = verses.length > 0 ? verses[0].verse_key.split(':')[0] : null;
     const activeSurah = chapters?.find(c => c.id.toString() === activeSurahId);
@@ -315,6 +299,14 @@ export default function Page() {
     useEffect(() => {
         window.scrollTo(0, 0);
     }, [pageNumber]);
+
+    if (pageError && !pageData) return (
+        <div className="container text-center py-[10vh]" role="alert">
+            <h2>Unable to load this page</h2>
+            <p>Check your connection and try again.</p>
+            <button type="button" className="rounded-xl bg-accent px-5 py-3 text-white cursor-pointer" onClick={() => retryPage()}>Try again</button>
+        </div>
+    );
 
     return (
         <div

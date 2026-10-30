@@ -160,12 +160,19 @@ const refreshSession = () => {
 };
 export const http = axios.create({baseURL:apiBaseUrl,timeout:30000,headers:{Accept:'application/json'}});
 const publicContent = /^\/v1\/(?:chapters|verses|pages|tafsir|packs|reciters|juzs|footnotes|chapter-audio)(?:\/|[?]|$)/;
-http.interceptors.request.use(config => {
-    const session = readSession();
+http.interceptors.request.use(async config => {
+    let session = readSession();
     if (!publicContent.test(config.url || '') && config.url !== '/v1/sauka/public') {
         config.sessionVersion ??= sessionVersion;
         if (config.sessionVersion !== sessionVersion) throw new SessionChangedError();
         config.signal ??= sessionAbort.signal;
+        // Refresh known-expired JWTs before sync/Sauka requests, rather than
+        // spending a network round trip on a predictable 401 first.
+        if (session?.refreshToken && !isAccessTokenUsable(session.accessToken)) {
+            await refreshSession();
+            if (config.sessionVersion !== sessionVersion) throw new SessionChangedError();
+            session = readSession();
+        }
     }
     if (session?.accessToken) config.headers.Authorization=`Bearer ${session.accessToken}`;
     return config;

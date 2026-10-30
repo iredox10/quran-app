@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useQuery, useInfiniteQuery, keepPreviousData } from '@tanstack/react-query';
 import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useInView } from 'react-intersection-observer';
-import { getChapter, getVerses, getChapterAudio, getChapterTafsirs, getTajweedVerses, getChapters, getFootnote } from '../services/api/quranApi';
+import { getChapter, getVerses, getChapterAudio, getChapterTafsirs, getChapters, getFootnote } from '../services/api/quranApi';
 import { getJuzByPage, getHizbByPage } from '../data/quranNavigation';
 import { useAppStore } from '../store/useAppStore';
 import { ArrowLeft, ArrowRight, Play, Pause, BookOpen, Bookmark, Info, X, Download, Minus, Plus, Settings2, Target, CheckCircle2, Loader2, Copy, Share2, Brain, Eye, EyeOff, Highlighter, Type, ScrollText } from 'lucide-react';
@@ -88,8 +88,8 @@ function ToolbarStep({ onClick, title, children }) {
 /* ── Self-contained Verse renderer with every feature ── */
 function VerseItem({
     verse, readingMode, chapter, fontSize, translationFontSize, arabicFont,
-    tajweedEnabled, tajweedMap, activeTafsir, setActiveTafsir, isTafsirFetching,
-    showPageDivider, tafsirs, isAudioPlaying, mushaf, onPlayVerse,
+    tajweedEnabled, tajweedMap, activeTafsir, setActiveTafsir,
+    showPageDivider, isAudioPlaying, mushaf, onPlayVerse,
     collections, addCollection, addToCollection, memorizedAyahs, toggleMemorizedAyah,
     memorizeMode, bookmark, bookmarks, setBookmark, addRecentlyRead, onShare
 }) {
@@ -209,9 +209,7 @@ function VerseItem({
                             {isAudioPlaying ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" />}
                         </button>
                         <button className="flex h-8 w-8 items-center justify-center rounded-full transition-all duration-200 hover:bg-[var(--bg-secondary)] hover:shadow-[var(--shadow-sm)]" style={{ color: activeTafsir?.verse_key === verse.verse_key ? 'var(--accent-primary)' : 'var(--text-muted)' }} title="Read Tafsir" onClick={() => {
-                            if (activeTafsir?.verse_key === verse.verse_key) setActiveTafsir(null);
-                            else if (isTafsirFetching) setActiveTafsir({ verse_key: verse.verse_key, text: '<p>Loading tafsir...</p>' });
-                            else { const t = tafsirs?.find((x) => x.verse_key === verse.verse_key); setActiveTafsir({ verse_key: verse.verse_key, text: t ? t.text : '<p>Tafsir is not available for this verse in the selected source.</p>' }); }
+                            setActiveTafsir(activeTafsir?.verse_key === verse.verse_key ? null : { verse_key: verse.verse_key });
                         }}><Info size={18} /></button>
                         {memorizeMode && (
                             <button className="flex h-8 w-8 items-center justify-center rounded-full transition-all duration-200 hover:bg-[var(--bg-secondary)] hover:shadow-[var(--shadow-sm)]" style={{ color: revealed ? 'var(--accent-primary)' : 'var(--text-muted)' }} title={revealed ? "Hide to test memory" : "Reveal verse"} onClick={() => setRevealed((v) => !v)}>
@@ -325,7 +323,7 @@ export default function Surah() {
         readingMode, setReadingMode, mushafMode,
         bookmark, bookmarks, setBookmark,
         addRecentlyRead,
-        setIsPlaying, currentAudioUrl, isPlaying,
+        setIsPlaying, isPlaying,
         audioPlaylist, setAudioPlaylist, audioTrackIndex,
         audioSettings, updateAudioSettings,
         mushafId,
@@ -352,7 +350,7 @@ export default function Surah() {
     const [memorizeMode, setMemorizeMode] = useState(false);
     const [sharingVerse, setSharingVerse] = useState(null);
 
-    const { data: chapter, isLoading: isChapterLoading } = useQuery({ queryKey: ['chapter', id], queryFn: () => getChapter(id) });
+    const { data: chapter, isLoading: isChapterLoading, error: chapterError, refetch: retryChapter } = useQuery({ queryKey: ['chapter', id], queryFn: () => getChapter(id) });
     const { data: allChapters } = useQuery({ queryKey: ['chapters'], queryFn: getChapters, staleTime: Infinity });
 
     useEffect(() => {
@@ -378,28 +376,32 @@ export default function Surah() {
         };
     }, [id, logReadingSession]);
 
-    const { data: versesResponse, isLoading: isVersesLoading, isFetching: isVersesFetching, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery({
+    const { data: versesResponse, error: versesError, refetch: retryVerses, isLoading: isVersesLoading, isFetching: isVersesFetching, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery({
         queryKey: ['verses', id, translationId, reciterId, mushafId],
         queryFn: ({ pageParam = 1 }) => getVerses(id, translationId, reciterId, pageParam, mushafId),
         getNextPageParam: (lastPage) => lastPage.pagination.current_page < lastPage.pagination.total_pages ? lastPage.pagination.current_page + 1 : undefined,
         placeholderData: keepPreviousData,
     });
 
-    const { data: audioData } = useQuery({ queryKey: ['chapterAudio', id, reciterId], queryFn: () => getChapterAudio(id, reciterId) });
-    const { data: tafsirs, isFetching: isTafsirFetching } = useQuery({ queryKey: ['tafsirs', id, tafsirId], queryFn: () => getChapterTafsirs(id, tafsirId), placeholderData: keepPreviousData });
     const [activeTafsir, setActiveTafsir] = useState(null);
-    const { data: tajweedData } = useQuery({ queryKey: ['tajweed', id, mushafId], queryFn: () => getTajweedVerses(id), enabled: isTajweedActive && mushaf.tajweedSource === 'uthmani_html' });
-
-    const tajweedMap = React.useMemo(() => {
-        if (!tajweedData) return {};
-        return tajweedData.reduce((acc, v) => { acc[v.verse_key] = sanitizeTajweedHtml(v.text_uthmani_tajweed); return acc; }, {});
-    }, [tajweedData]);
+    const { data: tafsirs, isFetching: isTafsirFetching } = useQuery({
+        queryKey: ['tafsirs', id, tafsirId],
+        queryFn: () => getChapterTafsirs(id, tafsirId),
+        enabled: !!activeTafsir,
+        retry: 1,
+    });
+    // Main verse responses already contain the word/verse Tajweed markup.
+    // Never fetch a second full chapter just to obtain the same colors.
+    const tajweedMap = React.useMemo(() => Object.fromEntries(
+        (versesResponse?.pages.flatMap(page => page.verses) || []).map(verse =>
+            [verse.verse_key, sanitizeTajweedHtml(verse.text_uthmani_tajweed)])
+    ), [versesResponse]);
 
     const { ref: observerRef, inView } = useInView();
     useEffect(() => { setActiveTafsir(null); }, [tafsirId]);
     useEffect(() => { if (inView && hasNextPage && !isFetchingNextPage) fetchNextPage(); }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-    const verses = versesResponse?.pages.flatMap(page => page.verses) || [];
+    const verses = React.useMemo(() => versesResponse?.pages.flatMap(page => page.verses) || [], [versesResponse]);
     const isCurrentSurahPlaying = audioPlaylist.length > 0 && String(audioPlaylist[0]?.surahId) === String(id);
     const activeAudioVerseKey = isPlayerVisible && isCurrentSurahPlaying && audioPlaylist[audioTrackIndex] ? audioPlaylist[audioTrackIndex].verseKey : null;
 
@@ -463,13 +465,13 @@ export default function Surah() {
                 const chunk = urlsToCache.slice(i, i + chunkSize);
                 await Promise.all(chunk.map(url => fetch(url, { mode: 'cors' }).catch(e => console.warn("Verse audio cache failed:", url, e))));
             }
-            if (audioData?.audio_url) await fetch(audioData.audio_url, { mode: 'cors' }).catch(() => {});
+            const chapterAudio = await getChapterAudio(id, reciterId);
+            if (chapterAudio?.audio_url) await fetch(chapterAudio.audio_url, { mode: 'cors' }).catch(() => {});
             addDownloadedSurah(id);
         } catch (error) { console.error("Audio download failed", error); }
         finally { setIsDownloading(false); }
     };
 
-    const isCurrentAudio = currentAudioUrl === audioData?.audio_url;
     const hasScrolledRef = React.useRef(null);
     useEffect(() => {
         const queryParams = new URLSearchParams(location.search);
@@ -525,6 +527,14 @@ export default function Surah() {
         </div>
     );
 
+    if ((chapterError && !chapter) || (versesError && !verses.length)) return (
+        <div className="container text-center py-[10vh] text-[var(--text-primary)]" role="alert">
+            <h2>Unable to load this Surah</h2>
+            <p className="text-[var(--text-secondary)]">Check your connection and try again. Previously opened content remains available offline.</p>
+            <button type="button" className="rounded-xl bg-accent px-5 py-3 text-white cursor-pointer" onClick={() => { retryChapter(); retryVerses(); }}>Try again</button>
+        </div>
+    );
+
     const reciterGroups = RECITERS.reduce((acc, r) => { const s = r.style || 'Other'; if (!acc[s]) acc[s] = { label: s, items: [] }; acc[s].items.push({ value: r.id, label: r.name }); return acc; }, {});
 
     return (
@@ -566,8 +576,8 @@ export default function Surah() {
                                 )}
                             </div>
                             <div className="flex items-center justify-center gap-1 bg-[var(--bg-surface)] p-1.5 rounded-full border border-[var(--border-color)] shadow-sm">
-                                <button onClick={handlePlayClick} className="flex items-center justify-center h-10 w-10 rounded-full bg-[var(--accent-primary)] text-white transition-all duration-300 hover:scale-105 shadow-[0_4px_12px_rgba(198,168,124,0.3)] cursor-pointer" title={isCurrentAudio && isPlaying ? "Pause Audio" : "Play Audio"}>
-                                    {isCurrentAudio && isPlaying ? <Pause size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" className="ml-0.5" />}
+                                <button onClick={handlePlayClick} className="flex items-center justify-center h-10 w-10 rounded-full bg-[var(--accent-primary)] text-white transition-all duration-300 hover:scale-105 shadow-[0_4px_12px_rgba(198,168,124,0.3)] cursor-pointer" title={isCurrentSurahPlaying && isPlaying ? "Pause Audio" : "Play Audio"}>
+                                    {isCurrentSurahPlaying && isPlaying ? <Pause size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" className="ml-0.5" />}
                                 </button>
                                 {!isDownloaded && (
                                     <button id="download-audio-btn" onClick={handleDownloadSurah} disabled={isDownloading} className={`flex items-center justify-center h-10 w-10 rounded-full transition-all duration-300 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] ${isDownloading ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`} title={isDownloading ? "Downloading..." : "Download Audio"}>
@@ -734,7 +744,7 @@ export default function Surah() {
                                 <h3 className="font-ui text-2xl font-bold text-[var(--text-primary)] m-0">Tafsir (Ayah {activeTafsir.verse_key.split(':')[1]})</h3>
                                 <button className="btn-icon bg-[var(--bg-secondary)]" onClick={() => setActiveTafsir(null)} aria-label="Close Tafsir"><X size={20} /></button>
                             </div>
-                            <div className="tafsir-content overflow-y-auto pr-2 text-[var(--text-secondary)] leading-[1.8] text-base" dangerouslySetInnerHTML={{ __html: activeTafsir.text }} />
+                            <div className="tafsir-content overflow-y-auto pr-2 text-[var(--text-secondary)] leading-[1.8] text-base" dangerouslySetInnerHTML={{ __html: tafsirs?.find(row => row.verse_key === activeTafsir.verse_key)?.text || (isTafsirFetching ? '<p>Loading tafsir…</p>' : '<p>Tafsir is not available for this verse in the selected source. Check your connection and try again.</p>') }} />
                         </motion.div>
                     </>
                 )}

@@ -1,3 +1,4 @@
+import { Buffer } from 'node:buffer';
 import { beforeAll, afterAll, beforeEach, describe, it, expect, vi } from 'vitest';
 import { createServer } from 'node:http';
 vi.mock('../utils/offlineCache',()=>({getOfflineCacheData:vi.fn(async()=>null),setOfflineCacheEntry:vi.fn(async()=>{})}));
@@ -101,6 +102,21 @@ describe('Heroku browser wire contracts',()=>{
   expect(results[0]).toEqual(results[1]);expect(requests.length-before).toBe(1);expect(requests.at(-1).url).toBe('/v1/sync?compact=1');
   handler=async(_req,res)=>{res.writeHead(304);res.end();};
   expect(await api.syncService.pullState('original-id',{updatedAt:123})).toMatchObject({unchanged:true,state:{theme:'dark'},updatedAt:123});
+ });
+ it('refreshes an expired access token once before concurrent protected requests',async()=>{
+  const expired=`header.${Buffer.from(JSON.stringify({exp:Math.floor(Date.now()/1000)-60})).toString('base64url')}.signature`;
+  handler=async(_req,res)=>json(res,200,session(expired));
+  await api.authService.login('person@test.io','password');
+  requests=[];
+  handler=async(req,res)=>{
+   if(req.url==='/auth/refresh') return json(res,200,session('fresh-access'));
+   expect(req.auth).toBe('Bearer fresh-access');
+   json(res,200,{ok:true});
+  };
+  await Promise.all([api.http.get('/v1/sync?compact=1'),api.http.get('/private')]);
+  expect(requests.filter(req=>req.url==='/auth/refresh')).toHaveLength(1);
+  expect(requests[0].url).toBe('/auth/refresh');
+  expect(requests.filter(req=>req.url!=='/auth/refresh').every(req=>req.auth==='Bearer fresh-access')).toBe(true);
  });
  it('a temporary refresh outage stays retryable and does not sign out the user',async()=>{
   await api.authService.login('person@test.io','password');

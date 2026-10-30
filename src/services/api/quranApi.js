@@ -37,21 +37,23 @@ const buildCacheKey = (path, params = {}) => {
 
 export const buildOfflineCacheKey = buildCacheKey;
 
-const fetchWithOfflineCache = async (path, params = {}) => {
+// Quran content is public and immutable for a given edition/translation key.
+// Read IndexedDB before touching the network, including in the dev server where
+// no service worker runs. Shared metadata/StrictMode requests use one transport.
+const contentInFlight = new Map();
+const fetchWithOfflineCache = (path, params = {}) => {
   const cacheKey = buildCacheKey(path, params);
-
-  try {
+  if (contentInFlight.has(cacheKey)) return contentInFlight.get(cacheKey);
+  const request = (async () => {
+    const cached = await getOfflineCacheData(cacheKey);
+    if (cached != null) return cached;
     const { data } = await api.get(mapRenderContentPath(path), { params: backendContentParams(params) });
-    await setOfflineCacheEntry(cacheKey, data);
+    // A full/blocked browser cache must not discard a successful Quran response.
+    try { await setOfflineCacheEntry(cacheKey, data); } catch { /* Reading remains available. */ }
     return data;
-  } catch (error) {
-    const offlineData = await getOfflineCacheData(cacheKey);
-    if (offlineData) {
-      return offlineData;
-    }
-
-    throw error;
-  }
+  })().finally(() => contentInFlight.delete(cacheKey));
+  contentInFlight.set(cacheKey, request);
+  return request;
 };
 
 const WORD_FIELD_BY_MUSHAF = {

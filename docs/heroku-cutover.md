@@ -28,6 +28,17 @@ accounts or application storage. Appwrite's browser SDK has been removed.
   Actual recitation bytes still download directly from the established audio
   CDNs, and existing offline content remains available through IndexedDB.
   The unrelated prayer-time lookup retains its existing Aladhan provider.
+- The browser reads its public content cache before requesting the network, even
+  on the local dev server. Concurrent content requests share one transport;
+  cache-write failures do not prevent reading a successful response. Surah/page
+  responses already include Tajweed, so no duplicate color request is needed.
+  Tafsir and chapter-audio metadata load when requested. Page navigation prefetches
+  one neighbor after the visible page loads, skipping data-saving/2G connections.
+- Web Settings retains General, Reading, and Data. Data includes local audio
+  folder selection, Offline Library management, and Cloud Sync backup/restore.
+  Android intentionally keeps only General and Reading.
+- Protected requests refresh known-expired access JWTs before sending sync or
+  group requests. Public Quran content remains independent of sign-in.
 - The service worker caches only public content routes on the configured API
   origin. It never caches auth, sync, group documents, or private audio requests.
 

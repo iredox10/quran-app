@@ -1,9 +1,13 @@
 import MushafPicker from './MushafPicker';
 import { useEffect, useMemo, useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { saveLocalAudioDirHandle } from '../utils/localAudio';
+import { getOfflinePackStats } from '../utils/offlineLibrary';
 import { useAppStore } from '../store/useAppStore';
 import {
     ArrowLeft, Check, CheckCircle, ChevronDown, ChevronRight,
-    Moon, Sun, Type,
+    FolderOpen, HardDrive, WifiOff, Moon, Sun, Type,
     Cloud, UploadCloud, DownloadCloud, LogOut, Play, Pause, Loader2
 } from 'lucide-react';
 import * as quranApi from '../services/api/quranApi';
@@ -308,12 +312,14 @@ function CloudSyncView({ currentUser, setCurrentUser }) {
 /* ── Main Component ── */
 
 export default function SettingsDrawer({ isOpen, onClose }) {
+    const navigate = useNavigate();
     const {
         theme, toggleTheme, fontSize, setFontSize,
         translationFontSize, setTranslationFontSize,
         reciterId, setReciter, translationId, setTranslation,
         mushafId, setSelectedMushaf, arabicFontId, setArabicFont,
         tajweedEnabled, setTajweed, tafsirId, setTafsirId,
+        localAudioDirHandle, setLocalAudioDirHandle,
         currentUser, setCurrentUser,
         wordTooltipBehavior, setWordTooltipBehavior,
         mushafMode, setMushafMode
@@ -334,6 +340,21 @@ export default function SettingsDrawer({ isOpen, onClose }) {
     const selectedReciter = useMemo(() => RECITERS.find(i => i.id === reciterId), [reciterId]);
     const selectedTafsir = useMemo(() => TAFSIRS.find(i => i.id === tafsirId), [tafsirId]);
     const selectedFont = useMemo(() => mushafFonts.find(i => i.id === arabicFontId), [arabicFontId, mushafFonts]);
+
+    const { data: offlineStats } = useQuery({
+        queryKey: ['offline-pack-stats', translationId, reciterId, mushafId],
+        queryFn: () => getOfflinePackStats({ translationId, reciterId, mushafId }),
+        enabled: isOpen && activeTab === 'data',
+    });
+
+    const handleSelectAudioFolder = async () => {
+        try {
+            if (!('showDirectoryPicker' in window)) { alert('Your browser does not support local folder selection.'); return; }
+            const handle = await window.showDirectoryPicker({ mode: 'read' });
+            await saveLocalAudioDirHandle(handle);
+            setLocalAudioDirHandle(handle);
+        } catch (error) { if (error.name !== 'AbortError') console.error('Failed to get directory', error); }
+    };
 
     const renderPickerView = () => {
         const pickers = {
@@ -437,6 +458,7 @@ export default function SettingsDrawer({ isOpen, onClose }) {
                             <div className="flex overflow-hidden rounded-[12px] border border-[var(--border-color)] bg-[var(--bg-primary)]">
                                 <SegmentedOption active={activeTab === 'general'} label="General" onClick={() => setActiveTab('general')} />
                                 <SegmentedOption active={activeTab === 'reading'} label="Reading" onClick={() => setActiveTab('reading')} />
+                                <SegmentedOption active={activeTab === 'data'} label="Data" onClick={() => setActiveTab('data')} />
                             </div>
 
                             {activeTab === 'general' && (
@@ -543,6 +565,62 @@ export default function SettingsDrawer({ isOpen, onClose }) {
                                 </div>
                             )}
 
+                            {activeTab === 'data' && (
+                                <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                    <SelectionRow label="Cloud Sync" hint={currentUser ? `Signed in as ${currentUser.name || currentUser.email}` : 'Back up and restore your progress'} onClick={() => setActiveView(VIEWS.sync)} />
+                                    <div>
+                                        <div className="mb-2 px-1 text-[0.72rem] font-bold uppercase tracking-[0.08em] text-[var(--text-secondary)]">Local Audio</div>
+                                        <div className="rounded-[12px] border border-[var(--border-color)] bg-[var(--bg-primary)] px-4 py-4">
+                                            <div className="text-[0.9rem] font-medium text-[var(--text-primary)]">Local Offline Audio</div>
+                                            <div className="mb-3 text-[0.72rem] text-[var(--text-secondary)]">Connect a folder of ayah MP3 files for native offline playback.</div>
+                                            <button type="button" onClick={handleSelectAudioFolder} className={`flex w-full cursor-pointer items-center justify-center gap-2 rounded-[10px] border-2 px-4 py-[10px] text-[0.82rem] font-bold transition-all duration-200 ${
+                                                localAudioDirHandle ? 'border-green-500 bg-green-50 text-green-600' : 'border-[var(--border-color)] bg-transparent text-[var(--text-primary)] hover:bg-[var(--bg-secondary)]'
+                                            }`}>
+                                                {localAudioDirHandle ? <CheckCircle size={16} /> : <FolderOpen size={16} />}
+                                                {localAudioDirHandle ? 'Folder Connected' : 'Choose Audio Folder'}
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <div className="mb-2 px-1 text-[0.72rem] font-bold uppercase tracking-[0.08em] text-[var(--text-secondary)]">Offline Downloads</div>
+                                        <div className="rounded-[12px] border border-[var(--border-color)] bg-[var(--bg-primary)] px-4 py-4">
+                                            <div className="mb-3 flex items-start justify-between">
+                                                <div>
+                                                    <div className="flex items-center gap-1 text-[0.9rem] font-medium text-[var(--text-primary)]">
+                                                        <HardDrive size={14} /> Offline Library
+                                                    </div>
+                                                    <div className="text-[0.72rem] text-[var(--text-secondary)]">Manage downloadable Quran packs.</div>
+                                                </div>
+                                                <div className={`flex shrink-0 items-center gap-1 rounded-[6px] px-2 py-1 text-[0.65rem] font-semibold ${
+                                                    navigator.onLine ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'
+                                                }`}>
+                                                    <WifiOff size={11} />
+                                                    {navigator.onLine ? 'Online' : 'Offline'}
+                                                </div>
+                                            </div>
+
+                                            <div className="mb-3 flex gap-2">
+                                                <div className="flex-1 rounded-[8px] bg-[var(--bg-secondary)] px-3 py-2">
+                                                    <div className="text-[0.65rem] font-medium text-[var(--text-secondary)]">Quran text</div>
+                                                    <div className="text-[0.82rem] font-semibold text-[var(--text-primary)]">{offlineStats?.quranText?.downloaded ? offlineStats.quranText.sizeLabel : 'Not downloaded'}</div>
+                                                </div>
+                                                <div className="flex-1 rounded-[8px] bg-[var(--bg-secondary)] px-3 py-2">
+                                                    <div className="text-[0.65rem] font-medium text-[var(--text-secondary)]">Tajweed</div>
+                                                    <div className="text-[0.82rem] font-semibold text-[var(--text-primary)]">{offlineStats?.tajweed?.downloaded ? offlineStats.tajweed.sizeLabel : 'Not downloaded'}</div>
+                                                </div>
+                                            </div>
+
+                                            <button type="button" onClick={() => { onClose(); navigate('/offline-library'); }} className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-[12px] border-none bg-accent px-4 py-[10px] text-[0.85rem] font-bold text-white transition-all duration-200 hover:bg-[var(--accent-hover)]">
+                                                <CheckCircle size={16} /> Open Offline Library
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className="py-2 text-center">
+                                        <a href="https://iredox.tech" target="_blank" rel="noopener noreferrer" className="text-[0.72rem] text-[var(--text-secondary)] no-underline transition-colors duration-200 hover:text-accent">built by iredox.tech</a>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
