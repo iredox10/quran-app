@@ -122,7 +122,7 @@ export default function PlannerReader() {
         if (matchingChapters.length === 1) return matchingChapters[0];
 
         // If multiple chapters share this page, try to match with the planner assignment
-        if (planner && assignment && planner.unitType === 'surah') {
+        if (planner && assignment && assignment.unitType === 'surah') {
             const assignedIds = assignment.items.map(item => item.rangeValue);
             const assignedMatch = matchingChapters.find(c => assignedIds.includes(c.id));
             if (assignedMatch) return assignedMatch;
@@ -190,12 +190,12 @@ export default function PlannerReader() {
     const assignedVerses = useMemo(() => {
         if (!verses.length || !planner || !assignment) return verses;
         
-        if (planner.unitType === 'surah') {
+        if (assignment.unitType === 'surah') {
             const assignedSurahIds = assignment.items.map(item => Number(item.rangeValue));
             return verses.filter(v => assignedSurahIds.includes(Number(v.verse_key.split(':')[0])));
         }
         
-        if (planner.unitType === 'juz') {
+        if (assignment.unitType === 'juz') {
             const assignedJuzIds = assignment.items.map(item => Number(item.rangeValue));
             return verses.filter(v => {
                 if (v.juz_number) return assignedJuzIds.includes(Number(v.juz_number));
@@ -525,7 +525,7 @@ export default function PlannerReader() {
                     pageNumber >= (item.pageStart || 1) && pageNumber <= (item.pageEnd || 604)
                 );
                 if (currentItem && !progress.completedRangeValues.includes(currentItem.rangeValue)) {
-                    if (planner.unitType === 'page' || pageNumber >= currentItem.pageEnd) {
+                    if (assignment.unitType === 'page' || pageNumber >= currentItem.pageEnd) {
                         markPlannerItemComplete(assignment.dayNumber, currentItem.rangeValue);
                     }
                 }
@@ -590,7 +590,7 @@ export default function PlannerReader() {
     ) || assignment.items[0];
 
     const isCurrentItemComplete = progress.completedRangeValues.includes(currentItem.rangeValue);
-    const pct = planner.unitType === 'surah' && progress.totalPagesCount > 0
+    const pct = assignment.unitType === 'surah' && progress.totalPagesCount > 0
         ? Math.round((progress.readPagesCount / progress.totalPagesCount) * 100)
         : Math.round((progress.completedCount / progress.totalCount) * 100);
 
@@ -620,7 +620,7 @@ export default function PlannerReader() {
                             <div className="flex flex-col gap-3">
                                 <div className="flex flex-wrap items-center justify-between gap-y-2 gap-x-1 sm:gap-3">
                                     <div className="shrink-0 min-w-0">
-                                        {planner.unitType === 'page' ? (
+                                        {assignment.unitType === 'page' ? (
                                             <h2 className="m-0 font-ui text-[0.95rem] sm:text-[1.2rem] font-bold text-[var(--text-primary)] whitespace-nowrap">
                                                 Page {pageNumber} / {assignment.items[assignment.items.length - 1].pageEnd || assignment.items[assignment.items.length - 1].pageStart}
                                             </h2>
@@ -815,7 +815,7 @@ export default function PlannerReader() {
                     </div>
                     
                     {/* Mark Item Done Button (if not auto-marked or explicitly requested) */}
-                    {!isCurrentItemComplete && !progress.isComplete && (planner.unitType !== 'surah' || pageNumber >= maxPageNumber) && (
+                    {!isCurrentItemComplete && !progress.isComplete && (assignment.unitType !== 'surah' || pageNumber >= maxPageNumber) && (
                         <div className="flex justify-center mb-8">
                             <button
                                 onClick={() => markPlannerItemComplete(assignment.dayNumber, currentItem.rangeValue)}

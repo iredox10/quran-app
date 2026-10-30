@@ -350,8 +350,7 @@ function splitAssignmentReadPages(plan, a) {
     return { readPages, unreadPages };
 }
 
-export function rebalancePlanner(planner, strategy, customDurationDays = null) {
-    const today = formatPlannerDate(new Date());
+export function rebalancePlanner(planner, strategy, customDurationDays = null, today = formatPlannerDate(new Date())) {
     const excludeDays = planner.excludeDays || [];
     
     const preservedAssignments = [];
@@ -404,97 +403,48 @@ export function rebalancePlanner(planner, strategy, customDurationDays = null) {
     
     let newChunkAssignments = [];
     
-    if (strategy === 'extend' || strategy === 'custom_pace') {
-        let chunkSize = 1;
-        if (strategy === 'custom_pace' && customDurationDays != null) {
-            // A new total shorter than the already-completed days is impossible;
-            // refuse to rebalance rather than dump the whole pool into one day.
-            if (customDurationDays < preservedAssignments.length + 1) {
-                return planner;
-            }
-            const remainingNewDays = customDurationDays - preservedAssignments.length;
-            chunkSize = Math.ceil(unreadPagePool.length / remainingNewDays);
-        } else {
-            const originalDaySize = Math.ceil(
-                planner.assignments.reduce((sum, a) => {
-                    let dayPages = 0;
-                    a.items.forEach(item => {
-                        dayPages += (item.pageEnd || 0) - (item.pageStart || 0) + 1;
-                    });
-                    return sum + dayPages;
-                }, 0) / planner.assignments.length
-            );
-            chunkSize = Math.max(originalDaySize, 1);
+    function chunkToAssignment(chunk) {
+        const pStart = chunk[0];
+        const pEnd = chunk[chunk.length - 1];
+        return {
+            unitType: 'page', title: `Pages ${pStart}-${pEnd}`, subtitle: `${chunk.length} pages`,
+            startUnit: pStart, endUnit: pEnd, pageStart: pStart, pageEnd: pEnd,
+            items: chunk.map(p => ({ title: `Page ${p}`, subtitle: '1 page', rangeValue: p, pageStart: p, pageEnd: p })),
+        };
+    }
+    function distributeAcrossDays(requestedDays) {
+        const days = Math.max(1, Math.min(requestedDays, unreadPagePool.length));
+        const base = Math.floor(unreadPagePool.length / days);
+        const extra = unreadPagePool.length % days;
+        let offset = 0;
+        for (let i = 0; i < days; i++) {
+            const size = base + (i < extra ? 1 : 0);
+            newChunkAssignments.push(chunkToAssignment(unreadPagePool.slice(offset, offset + size)));
+            offset += size;
         }
-        
+    }
+    if (strategy === 'custom_pace') {
+        if (!Number.isInteger(customDurationDays) || customDurationDays < preservedAssignments.length + 1) return planner;
+        distributeAcrossDays(customDurationDays - preservedAssignments.length);
+    } else if (strategy === 'extend') {
+        const totalPages = planner.assignments.reduce((sum, a) => sum + a.items.reduce(
+            (n, item) => n + (item.pageEnd || 0) - (item.pageStart || 0) + 1, 0), 0);
+        const chunkSize = Math.max(Math.ceil(totalPages / planner.assignments.length), 1);
         for (let i = 0; i < unreadPagePool.length; i += chunkSize) {
-            const chunk = unreadPagePool.slice(i, i + chunkSize);
-            const pStart = chunk[0];
-            const pEnd = chunk[chunk.length - 1];
-            
-            newChunkAssignments.push({
-                unitType: 'page',
-                title: `Pages ${pStart}-${pEnd}`,
-                subtitle: `${chunk.length} pages`,
-                startUnit: pStart,
-                endUnit: pEnd,
-                pageStart: pStart,
-                pageEnd: pEnd,
-                items: chunk.map(p => ({
-                    title: `Page ${p}`,
-                    subtitle: '1 page',
-                    rangeValue: p,
-                    pageStart: p,
-                    pageEnd: p,
-                })),
-            });
+            newChunkAssignments.push(chunkToAssignment(unreadPagePool.slice(i, i + chunkSize)));
         }
     } else if (strategy === 'spread') {
-        const originalEndDate = planner.assignments[planner.assignments.length - 1].date;
-        if (today > originalEndDate) {
-            return rebalancePlanner(planner, 'extend');
-        }
-        
+        const originalEndDate = getPlanEndDate(planner);
+        if (today > originalEndDate) return rebalancePlanner(planner, 'extend', null, today);
         let remainingDays = 0;
-        let curr = today;
-        while (curr <= originalEndDate) {
-            const d = new Date(`${curr}T00:00:00`);
-            if (!excludeDays.includes(d.getDay())) {
-                remainingDays++;
-            }
-            curr = addDays(curr, 1);
+        for (let curr = today; curr <= originalEndDate; curr = addDays(curr, 1)) {
+            if (!excludeDays.includes(new Date(`${curr}T00:00:00`).getDay())) remainingDays++;
         }
-        if (remainingDays <= 0) remainingDays = 1;
-        
-        const pagesPerDay = Math.ceil(unreadPagePool.length / remainingDays);
-        for (let i = 0; i < remainingDays; i++) {
-            const chunk = unreadPagePool.slice(i * pagesPerDay, (i + 1) * pagesPerDay);
-            if (!chunk.length) break;
-            
-            const pStart = chunk[0];
-            const pEnd = chunk[chunk.length - 1];
-            
-            newChunkAssignments.push({
-                unitType: 'page',
-                title: `Pages ${pStart}-${pEnd}`,
-                subtitle: `${chunk.length} pages`,
-                startUnit: pStart,
-                endUnit: pEnd,
-                pageStart: pStart,
-                pageEnd: pEnd,
-                items: chunk.map(p => ({
-                    title: `Page ${p}`,
-                    subtitle: '1 page',
-                    rangeValue: p,
-                    pageStart: p,
-                    pageEnd: p,
-                })),
-            });
-        }
+        distributeAcrossDays(remainingDays);
     } else {
         return planner;
     }
-    
+
     const mergedRaw = [...preservedAssignments, ...newChunkAssignments];
     
     let lastPreservedDate = null;
@@ -590,15 +540,38 @@ export function rebalancePlanner(planner, strategy, customDurationDays = null) {
     };
 }
 
+export function getCurrentAssignment(plan, today = formatPlannerDate(new Date())) {
+    return plan.assignments.find(a => a.date === today && !getAssignmentProgress(plan, a).isComplete)
+        || plan.assignments.filter(a => a.date === today).at(-1)
+        || plan.assignments.find(a => a.date > today)
+        || plan.assignments.at(-1) || null;
+}
+
+export function getPlanEndDate(plan) {
+    return plan.assignments.reduce((end, a) => a.date > end ? a.date : end, '') || plan.startDate;
+}
+
+export function getMinimumDurationDays(plan) {
+    let preserved = 0, unread = 0;
+    plan.assignments.forEach(a => {
+        if (getAssignmentProgress(plan, a).isComplete) preserved++;
+        else {
+            const pages = splitAssignmentReadPages(plan, a);
+            if (pages.readPages.length) preserved++;
+            unread += pages.unreadPages.length;
+        }
+    });
+    return Math.max(1, preserved + (unread > 0 ? 1 : 0));
+}
+
 export function getPlannerOverview(plan, today = formatPlannerDate(new Date())) {
   if (!plan) {
     return null;
   }
 
-  const elapsedDays = diffDays(plan.startDate, today);
-  const currentDayNumber = Math.min(Math.max(elapsedDays + 1, 1), plan.durationDays);
+  const currentDayNumber = getCurrentAssignment(plan, today)?.dayNumber || 0;
   const completedCount = plan.assignments.filter((assignment) => getAssignmentProgress(plan, assignment).isComplete).length;
-  const remainingCount = Math.max(plan.durationDays - completedCount, 0);
+  const remainingCount = Math.max(plan.assignments.length - completedCount, 0);
   const firstIncomplete = plan.assignments.find((assignment) => !getAssignmentProgress(plan, assignment).isComplete);
   const overdueDays = plan.assignments.filter((assignment) => assignment.date < today && !getAssignmentProgress(plan, assignment).isComplete).length;
 
@@ -615,8 +588,8 @@ export function getPlannerOverview(plan, today = formatPlannerDate(new Date())) 
     remainingCount,
     currentDayNumber,
     overdueDays,
-    isUpcoming: elapsedDays < 0,
-    isFinishedWindow: elapsedDays >= plan.durationDays,
+    isUpcoming: today < (plan.assignments[0]?.date || plan.startDate),
+    isFinishedWindow: today > getPlanEndDate(plan),
     completionRatio: totalPages ? readPages / totalPages : 0,
     firstIncomplete: firstIncomplete || plan.assignments[plan.assignments.length - 1],
   };
@@ -664,7 +637,12 @@ export function getAssignmentProgress(plan, assignment) {
     : [];
 
   let totalPagesCount = 0;
-  let allReadPages = new Set(explicitReadPages);
+  const assignedPages = new Set(assignment.items.flatMap(item => {
+    const start = item.pageStart || 1;
+    const end = item.pageEnd || start;
+    return Array.from({ length: Math.max(0, end - start + 1) }, (_, i) => start + i);
+  }));
+  let allReadPages = new Set(explicitReadPages.filter(p => assignedPages.has(p)));
 
   assignment.items.forEach(item => {
     const pStart = item.pageStart || 1;

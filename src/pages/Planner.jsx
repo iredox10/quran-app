@@ -33,7 +33,10 @@ import {
     PLAN_TEMPLATES,
     buildRevisionPlanner,
     getPlannerAnalytics,
-    getWeeklySummary
+    getWeeklySummary,
+    getCurrentAssignment,
+    getPlanEndDate,
+    getMinimumDurationDays
 } from '../utils/planner';
 import { getChapters } from '../services/api/quranApi';
 
@@ -677,10 +680,12 @@ function ActiveView({ planner, planners, activePlannerId, onSwitchPlan, onDelete
 
     const [showAdjustPace, setShowAdjustPace] = useState(false);
     const [newDuration, setNewDuration] = useState(planner.durationDays);
-    const minNewDuration = Math.max(1, Math.min(planner.durationDays, (metrics?.completedCount || 0) + 1));
+    const minNewDuration = getMinimumDurationDays(planner);
     const [showSettings, setShowSettings] = useState(false);
     const [activeTab, setActiveTab] = useState('today');
-    const [selectedDay, setSelectedDay] = useState(null);
+    const [selectedDayNumber, setSelectedDayNumber] = useState(null);
+    const selectedDay = planner.assignments.find(a => a.dayNumber === selectedDayNumber) || null;
+    const setSelectedDay = day => setSelectedDayNumber(day?.dayNumber ?? null);
     const [showRebalanceModal, setShowRebalanceModal] = useState(false);
     const [hasCheckedRebalance, setHasCheckedRebalance] = useState(false);
 
@@ -721,7 +726,7 @@ function ActiveView({ planner, planners, activePlannerId, onSwitchPlan, onDelete
         let icsContent = "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//QuranApp//Planner//EN\n";
         planner.assignments.forEach(a => {
             const dateStr = a.date.replace(/-/g, '');
-            icsContent += `BEGIN:VEVENT\nDTSTART;VALUE=DATE:${dateStr}\nDTEND;VALUE=DATE:${dateStr}\nSUMMARY:Quran Plan - Day ${a.dayNumber}\nDESCRIPTION:Read ${a.items.length} ${PLANNER_UNITS[planner.unitType]?.plural}\nEND:VEVENT\n`;
+            icsContent += `BEGIN:VEVENT\nDTSTART;VALUE=DATE:${dateStr}\nDTEND;VALUE=DATE:${dateStr}\nSUMMARY:Quran Plan - Day ${a.dayNumber}\nDESCRIPTION:Read ${a.items.length} ${PLANNER_UNITS[a.unitType]?.plural}\nEND:VEVENT\n`;
         });
         icsContent += "END:VCALENDAR";
         const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
@@ -734,13 +739,13 @@ function ActiveView({ planner, planners, activePlannerId, onSwitchPlan, onDelete
 
     const todayAssignment = useMemo(() => {
         if (!planner) return null;
-        return planner.assignments.find(a => a.date === today) || planner.assignments[overview?.currentDayNumber - 1] || null;
+        return getCurrentAssignment(planner, today);
     }, [planner, today, overview]);
 
     const prayerSlots = useMemo(() => buildPrayerSlots(planner, todayAssignment, prayerTimes, prayerSettings), [planner, todayAssignment, prayerTimes, prayerSettings]);
 
-    const unitsLabel = planner ? PLANNER_UNITS[planner.unitType]?.plural : 'Pages';
-    const completionDate = planner ? new Date(`${addDays(planner.startDate, planner.durationDays - 1)}T00:00:00`)
+    const unitsLabel = 'Pages';
+    const completionDate = planner ? new Date(`${getPlanEndDate(planner)}T00:00:00`)
         .toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—';
     const streakDays = metrics?.consistencyStreak ?? 0;
     const currentDay = overview?.currentDayNumber ?? 1;
@@ -809,7 +814,7 @@ function ActiveView({ planner, planners, activePlannerId, onSwitchPlan, onDelete
         return `${s}s`;
     };
     const daySubtitle = (() => {
-        if (overview?.isFinishedWindow && !nextAssignment) return 'Plan complete! 🎉';
+        if (overview?.remainingCount === 0) return 'Plan complete! 🎉';
         if (!todayAssignment) return 'Starting soon…';
         if (todayComplete && nextAssignment) return `Day ${currentDay} complete! 🎉 · Day ${nextAssignment.dayNumber} ready`;
         if (todayComplete) return `Day ${currentDay} complete! 🎉`;
@@ -818,9 +823,9 @@ function ActiveView({ planner, planners, activePlannerId, onSwitchPlan, onDelete
         return 'All done for today! ✓';
     })();
 
-    const ringLabel = `${todayDone} OF ${todayTotal} ${PLANNER_UNITS[planner.unitType]?.label.toUpperCase()}S TODAY`;
+    const ringLabel = `${todayDone} OF ${todayTotal} ${unitsLabel.toUpperCase()} TODAY`;
 
-    const planDone = overview?.isFinishedWindow && !nextAssignment;
+    const planDone = overview?.remainingCount === 0;
     const ctaRoute = todayComplete ? (nextReadRoute || resumeRoute) : (resumeRoute || nextReadRoute);
     const ctaLabel = planDone
         ? 'Plan Complete ✓'
@@ -1016,10 +1021,10 @@ function ActiveView({ planner, planners, activePlannerId, onSwitchPlan, onDelete
                                                         {slot.time && <span className="text-[0.7rem] font-mono text-[var(--text-secondary)] bg-[var(--h-bone)] border-[1.5px] border-[var(--h-bone-dark)] px-1.5 py-0.5 rounded-[6px] no-underline opacity-90 inline-block">{slot.time}</span>}
                                                     </span>
                                                     <span className={`font-mono text-[0.75rem] uppercase tracking-[0.05em] font-medium leading-[1.3] ${isCurrent ? 'text-[var(--accent-primary)]' : 'text-[var(--text-muted)]'}`}>
-                                                        {isCompleted && `${slot.doneInSlot}/${slot.count} ${PLANNER_UNITS[planner.unitType]?.plural} ✓`}
-                                                        {isCurrent && `${slot.doneInSlot} of ${slot.count} ${PLANNER_UNITS[planner.unitType]?.plural} read`}
-                                                        {isUpcoming && `${slot.count} ${PLANNER_UNITS[planner.unitType]?.plural} · pending`}
-                                                        {isLocked && `${slot.count} ${PLANNER_UNITS[planner.unitType]?.plural} · locked`}
+                                                        {isCompleted && `${slot.doneInSlot}/${slot.count} ${PLANNER_UNITS[todayAssignment?.unitType]?.plural} ✓`}
+                                                        {isCurrent && `${slot.doneInSlot} of ${slot.count} ${PLANNER_UNITS[todayAssignment?.unitType]?.plural} read`}
+                                                        {isUpcoming && `${slot.count} ${PLANNER_UNITS[todayAssignment?.unitType]?.plural} · pending`}
+                                                        {isLocked && `${slot.count} ${PLANNER_UNITS[todayAssignment?.unitType]?.plural} · locked`}
                                                         {isEmpty && `No reading required`}
                                                     </span>
                                                 </div>
@@ -1074,7 +1079,7 @@ function ActiveView({ planner, planners, activePlannerId, onSwitchPlan, onDelete
                                         <div className="flex items-center gap-3">
                                             <span className="font-mono text-[0.7rem] uppercase tracking-[0.05em] text-[var(--text-muted)] hidden md:inline-block">({completedDays}/{planner.durationDays} done)</span>
                                             <button onClick={() => setShowRebalanceModal(true)} className="cursor-pointer border-[1.5px] border-[var(--h-bone-dark)] bg-[var(--h-white)] px-3 py-1.5 rounded-full text-[0.75rem] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--h-bone)] shadow-sm transition-all duration-200 flex items-center gap-1.5"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg> Rebalance</button>
-                                            <button id="adjust-pace-btn" onClick={() => setShowAdjustPace(true)} className="cursor-pointer border-[1.5px] border-[var(--h-bone-dark)] bg-[var(--h-white)] px-3 py-1.5 rounded-full text-[0.75rem] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--h-bone)] shadow-sm transition-all duration-200 flex items-center gap-1.5"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg> Adjust</button>
+                                            <button id="adjust-pace-btn" onClick={() => { setNewDuration(planner.durationDays); setShowAdjustPace(true); }} className="cursor-pointer border-[1.5px] border-[var(--h-bone-dark)] bg-[var(--h-white)] px-3 py-1.5 rounded-full text-[0.75rem] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--h-bone)] shadow-sm transition-all duration-200 flex items-center gap-1.5"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg> Adjust</button>
                                         </div>
                                     </div>
                                     <div className="flex flex-wrap gap-[8px] rounded-[24px] border border-white/5 bg-[rgba(255,255,255,0.02)] p-6 shadow-inner backdrop-blur-xl md:gap-[10px]">
@@ -1334,7 +1339,7 @@ function ActiveView({ planner, planners, activePlannerId, onSwitchPlan, onDelete
                             <div className="relative z-10">
                                 <h2 className="mb-2 font-ui text-[1.4rem] font-bold text-[var(--text-primary)]">Adjust Pace</h2>
                                 <p className="mb-8 font-body text-[0.95rem] leading-relaxed text-[var(--text-secondary)]">
-                                    Change how many days you want to complete your remaining plan in. This will re-calculate your daily assignments.
+                                    Choose the total reading days, including days already read. Your completed reading is kept.
                                 </p>
                                 <div className="mb-8 flex flex-col gap-3">
                                     <label className="font-mono text-[0.75rem] font-bold uppercase tracking-[0.15em] text-[var(--accent-primary)]">New Total Days</label>
