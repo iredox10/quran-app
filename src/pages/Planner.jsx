@@ -1,3 +1,4 @@
+import PlannerHistory from '../components/planner/PlannerHistory';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -165,7 +166,6 @@ function IntentionView({ onBegin, onViewActive, chapters, hasExistingPlan, plann
     const [excludeDays, setExcludeDays] = useState([]);
     const [showArchives, setShowArchives] = useState(false);
     const [previewPlan, setPreviewPlan] = useState(null);
-    const { archivedPlanners } = useAppStore();
 
     const unitMeta = PLANNER_UNITS[unitType];
     const maxUnit = unitMeta?.max || 604;
@@ -306,11 +306,9 @@ function IntentionView({ onBegin, onViewActive, chapters, hasExistingPlan, plann
                 <div className="mb-3 flex items-center justify-between border-b border-[var(--plr-bone-dark)] pb-2">
                     <h2 className="font-ui text-[1.15rem] font-semibold text-[var(--plr-ink)] m-0">My Plans</h2>
                     <div className="flex items-center gap-4">
-                        {archivedPlanners && archivedPlanners.length > 0 && (
-                            <button className="cursor-pointer border-none bg-transparent text-[0.75rem] font-medium tracking-[0.05em] text-[var(--plr-teal)] hover:underline" onClick={() => setShowArchives(true)}>
-                                Archives ({archivedPlanners.length})
-                            </button>
-                        )}
+                        <button className="cursor-pointer border-none bg-transparent text-[0.75rem] font-medium tracking-[0.05em] text-[var(--plr-teal)] hover:underline" onClick={() => setShowArchives(true)}>
+                            History
+                        </button>
                         <button className="flex h-[34px] w-[34px] cursor-pointer items-center justify-center rounded-full border-[1.5px] border-[var(--plr-bone-dark)] bg-transparent text-[var(--plr-teal)] transition-all duration-200 hover:border-[var(--plr-teal)] hover:bg-[var(--plr-teal)] hover:text-white hover:shadow-[0_4px_14px_rgba(46,79,74,0.2)]" onClick={() => setShowCustom(true)} title="Create custom plan">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                                 <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
@@ -514,51 +512,7 @@ function IntentionView({ onBegin, onViewActive, chapters, hasExistingPlan, plann
                 <span className="font-mono text-[0.62rem] uppercase tracking-[0.12em] text-[var(--plr-ink-muted)]">Prophetic Wisdom</span>
             </div>
 
-            <AnimatePresence>
-                {showArchives && (
-                    <motion.div className="fixed inset-0 z-[1000] flex items-center justify-center bg-[rgba(30,35,32,0.45)] p-4 backdrop-blur-sm"
-                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                        onClick={e => { if (e.target === e.currentTarget) setShowArchives(false); }}
-                    >
-                        <motion.div className="flex max-h-[90vh] w-full max-w-[460px] flex-col overflow-hidden rounded-[20px] bg-[var(--plr-cream)] shadow-[0_24px_80px_rgba(0,0,0,0.18)]"
-                            initial={{ opacity: 0, y: 20, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 20, scale: 0.98 }}>
-                            <div className="flex items-center justify-between border-b border-[var(--plr-bone-dark)] px-6 py-5">
-                                <h2 className="font-ui text-xl font-semibold text-[var(--plr-ink)]">Past Plans Archive</h2>
-                                <button className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border-none bg-[var(--plr-bone)] text-[var(--plr-ink-mid)] hover:bg-[var(--plr-bone-dark)]" onClick={() => setShowArchives(false)}>
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                                </button>
-                            </div>
-                            <div className="flex-1 overflow-y-auto px-6 py-5">
-                                {!archivedPlanners || archivedPlanners.length === 0 ? (
-                                    <p className="text-center font-body text-[0.85rem] italic text-[var(--plr-ink-muted)]">No archived plans yet.</p>
-                                ) : (
-                                    <div className="flex flex-col gap-3">
-                                        {archivedPlanners.map(p => {
-                                            const isCompleted = p.completedDays?.length === p.durationDays;
-                                            return (
-                                                <div key={p.id + p.archivedAt} className="rounded-xl border-[1.5px] border-[var(--plr-bone-dark)] bg-[var(--plr-bone)] p-4 shadow-sm">
-                                                    <div className="flex items-center justify-between">
-                                                        <h3 className="font-body text-[0.95rem] font-semibold text-[var(--plr-ink)]">{p.title || 'Plan'}</h3>
-                                                        <span className={`rounded-full px-2 py-0.5 font-mono text-[0.6rem] font-medium tracking-[0.05em] uppercase ${isCompleted ? 'bg-[rgba(184,146,74,0.15)] text-[var(--plr-gold)]' : 'bg-[var(--plr-bone)] text-[var(--plr-ink-muted)]'}`}>
-                                                            {isCompleted ? 'Completed' : 'Ended'}
-                                                        </span>
-                                                    </div>
-                                                    <p className="mt-1 font-mono text-[0.65rem] tracking-[0.03em] text-[var(--plr-ink-muted)]">
-                                                        {p.durationDays} days · {p.completedDays?.length || 0} days finished
-                                                    </p>
-                                                    <p className="mt-1.5 font-body text-[0.75rem] text-[var(--plr-ink-mid)] italic">
-                                                        Archived on {formatPlannerDateLabel(p.archivedAt.split('T')[0])}
-                                                    </p>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                )}
-                            </div>
-                        </motion.div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+            {showArchives && <PlannerHistory onClose={() => setShowArchives(false)} />}
 
             <AnimatePresence>
                 {previewPlan && (

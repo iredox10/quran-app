@@ -1,3 +1,4 @@
+import { addPlannerReadingTime } from '../utils/plannerHistory';
 import { toggleSavedBookmark } from '../utils/syncLibrary';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
@@ -560,16 +561,15 @@ export const useAppStore = create(
                 return { plannerSessionTimers: timers };
             }),
 
-            stopPlannerTimer: (plannerId, dayNumber, additionalSeconds) => set((state) => {
-                const timers = { ...state.plannerSessionTimers };
-                if (!timers[plannerId]) timers[plannerId] = {};
-                if (!timers[plannerId][dayNumber]) {
-                    timers[plannerId][dayNumber] = { totalSeconds: 0 };
-                }
-                timers[plannerId][dayNumber].totalSeconds += additionalSeconds;
-                timers[plannerId][dayNumber].startedAt = null;
-                return { plannerSessionTimers: timers };
-            }),
+            stopPlannerTimer: (plannerId, dayNumber, additionalSeconds) => set((state) => ({
+                plannerSessionTimers: {
+                    ...state.plannerSessionTimers,
+                    [plannerId]: {
+                        ...state.plannerSessionTimers?.[plannerId],
+                        [dayNumber]: addPlannerReadingTime(state.plannerSessionTimers?.[plannerId]?.[dayNumber], additionalSeconds),
+                    },
+                },
+            })),
 
             setPlanner: (planner) => set((state) => {
                 const planners = state.planners || [];
