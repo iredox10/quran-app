@@ -1,3 +1,4 @@
+import { resolveMushafSettings } from '../config/mushaf';
 import { normalizeSyncLibrary } from './syncLibrary';
 // Bidirectional merge semantics for cloud sync.
 // The cloud document is treated as a superset snapshot: pushes merge local
@@ -242,6 +243,9 @@ export function mergeStateInto(base, incoming) {
         out.planner = out.planners.find(p => p?.id === out.activePlannerId)
             || out.planners.find(p => out.planner && p?.id === out.planner.id)
             || (out.planner ?? null);
+    }
+    if (['mushafId', 'arabicFontId', 'arabicFont'].some(key => incoming[key] != null)) {
+        Object.assign(out, resolveMushafSettings(base, incoming));
     }
     return normalizeSyncLibrary(out);
 }

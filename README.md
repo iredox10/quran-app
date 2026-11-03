@@ -1,10 +1,10 @@
 <div align="center">
-  <img src="https://quran-nur.appwrite.network/icon-512x512.png" alt="Quran Nur Logo" width="150" />
+  <img src="public/logo-512.png" alt="Quran Nur Logo" width="150" />
   <h1>Quran Nur 🌙</h1>
   <p><strong>Illuminate your heart. A beautifully designed companion for reading, listening, and studying the Quran.</strong></p>
 
   <p>
-    <a href="https://quran-nur.appwrite.network/"><strong>Visit the App</strong></a> ·
+    <a href="https://quran-nur-web-iredox-7034db77458a.herokuapp.com/"><strong>Visit the App</strong></a> ·
     <a href="#features"><strong>Features</strong></a> ·
     <a href="#installation"><strong>Installation</strong></a> ·
     <a href="CONTRIBUTING.md"><strong>Contributing</strong></a>
@@ -77,9 +77,8 @@ only the public API origin:
 VITE_API_BASE_URL=https://qurannur-backend-d7d7312f118d.herokuapp.com
 ```
 
-Appwrite is no longer used for browser authentication, sync, group documents,
-realtime subscriptions, or voice-note storage. Its existing static-site hosting
-can remain in place. The retired `VITE_USE_RENDER_API` switch is ignored;
+The frontend is hosted on Heroku, and browser authentication, sync, group documents,
+realtime subscriptions, and voice-note storage use the Heroku backend. The retired `VITE_USE_RENDER_API` switch is ignored;
 there is no silent fallback to the old data service. Server/admin keys must
 never be put in `VITE_*` settings.
 

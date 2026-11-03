@@ -1,29 +1,28 @@
-import { useEffect, useState } from 'react';
+import { Component, lazy, Suspense, useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import BottomNav from './components/BottomNav';
-import Home from './pages/Home';
-import Surah from './pages/Surah';
-import Page from './pages/Page';
+const Home = lazy(() => import('./pages/Home'));
+const Surah = lazy(() => import('./pages/Surah'));
+const Page = lazy(() => import('./pages/Page'));
 
-import MemorizeIndex from './pages/MemorizeIndex';
-import Memorization from './pages/Memorization';
-import Library from './pages/Library';
-import Bookmarks from './pages/Bookmarks';
-import Collections from './pages/Collections';
-import CollectionDetail from './pages/CollectionDetail';
-import RecentSurahs from './pages/RecentSurahs';
-import Progress from './pages/Progress';
-import ActivityHistory from './pages/ActivityHistory';
-import Planner from './pages/Planner';
-import PlannerReader from './pages/PlannerReader';
-import OfflineLibrary from './pages/OfflineLibrary';
+const MemorizeIndex = lazy(() => import('./pages/MemorizeIndex'));
+const Memorization = lazy(() => import('./pages/Memorization'));
+const Library = lazy(() => import('./pages/Library'));
+const Bookmarks = lazy(() => import('./pages/Bookmarks'));
+const Collections = lazy(() => import('./pages/Collections'));
+const CollectionDetail = lazy(() => import('./pages/CollectionDetail'));
+const RecentSurahs = lazy(() => import('./pages/RecentSurahs'));
+const Progress = lazy(() => import('./pages/Progress'));
+const ActivityHistory = lazy(() => import('./pages/ActivityHistory'));
+const Planner = lazy(() => import('./pages/Planner'));
+const PlannerReader = lazy(() => import('./pages/PlannerReader'));
+const OfflineLibrary = lazy(() => import('./pages/OfflineLibrary'));
 import TajweedTooltip from './components/TajweedTooltip';
-import GlobalAudioPlayer from './components/GlobalAudioPlayer';
-import Profile from './pages/Profile';
-import FloatingPomodoro from './components/FloatingPomodoro';
-import SaukaIndex from './pages/SaukaIndex';
-import SaukaGroup from './pages/SaukaGroup';
+const Profile = lazy(() => import('./pages/Profile'));
+const FloatingPomodoro = lazy(() => import('./components/FloatingPomodoro'));
+const SaukaIndex = lazy(() => import('./pages/SaukaIndex'));
+const SaukaGroup = lazy(() => import('./pages/SaukaGroup'));
 import CloudSync from './components/CloudSync';
 import AlertModal from './components/ui/AlertModal';
 import ConfirmModal from './components/ui/ConfirmModal';
@@ -31,8 +30,24 @@ import { useAppStore } from './store/useAppStore';
 
 import SplashScreen from './components/ui/SplashScreen';
 
+class PageLoadBoundary extends Component {
+  state = { failed: false };
+  static getDerivedStateFromError() { return { failed: true }; }
+  render() {
+    if (this.state.failed) return (
+      <main role="alert" className="container text-center py-12">
+        <h2>Unable to load this page</h2>
+        <p>Check your connection, then try again.</p>
+        <button type="button" className="rounded-xl bg-accent px-5 py-3 text-white" onClick={() => window.location.reload()}>Try again</button>
+      </main>
+    );
+    return this.props.children;
+  }
+}
+
 function App() {
   const [showSplash, setShowSplash] = useState(true);
+  const showGlobalPomodoro = useAppStore(state => state.showGlobalPomodoro);
 
   useEffect(() => {
     // Override default window.alert for a better UX
@@ -78,6 +93,8 @@ function App() {
       
       {/* Headless cloud sync — runs silently in the background on every page */}
       <CloudSync />
+      <PageLoadBoundary>
+      <Suspense fallback={<main role="status" className="container text-center py-12">Loading Quran Nur…</main>}>
       <Routes>
         <Route element={<Layout />}>
           <Route path="/" element={<Home />} />
@@ -102,8 +119,10 @@ function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
+      </Suspense>
+      </PageLoadBoundary>
       <BottomNav />
-      <FloatingPomodoro />
+      <Suspense fallback={null}>{showGlobalPomodoro && <FloatingPomodoro />}</Suspense>
       <TajweedTooltip />
       <AlertModal />
       <ConfirmModal />

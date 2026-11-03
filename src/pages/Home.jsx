@@ -180,7 +180,7 @@ export default function Home() {
         </div>
     );
 
-    if (error) return <div className="mx-auto max-w-[1200px] px-4 pb-20"><div className="py-8 text-center text-sm italic text-[var(--h-ink-muted)]">Error fetching data. Please try again later.</div></div>;
+    if (error && !chapters?.length) return <div className="mx-auto max-w-[1200px] px-4 pb-20"><div className="py-8 text-center text-sm italic text-[var(--h-ink-muted)]">Error fetching data. Please try again later.</div></div>;
 
     return (
         <div className="mx-auto max-w-[1200px] px-4 pb-20">

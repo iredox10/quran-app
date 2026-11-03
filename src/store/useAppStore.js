@@ -8,7 +8,7 @@ const f = fsrs({});
 
 import {
     DEFAULT_MUSHAF,
-    getArabicFontByFamily,
+    resolveMushafSettings,
     getArabicFontFamily,
     getCompatibleArabicFontId,
     getMushafById,
@@ -208,7 +208,7 @@ export const useAppStore = create(
             setMushafMode: (mode) => set({ mushafMode: mode }),
             setSelectedMushaf: withUserSet(set, ['mushafId', 'arabicFontId', 'arabicFont'], (state, mushafId) => {
                 const mushaf = getMushafById(mushafId);
-                const nextFontId = getCompatibleArabicFontId(mushaf.id, state.mushafId === mushaf.id ? state.arabicFontId || getArabicFontByFamily(state.arabicFont)?.id : mushaf.defaultFontId);
+                const nextFontId = mushaf.defaultFontId;
 
                 return {
                     mushafId: mushaf.id,
@@ -852,17 +852,14 @@ export const useAppStore = create(
                     ...(persistedState || {}),
                 };
 
-                const restoredMushaf = getMushafById(merged.mushafId);
-                const restoredFont = getCompatibleArabicFontId(restoredMushaf.id, merged.mushafId === restoredMushaf.id ? merged.arabicFontId || getArabicFontByFamily(merged.arabicFont)?.id : null);
+                const restoredPresentation = resolveMushafSettings(currentState, persistedState || {});
                 const planners = merged.planners || (merged.planner ? [merged.planner] : []);
                 const activePlannerId = merged.activePlannerId || planners[0]?.id || null;
                 const planner = planners.find((item) => item.id === activePlannerId) || planners[0] || null;
 
                 return {
                     ...merged,
-                    mushafId: restoredMushaf.id,
-                    arabicFontId: restoredFont,
-                    arabicFont: getArabicFontFamily(restoredFont, restoredMushaf.defaultFontId),
+                    ...restoredPresentation,
                     translationId: merged.translationId === 131 ? 20 : (merged.translationId || 20),
                     planners,
                     activePlannerId: planner?.id || null,

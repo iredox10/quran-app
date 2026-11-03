@@ -101,7 +101,7 @@ export const MUSHAFS = [
 
 export const SELECTABLE_MUSHAFS = MUSHAFS.filter(mushaf => mushaf.isSelectable !== false);
 
-export const DEFAULT_MUSHAF = MUSHAFS[0];
+export const DEFAULT_MUSHAF = MUSHAFS.find(mushaf => mushaf.id === 'madani-standard');
 
 export function getMushafById(mushafId) {
   return MUSHAFS.find((mushaf) => mushaf.id === mushafId && mushaf.isSelectable !== false) || DEFAULT_MUSHAF;
@@ -155,4 +155,22 @@ export function isTajweedEnabledForMushaf(mushafId, tajweedEnabled) {
   }
 
   return mushaf.forcesTajweed || tajweedEnabled;
+}
+
+// Android sync uses font display names; DOM styles need the actual CSS family.
+// A valid id is authoritative, and changing editions starts with its own font.
+export function resolveMushafSettings(base = {}, incoming = {}) {
+  const mushaf = getMushafById(incoming.mushafId ?? base.mushafId);
+  const findFontId = value => ARABIC_FONT_OPTIONS.find(font =>
+    [font.id, font.name, font.family].some(name => name.toLowerCase() === String(value || '').trim().toLowerCase()))?.id;
+  const changedEdition = incoming.mushafId != null && getMushafById(base.mushafId).id !== mushaf.id;
+  const incomingFont = incoming.arabicFontId || findFontId(incoming.arabicFont);
+  const storedFont = base.arabicFontId || findFontId(base.arabicFont);
+  const fontId = getCompatibleArabicFontId(mushaf.id,
+    incomingFont || (changedEdition ? mushaf.defaultFontId : storedFont));
+  return {
+    mushafId: mushaf.id,
+    arabicFontId: fontId,
+    arabicFont: getArabicFontFamily(fontId, mushaf.defaultFontId),
+  };
 }

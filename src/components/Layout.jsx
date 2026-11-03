@@ -1,13 +1,13 @@
-import { useCallback, useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
 import { getLocalAudioDirHandle } from '../utils/localAudio';
 import { Moon, Sun, Settings, ArrowLeft, BookOpen, ChevronsDown, Volume2, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import GlobalAudioPlayer from './GlobalAudioPlayer';
-import SettingsDrawer from './SettingsDrawer';
-import NavigationModal from './NavigationModal';
-import WordTranslationTooltip from './WordTranslationTooltip';
+const GlobalAudioPlayer = lazy(() => import('./GlobalAudioPlayer'));
+const SettingsDrawer = lazy(() => import('./SettingsDrawer'));
+const NavigationModal = lazy(() => import('./NavigationModal'));
+const WordTranslationTooltip = lazy(() => import('./WordTranslationTooltip'));
 
 export default function Layout() {
     const {
@@ -304,10 +304,12 @@ export default function Layout() {
                 <Outlet />
             </main>
 
-            <GlobalAudioPlayer />
-            <SettingsDrawer isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
-            <NavigationModal isOpen={isNavModalOpen} onClose={() => setIsNavModalOpen(false)} />
-            <WordTranslationTooltip />
+            <Suspense fallback={null}>
+                {hasAudio && <GlobalAudioPlayer />}
+                {isSettingsOpen && <SettingsDrawer isOpen onClose={() => setIsSettingsOpen(false)} />}
+                {isNavModalOpen && <NavigationModal isOpen onClose={() => setIsNavModalOpen(false)} />}
+                {isImmersivePage && <WordTranslationTooltip />}
+            </Suspense>
         </div>
     );
 }

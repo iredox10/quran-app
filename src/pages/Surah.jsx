@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { useQuery, useInfiniteQuery, keepPreviousData } from '@tanstack/react-query';
+import { useQuery, useInfiniteQuery, keepPreviousData, useQueryClient } from '@tanstack/react-query';
 import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useInView } from 'react-intersection-observer';
 import { getChapter, getVerses, getChapterAudio, getChapterTafsirs, getChapters, getFootnote } from '../services/api/quranApi';
@@ -350,7 +350,8 @@ export default function Surah() {
     const [memorizeMode, setMemorizeMode] = useState(false);
     const [sharingVerse, setSharingVerse] = useState(null);
 
-    const { data: chapter, isLoading: isChapterLoading, error: chapterError, refetch: retryChapter } = useQuery({ queryKey: ['chapter', id], queryFn: () => getChapter(id) });
+    const queryClient = useQueryClient();
+    const { data: chapter, isLoading: isChapterLoading, error: chapterError, refetch: retryChapter } = useQuery({ queryKey: ['chapter', id], queryFn: () => getChapter(id), initialData: () => queryClient.getQueryData(['chapters'])?.find(row => String(row.id) === String(id)) });
     const { data: allChapters } = useQuery({ queryKey: ['chapters'], queryFn: getChapters, staleTime: Infinity });
 
     useEffect(() => {

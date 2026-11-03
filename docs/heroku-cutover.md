@@ -1,9 +1,8 @@
 # Web data cutover to Heroku
 
 Account, sync, Sauka, and Quran API requests use `VITE_API_BASE_URL`, defaulting to
-`https://qurannur-backend-d7d7312f118d.herokuapp.com`. The frontend may still be
-hosted at `https://quran-nur.appwrite.network`; static hosting does not provide
-accounts or application storage. Appwrite's browser SDK has been removed.
+`https://qurannur-backend-d7d7312f118d.herokuapp.com`. The frontend is hosted at
+`https://quran-nur-web-iredox-7034db77458a.herokuapp.com`.
 
 ## What moved
 

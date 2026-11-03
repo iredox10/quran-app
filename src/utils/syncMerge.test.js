@@ -435,3 +435,12 @@ it('replaces remapped day progress with a revised schedule and rejects stale day
     const progress={id:'p',assignmentsUpdatedAt:20,assignmentProgress:{2:1}};
     expect(mergeStateInto({planners:[row]},{planners:[progress]}).planners[0].assignmentProgress).toEqual({1:1,2:1});
 });
+
+describe('cross-device Quran font names', () => {
+    it('applies a mobile font selection without sending a display label into CSS', () => {
+        const result = mergeStateInto({mushafId:'madani-standard',arabicFontId:'amiri-quran',arabicFont:'old-family'},
+            {arabicFontId:'kfgqpc-hafs',arabicFont:'KFGQPC Hafs'});
+        expect(result.arabicFontId).toBe('kfgqpc-hafs');
+        expect(result.arabicFont).toContain('KFGQPC Hafs Uthmanic Script');
+    });
+});

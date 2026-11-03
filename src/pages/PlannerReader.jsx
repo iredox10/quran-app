@@ -1,13 +1,15 @@
+import { usePlannerPagePosition } from '../hooks/usePlannerPagePosition';
+import { plannerPrefetchOrder, startPagePrefetch } from '../utils/pagePrefetch';
 import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { useQuery, keepPreviousData } from '@tanstack/react-query';
+import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useSwipeable } from 'react-swipeable';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Helmet } from 'react-helmet-async';
 import confetti from 'canvas-confetti';
 import { ArrowLeft, CheckCircle2, ChevronRight, ChevronLeft, Check, Timer, Minus, Plus, Play, Pause, ArrowRight, X } from 'lucide-react';
 
-import { getVersesByPage, getTajweedVersesByPage, getChapters, getPageTafsirs } from '../services/api/quranApi';
+import { getVersesByPage, getChapters, getPageTafsirs } from '../services/api/quranApi';
 import { useAppStore } from '../store/useAppStore';
 import { getMushafById, isTajweedEnabledForMushaf } from '../config/mushaf';
 import { sanitizeTajweedHtml } from '../utils/quranText';
@@ -163,26 +165,44 @@ export default function PlannerReader() {
     }, [pageNumber, planner, assignment, setPlannerLastPosition, markPlannerPageRead]);
 
     // Data fetching
-    const { data: pageData, isLoading: isPageLoading } = useQuery({
+    const queryClient = useQueryClient();
+    const { data: pageData, isLoading: isPageLoading, isPlaceholderData } = useQuery({
         queryKey: ['pageVerses', pageNumber, translationId, reciterId, mushafId],
         queryFn: () => getVersesByPage(pageNumber, translationId, reciterId, mushafId),
         enabled: pageNumber !== null,
         placeholderData: keepPreviousData,
     });
 
-    const { data: tajweedData } = useQuery({
-        queryKey: ['tajweedPage', pageNumber, mushafId],
-        queryFn: () => getTajweedVersesByPage(pageNumber),
-        enabled: isTajweedActive && mushaf.tajweedSource === 'uthmani_html' && pageNumber !== null,
-    });
+    // The page response already includes word and verse Tajweed data.
+    const tajweedMap = useMemo(() => Object.fromEntries(
+        (pageData?.verses || []).map(verse => [verse.verse_key, sanitizeTajweedHtml(verse.text_uthmani_tajweed)])
+    ), [pageData]);
 
-    const tajweedMap = useMemo(() => {
-        if (!tajweedData) return {};
-        return tajweedData.reduce((acc, v) => {
-            acc[v.verse_key] = sanitizeTajweedHtml(v.text_uthmani_tajweed);
-            return acc;
-        }, {});
-    }, [tajweedData]);
+    useEffect(() => {
+        if (pageNumber === null || isPageLoading || isPlaceholderData || !pageData?.verses?.length) return;
+        let job;
+        const begin = () => {
+            job?.stop();
+            if (navigator.onLine === false) return;
+            const connection = navigator.connection;
+            const concurrency = connection?.saveData || /(^|-)2g$/.test(connection?.effectiveType || '') ? 1 : 2;
+            job = startPagePrefetch({
+                pages: plannerPrefetchOrder(pageNumber, assignment?.pageStart, assignment?.pageEnd, mushaf.pageCount || 604),
+                concurrency,
+                canContinue: () => navigator.onLine !== false,
+                fetchPage: page => queryClient.fetchQuery({
+                    queryKey: ['pageVerses', page, translationId, reciterId, mushafId],
+                    queryFn: () => getVersesByPage(page, translationId, reciterId, mushafId),
+                    staleTime: Infinity,
+                    retry: false,
+                }),
+            });
+        };
+        begin();
+        window.addEventListener('online', begin);
+        return () => { window.removeEventListener('online', begin); job?.stop(); };
+    }, [pageNumber, isPageLoading, isPlaceholderData, pageData, assignment?.pageStart,
+        assignment?.pageEnd, mushaf.pageCount, translationId, reciterId, mushafId, queryClient]);
 
     const verses = pageData?.verses || [];
     
@@ -247,25 +267,16 @@ export default function PlannerReader() {
         };
     }, [verses, pageNumber, isPageLoading, planner, setPlannerLastPosition]);
 
-    // Scroll to the last read verse on initial load
-    const hasAutoScrolledRef = useRef(false);
-    useEffect(() => {
-        if (!isPageLoading && verses && verses.length > 0 && planner?.lastReadVerseKey && !hasAutoScrolledRef.current) {
-            // Check if the saved verse is on the current page
-            const verseExists = verses.some(v => v.verse_key === planner.lastReadVerseKey);
-            if (verseExists) {
-                setTimeout(() => {
-                    const el = document.getElementById(`verse-${planner.lastReadVerseKey}`);
-                    if (el) {
-                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    }
-                    hasAutoScrolledRef.current = true;
-                }, 100);
-            } else {
-                hasAutoScrolledRef.current = true; // Mark as done even if not found to prevent looping
-            }
-        }
-    }, [isPageLoading, verses, planner?.lastReadVerseKey]);
+    const pageContentRef = useRef(null);
+    const onPageSettled = usePlannerPagePosition({
+        planId: planner?.id,
+        day: dayNumber,
+        page: pageNumber,
+        layout: [mushafId, arabicFont, fontSize, readingMode].join('|'),
+        verses: assignedVerses,
+        contentRef: pageContentRef,
+        lastReadVerseKey: planner?.lastReadVerseKey,
+    });
 
 
     useEffect(() => {
@@ -513,10 +524,6 @@ export default function PlannerReader() {
     }, [verses, isPageLoading, pageNumber, setAudioPlaylist, setIsPlaying, setIsPlayerVisible, updateAudioSettings, localAudioDirHandle, customAudioBaseUrl]);
 
     // Swipe gestures
-    const scrollToTop = () => {
-        window.scrollTo({ top: 0, behavior: 'auto' });
-    };
-
     const handleNextPage = () => {
         if (pageNumber !== null && pageNumber < maxPageNumber) {
             // Mark current page/item as done before moving to the next
@@ -531,7 +538,6 @@ export default function PlannerReader() {
                 }
             }
 
-            scrollToTop();
             swipeDirectionRef.current = 1;
             setPageNumber(pageNumber + 1);
         }
@@ -539,7 +545,6 @@ export default function PlannerReader() {
 
     const handlePrevPage = () => {
         if (pageNumber !== null && pageNumber > minPageNumber) {
-            scrollToTop();
             swipeDirectionRef.current = -1;
             setPageNumber(pageNumber - 1);
         }
@@ -555,11 +560,6 @@ export default function PlannerReader() {
         delta: 40,
         swipeDuration: 500
     });
-
-    // Auto-smooth top-scroll when verses change
-    useEffect(() => {
-        window.scrollTo(0, 0);
-    }, [pageNumber]);
 
     // Keyboard support
     useEffect(() => {
@@ -722,6 +722,9 @@ export default function PlannerReader() {
             <AnimatePresence mode="wait" initial={false} custom={swipeDirectionRef.current}>
                 <motion.div
                     key={pageNumber}
+                    ref={pageContentRef}
+                    data-reader-page={pageNumber}
+                    onAnimationComplete={definition => { if (definition === 'center') onPageSettled(); }}
                     custom={swipeDirectionRef.current}
                     variants={pageVariants}
                     initial="enter"

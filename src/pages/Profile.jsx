@@ -305,10 +305,10 @@ export default function Profile() {
                                 navigator.share({
                                     title: APP_CONFIG.SHARE_TITLE,
                                     text: APP_CONFIG.SHARE_DESCRIPTION,
-                                    url: APP_CONFIG.APP_URL
+                                    ...(APP_CONFIG.APP_URL ? { url: APP_CONFIG.APP_URL } : {})
                                 }).catch(console.error);
                             } else {
-                                navigator.clipboard.writeText(`${APP_CONFIG.SHARE_DESCRIPTION} ${APP_CONFIG.APP_URL}`);
+                                navigator.clipboard.writeText([APP_CONFIG.SHARE_DESCRIPTION, APP_CONFIG.APP_URL].filter(Boolean).join(' '));
                                 alert('Invite link copied to clipboard!');
                             }
                         }}
