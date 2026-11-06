@@ -13,7 +13,7 @@ import {
     getCompatibleArabicFontId,
     getMushafById,
 } from '../config/mushaf';
-import { adjustPlannerPace, rebalancePlanner } from '../utils/planner';
+import { getAssignmentProgress, restartPlanner, adjustPlannerPace, rebalancePlanner } from '../utils/planner';
 
 const DEFAULT_ARABIC_FONT_ID = getCompatibleArabicFontId(DEFAULT_MUSHAF.id, DEFAULT_MUSHAF.defaultFontId);
 const DEFAULT_ARABIC_FONT_FAMILY = getArabicFontFamily(DEFAULT_ARABIC_FONT_ID);
@@ -354,10 +354,10 @@ export const useAppStore = create(
                 })
             })),
 
-            addRecentlyRead: (chapterId, chapterName, verseKey = null) => set((state) => {
+            addRecentlyRead: (chapterId, chapterName, verseKey = null, source = {}) => set((state) => {
                 if(verseKey && Number(verseKey.split(':')[0])!==Number(chapterId)) return state;
                 const filtered = (state.recentlyRead || []).filter(r => r.chapterId !== chapterId);
-                const newList = [{ chapterId, chapterName, verseKey, timestamp: Date.now() }, ...filtered].slice(0, 20);
+                const newList = [{ ...source, chapterId, chapterName, verseKey, timestamp: Date.now() }, ...filtered].slice(0, 20);
                 return { recentlyRead: newList };
             }),
 
@@ -818,6 +818,17 @@ export const useAppStore = create(
                 const nextPlanners = planners.map(p => p.id === targetId ? { ...p, ...updates } : p);
                 return buildPlannerState(nextPlanners, activePlannerId);
             })),
+
+            restartPlanner: () => set((state) => {
+                const current = state.planner;
+                if (!current || current.assignments.some(a => !getAssignmentProgress(current, a).isComplete)) return state;
+                const restarted = restartPlanner(current);
+                return {
+                    ...buildPlannerState([...(state.planners || []).filter(p => p.id !== current.id), restarted], restarted.id),
+                    archivedPlanners: [...(state.archivedPlanners || []).filter(p => p.id !== current.id),
+                        { ...current, archivedAt: new Date().toISOString() }],
+                };
+            }),
 
             archivePlanner: (planId) => set((state) => {
                 const targetId = planId || state.activePlannerId;

@@ -157,6 +157,11 @@ export default function Home() {
 
     // Continue reading
     const lastRead = recentlyRead?.[0];
+    const resumePlan = useAppStore(state => state.planners)?.find(p => p.id === lastRead?.plannerId);
+    const continueRoute = resumePlan?.assignments?.some(a => a.dayNumber === lastRead?.plannerDay)
+        ? `/planner/read/${lastRead.plannerDay}`
+        : lastRead?.verseKey ? `/surah/${lastRead.chapterId}?verse=${lastRead.verseKey}`
+        : lastRead?.pageNumber ? `/page/${lastRead.pageNumber}` : `/surah/${lastRead?.chapterId}`;
 
     // Time ago
     const timeAgo = useCallback((ts) => {
@@ -251,12 +256,14 @@ export default function Home() {
                     <p className="mb-5 font-mono text-[0.65rem] uppercase tracking-[0.1em] text-[var(--h-ink-muted)]">{formatDate()}</p>
 
                     {lastRead && (
-                        <Link to={lastRead.verseKey ? `/surah/${lastRead.chapterId}?verse=${lastRead.verseKey}` : `/surah/${lastRead.chapterId}`}
+                        <Link to={continueRoute} onClick={() => {
+                            if (resumePlan) useAppStore.getState().setActivePlanner?.(resumePlan.id);
+                        }}
                             className="mx-auto flex max-w-[420px] items-center gap-4 rounded-2xl bg-gradient-to-br from-[var(--h-teal)] to-[var(--h-teal-mid)] p-4 text-white no-underline transition-all duration-150 hover:-translate-y-px hover:shadow-[0_8px_24px_rgba(46,79,74,0.25)] md:p-5">
                             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/15"><BookOpen size={22} /></div>
                             <div className="min-w-0 flex-1 text-left">
                                 <div className="mb-0.5 font-ui text-base font-semibold">Continue: {lastRead.chapterName}</div>
-                                <div className="font-mono text-[0.72rem] tracking-[0.02em] opacity-75">{lastRead.verseKey ? `Verse ${lastRead.verseKey.split(':')[1]}` : 'From the beginning'} · {timeAgo(lastRead.timestamp)}</div>
+                                <div className="font-mono text-[0.72rem] tracking-[0.02em] opacity-75">{resumePlan ? `Planner · Day ${lastRead.plannerDay}` : lastRead.verseKey ? `Verse ${lastRead.verseKey.split(':')[1]}` : lastRead.pageNumber ? `Page ${lastRead.pageNumber}` : 'From the beginning'} · {timeAgo(lastRead.timestamp)}</div>
                             </div>
                             <ArrowRight size={18} className="shrink-0 opacity-60" />
                         </Link>

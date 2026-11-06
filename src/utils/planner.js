@@ -857,3 +857,14 @@ export function getPlannerAnalytics(planner) {
   };
 }
 
+
+/** A fresh run keeps the schedule shape; the caller archives the completed run. */
+export function restartPlanner(plan, today = formatPlannerDate(new Date())) {
+    return {
+        ...plan, id: crypto.randomUUID(), createdAt: new Date().toISOString(), startDate: today,
+        assignments: plan.assignments.map((a, index) => ({ ...a, date: getReadingDate(today, index, plan.excludeDays || []) })),
+        assignmentProgress: {}, assignmentReadPages: {}, assignmentCompletedItems: {},
+        assignmentCompletedAt: {}, assignmentReflections: {}, completedDays: [],
+        lastReadPage: null, lastReadVerseKey: null, archivedAt: null, assignmentsUpdatedAt: Date.now(),
+    };
+}

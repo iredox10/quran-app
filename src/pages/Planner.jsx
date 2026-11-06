@@ -840,14 +840,10 @@ function ActiveView({ planner, planners, activePlannerId, onSwitchPlan, onDelete
                                 <button 
                                     className="w-full cursor-pointer rounded-full border-none bg-[var(--accent-primary)] p-[0.9rem] font-ui text-[1rem] font-semibold tracking-[0.02em] text-white shadow-md transition-all duration-200 hover:bg-[var(--accent-hover)]"
                                     onClick={() => {
-                                        const rev = buildRevisionPlanner(planner, chapters); 
-                                        if(rev) {
-                                            const s = useAppStore.getState();
-                                            s.setPlanner(rev);
-                                        }
+                                        useAppStore.getState().restartPlanner();
                                     }}
                                 >
-                                    Start Revision Plan
+                                    Restart planner
                                 </button>
                             ) : !ctaRoute ? (
                                 <button className="w-full cursor-pointer rounded-full border-none bg-[var(--bg-surface)] p-[0.9rem] font-ui text-[1rem] font-semibold tracking-[0.02em] text-[var(--text-muted)] shadow-sm disabled:opacity-70" disabled>{ctaLabel}</button>

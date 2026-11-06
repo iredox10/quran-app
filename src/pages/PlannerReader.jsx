@@ -157,12 +157,25 @@ export default function PlannerReader() {
             const currentDay = assignment.dayNumber;
             if (prevTrackedRef.current.page !== pageNumber || prevTrackedRef.current.day !== currentDay) {
                 if (setPlannerLastPosition) setPlannerLastPosition(pageNumber); // Will be updated with verse later by observer
-                if (markPlannerPageRead) markPlannerPageRead(currentDay, pageNumber);
+
                 
                 prevTrackedRef.current = { page: pageNumber, day: currentDay };
             }
         }
     }, [pageNumber, planner, assignment, setPlannerLastPosition, markPlannerPageRead]);
+
+    useEffect(() => {
+        if (currentChapter && planner?.id && assignment && pageNumber != null) {
+            addRecentlyRead(currentChapter.id, currentChapter.name_simple, null,
+                { plannerId: planner.id, plannerDay: assignment.dayNumber, pageNumber });
+        }
+    }, [currentChapter?.id, planner?.id, assignment?.dayNumber, pageNumber, addRecentlyRead]);
+
+    const recordPlannerRecentlyRead = useCallback((chapterId, chapterName, verseKey) => {
+        addRecentlyRead(chapterId, chapterName, verseKey, {
+            plannerId: planner?.id, plannerDay: assignment?.dayNumber, pageNumber,
+        });
+    }, [addRecentlyRead, planner?.id, assignment?.dayNumber, pageNumber]);
 
     // Data fetching
     const queryClient = useQueryClient();
@@ -381,13 +394,15 @@ export default function PlannerReader() {
         navigate('/planner');
     };
 
+    const [completionRequested, setCompletionRequested] = useState(false);
+
     // Day completion effect
     const prevIsCompleteRef = useRef(false);
     const [showConfetti, setShowConfetti] = useState(false);
     const [insightVerse, setInsightVerse] = useState(null);
     
     useEffect(() => {
-        if (progress?.isComplete && !prevIsCompleteRef.current) {
+        if (progress?.isComplete && completionRequested && !prevIsCompleteRef.current) {
             setShowConfetti(true);
             
             if (assignedVerses && assignedVerses.length > 0) {
@@ -420,8 +435,8 @@ export default function PlannerReader() {
             };
             frame();
         }
-        prevIsCompleteRef.current = progress?.isComplete || false;
-    }, [progress?.isComplete, verses]);
+        prevIsCompleteRef.current = Boolean(progress?.isComplete && completionRequested);
+    }, [progress?.isComplete, completionRequested, verses]);
 
     // Audio Playback State Let's setup modal
     const [showAudioSetup, setShowAudioSetup] = useState(false);
@@ -501,6 +516,7 @@ export default function PlannerReader() {
             const endIdx = audioSettings.endRange ?? (audioPlaylist.length - 1);
             if (audioTrackIndex >= endIdx) {
                 if (pageNumber !== null && pageNumber < maxPageNumber) {
+                    markPlannerPageRead(assignment.dayNumber, pageNumber);
                     shouldAutoPlayNextRef.current = true;
                     swipeDirectionRef.current = 1;
                     setPageNumber(pageNumber + 1);
@@ -525,21 +541,15 @@ export default function PlannerReader() {
 
     // Swipe gestures
     const handleNextPage = () => {
-        if (pageNumber !== null && pageNumber < maxPageNumber) {
-            // Mark current page/item as done before moving to the next
-            if (assignment && progress) {
-                const currentItem = assignment.items.find(item => 
-                    pageNumber >= (item.pageStart || 1) && pageNumber <= (item.pageEnd || 604)
-                );
-                if (currentItem && !progress.completedRangeValues.includes(currentItem.rangeValue)) {
-                    if (assignment.unitType === 'page' || pageNumber >= currentItem.pageEnd) {
-                        markPlannerItemComplete(assignment.dayNumber, currentItem.rangeValue);
-                    }
-                }
-            }
-
+        if (pageNumber === null || !assignment) return;
+        markPlannerPageRead(assignment.dayNumber, pageNumber);
+        if (pageNumber < maxPageNumber) {
             swipeDirectionRef.current = 1;
             setPageNumber(pageNumber + 1);
+        } else {
+            useAppStore.getState().setPlannerAssignmentProgress(assignment.dayNumber, assignment.items.length);
+            setCompletionRequested(true);
+            setShowConfetti(true);
         }
     };
 
@@ -564,12 +574,12 @@ export default function PlannerReader() {
     // Keyboard support
     useEffect(() => {
         const handleKeyDown = (e) => {
-            if (e.key === 'ArrowRight' && pageNumber > minPageNumber) setPageNumber(pageNumber - 1);
-            if (e.key === 'ArrowLeft' && pageNumber < maxPageNumber) setPageNumber(pageNumber + 1);
+            if (e.key === 'ArrowRight') handlePrevPage();
+            if (e.key === 'ArrowLeft') handleNextPage();
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [pageNumber, maxPageNumber, minPageNumber]);
+    }, [pageNumber, maxPageNumber, minPageNumber, assignment, markPlannerPageRead]);
 
     const totalPagesInAssignment = useMemo(() => {
         if (!assignment) return 0;
@@ -792,7 +802,7 @@ export default function PlannerReader() {
                                                     verse={verse}
                                                     readingMode={readingMode}
                                                     chapter={chapterContext}
-                                                    addRecentlyRead={addRecentlyRead}
+                                                    addRecentlyRead={recordPlannerRecentlyRead}
                                                     fontSize={fontSize}
                                                     arabicFont={arabicFont}
                                                     tajweedEnabled={isTajweedActive}
@@ -836,16 +846,15 @@ export default function PlannerReader() {
             <div className="flex justify-between items-center mt-4 border-t border-[var(--border-color)] pt-8 pb-8">
                 <button
                     onClick={handleNextPage}
-                    disabled={pageNumber >= maxPageNumber}
                     className="interactive-hover flex items-center gap-2 p-3 px-5 rounded-2xl border-none bg-[var(--bg-secondary)] text-[var(--text-primary)] font-semibold text-[0.95rem] transition-all duration-200"
                     style={{
-                        cursor: pageNumber >= maxPageNumber ? 'not-allowed' : 'pointer',
-                        opacity: pageNumber >= maxPageNumber ? 0.3 : 1,
+                        cursor: 'pointer',
+                        opacity: 1,
                     }}
                 >
                     <ChevronLeft size={18} />
                     <div className="flex flex-col items-start text-left">
-                        <span className="text-xs text-[var(--text-muted)] uppercase tracking-[0.5px]">Next</span>
+                        <span className="text-xs text-[var(--text-muted)] uppercase tracking-[0.5px]">{pageNumber === maxPageNumber ? 'Finish day' : 'Next'}</span>
                         <span className="text-sm">Page {pageNumber + 1 > maxPageNumber ? maxPageNumber : pageNumber + 1}</span>
                     </div>
                 </button>

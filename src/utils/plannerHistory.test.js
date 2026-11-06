@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildReadingPlanner, rebalancePlanner } from './planner';
+import { buildReadingPlanner, rebalancePlanner, restartPlanner } from './planner';
 import { addPlannerReadingTime, plannerHistoryPlans, summarizePlannerHistory, isPlannerComplete } from './plannerHistory';
 import { mergeStateInto } from './syncMerge';
 const plan = () => buildReadingPlanner({ unitType: 'page', durationDays: 2, startDate: '2026-10-01', startUnit: 1, endUnit: 4, chapters: [] });
@@ -49,5 +49,20 @@ describe('planner history', () => {
     it('does not manufacture reading time or trust stale completed-day flags', () => {
         expect(summarizePlannerHistory(completed()).totalSeconds).toBe(0);
         expect(isPlannerComplete({ ...plan(), completedDays: [1, 2] })).toBe(false);
+    });
+});
+
+describe('planner restart', () => {
+    it('preserves the completed run and creates an empty run with the same assignments', () => {
+        const original = { ...completed(), lastReadPage: 4, lastReadVerseKey: '2:1', assignmentReflections: { 1: 'note' } };
+        const fresh = restartPlanner(original, '2026-11-05');
+        expect(fresh.id).not.toBe(original.id);
+        expect(fresh.startDate).toBe('2026-11-05');
+        expect(fresh.assignments.map(a => a.items)).toEqual(original.assignments.map(a => a.items));
+        expect(fresh.assignments.map(a => a.date)).toEqual(['2026-11-05', '2026-11-06']);
+        expect(fresh.assignmentProgress).toEqual({});
+        expect(fresh.lastReadPage).toBeNull();
+        expect(fresh.assignmentReflections).toEqual({});
+        expect(original.assignmentProgress[1]).toBe(2);
     });
 });
